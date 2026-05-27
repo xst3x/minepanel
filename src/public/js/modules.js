@@ -1,4 +1,4 @@
-﻿const FOLDER_SVG = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+const FOLDER_SVG = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
 const FILE_SVG = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--text-secondary)" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>`;
 
 const createMatrixCheckbox = (colId, key, checked, locked, onChange) => {
@@ -64,7 +64,7 @@ const fm = {
                     const dlName = item.name + (item.isDirectory ? '.zip' : '');
                     if (item.isDirectory) {
                         // Folder: ask server to zip it, get a one-time token URL, open in new tab
-                        ui.toast('Preparing folder zipâ€¦', 'info');
+                        ui.toast('Preparing folder zip…', 'info');
                         api.req(`/servers/${sid()}/files/download?path=${encodeURIComponent(dlPath)}`)
                             .then(r => {
                                 if (r.downloadUrl) {
@@ -174,7 +174,7 @@ const motdEditor = {
         {code:'r',label:'R',title:'Reset (&r)'},
     ],
 
-    SPECIAL_CHARS: 'Â§Â¶Â©Â®â„¢Â°Â±Ã—Ã·â†â†’â†‘â†“â†”â˜…â˜†â™ â™£â™¥â™¦â€¢â–ªâ–²â–¶â—†â—âˆžâˆšâˆ‘Ï€Î”Î©Î±Î²Î³Î»â˜€âš¡âš”âš™âœ“âœ—â¤â™©â™ªâ™«â™¬â‘ â‘¡â‘¢â‘£â‘¤â‘¥â‘¦â‘§â‘¨â‘©'.split(''),
+    SPECIAL_CHARS: 'Â§Â¶Â©Â®â„¢Â°Â±Ã—Ã·â†â†’â†‘â†“â†”â˜…â˜†â™ â™£â™¥â™¦•â–ªâ–²â–¶â—†â—âˆžâˆšâˆ‘Ï€Î”Î©Î±Î²Î³Î»â˜€âš¡âš”âš™âœ“âœ—â¤â™©â™ªâ™«â™¬â‘ â‘¡â‘¢â‘£â‘¤â‘¥â‘¦â‘§â‘¨â‘©'.split(''),
 
     getValue() {
         return this._value;
@@ -283,7 +283,7 @@ const motdEditor = {
         this.MC_COLORS.forEach(c => {
             const swatch = document.createElement('button');
             swatch.type = 'button';
-            swatch.title = `&${c.code} â€” ${c.name}`;
+            swatch.title = `&${c.code} "” ${c.name}`;
             swatch.style.cssText = [
                 `width:22px;height:22px;border-radius:var(--radius-sm);`,
                 `background:${c.hex};`,
@@ -305,7 +305,7 @@ const motdEditor = {
         div.style.cssText = 'width:1px;height:20px;background:var(--border);margin:0 2px;flex-shrink:0;';
         colRow.appendChild(div);
 
-        // Format buttons â€” reuse panel .btn.outline.small classes
+        // Format buttons "” reuse panel .btn.outline.small classes
         const fmtRow = wrap.querySelector('.motd-fmts');
         this.MC_FORMATS.forEach(f => {
             const btn = document.createElement('button');
@@ -466,7 +466,7 @@ const props = {
             this.render();
         }
     },
-    // Keys that have a fixed set of valid values â€” rendered as <select>
+    // Keys that have a fixed set of valid values "” rendered as <select>
     ENUM_PROPS: {
         'difficulty':            ['peaceful','easy','normal','hard'],
         'gamemode':              ['survival','creative','adventure','spectator'],
@@ -699,7 +699,7 @@ const serverIcon = {
 
     async upload(file) {
         try {
-            ui.toast('Processing imageâ€¦', 'info');
+            ui.toast('Processing image…', 'info');
             const pngBlob = await this.processImage(file);
             await this.uploadBlob(pngBlob);
             serverIconHelper.invalidateIconCache(sid());
@@ -713,7 +713,7 @@ const serverIcon = {
 
     async setItemIcon(itemId) {
         try {
-            ui.toast('Rendering item iconâ€¦', 'info');
+            ui.toast('Rendering item icon…', 'info');
             document.getElementById('modal-icon-item-picker')?.classList.remove('active');
             const pngBlob = await serverIconHelper.renderItemToPngBlob(itemId, sid());
             await this.uploadBlob(pngBlob);
@@ -1596,7 +1596,7 @@ const plugins = {
             el.tabIndex = 0;
             el.innerHTML = `
                 <div class="plugin-header">
-                    <img src="${this.escapeHtml(p.icon_url || '')}" class="plugin-icon" alt="" onerror="this.style.display='none'">
+                    <img src="${this.escapeHtml(p.icon_url || '')}" class="plugin-icon" alt=— onerror="this.style.display='none'">
                     <div>
                         <div class="plugin-title">${this.escapeHtml(p.title)}</div>
                         <div class="plugin-author">${this.escapeHtml(p.author || 'Modrinth')}</div>
@@ -1690,7 +1690,7 @@ const plugins = {
                 <button class="btn outline small" id="plugin-open-modrinth">Open on Modrinth</button>
             </div>
             <div class="plugin-detail-hero">
-                <img src="${this.escapeHtml(project.icon_url || '')}" class="plugin-detail-icon" alt="" onerror="this.style.display='none'">
+                <img src="${this.escapeHtml(project.icon_url || '')}" class="plugin-detail-icon" alt=— onerror="this.style.display='none'">
                 <div>
                     <h2>${this.escapeHtml(project.title)}</h2>
                     <p>${this.escapeHtml(project.description)}</p>
@@ -1853,7 +1853,7 @@ const logs = {
     async init() {
         try {
             const files = await api.req(`/servers/${sid()}/logs`);
-            const sel = document.getElementById('log-file-select'); sel.innerHTML = '<option value="">Select log file...</option>';
+            const sel = document.getElementById('log-file-select'); sel.innerHTML = '<option value=—>Select log file...</option>';
             files.forEach(f => { sel.innerHTML += `<option value="${f.name}">${f.name} (${ui.bytes(f.size)})</option>`; });
         } catch (e) { ui.toast(e.message, 'error'); }
     },
@@ -2003,7 +2003,7 @@ document.getElementById('btn-switch-software')?.addEventListener('click', async 
         if (check.warnings && check.warnings.length > 0) {
             // Render warnings inside modal
             const wList = document.getElementById('switch-warnings-list');
-            wList.innerHTML = check.warnings.map(w => `<div style="margin-bottom:0.25rem">â€¢ ${w}</div>`).join('');
+            wList.innerHTML = check.warnings.map(w => `<div style="margin-bottom:0.25rem">• ${w}</div>`).join('');
             
             // Wire confirmation action
             document.getElementById('btn-confirm-switch-execute').onclick = async () => {
@@ -2247,7 +2247,7 @@ const globalUsers = {
             const noRankCard = document.createElement('div');
             noRankCard.className = `rank-card-select ${selectedRankId === null ? 'selected' : ''}`;
             noRankCard.innerHTML = `
-                <div class="no-rank-icon">â€”</div>
+                <div class="no-rank-icon">"”</div>
                 <h4>No Rank</h4>
             `;
             noRankCard.onclick = () => {
@@ -2339,7 +2339,7 @@ const globalUsers = {
                     const td = document.createElement('td');
                     td.setAttribute('data-label', s.name);
                     if (p.globalOnly || p.key === 'account.manage' || p.key === 'panel.settings') {
-                        td.innerHTML = '<span class="text-muted" style="font-size:0.8rem;opacity:0.3">â€”</span>';
+                        td.innerHTML = '<span class="text-muted" style="font-size:0.8rem;opacity:0.3">"”</span>';
                     } else {
                         const isServerRankInherited = isGlobalRankInherited || 
                             (rankServers[s.id] && (rankServers[s.id].includes('*') || rankServers[s.id].includes('root') || rankServers[s.id].includes(p.key)));
@@ -2642,7 +2642,7 @@ const globalRanks = {
     },
     async editRank(rank) {
         this.currentEditId = rank.id;
-        document.getElementById('rank-editor-title').textContent = `Edit Rank â€” ${rank.name}`;
+        document.getElementById('rank-editor-title').textContent = `Edit Rank "” ${rank.name}`;
         document.getElementById('re-name').value = rank.name;
         document.getElementById('re-color').value = rank.color;
         
@@ -2707,7 +2707,7 @@ const globalRanks = {
                     const td = document.createElement('td');
                     td.setAttribute('data-label', s.name);
                     if (p.globalOnly || p.key === 'account.manage' || p.key === 'panel.settings') {
-                        td.innerHTML = '<span class="text-muted" style="font-size:0.8rem;opacity:0.3">â€”</span>';
+                        td.innerHTML = '<span class="text-muted" style="font-size:0.8rem;opacity:0.3">"”</span>';
                     } else {
                         const isServerChecked = rankServers[s.id] && rankServers[s.id].includes(p.key);
                         td.appendChild(createMatrixCheckbox(s.id, p.key, isServerChecked, false, (checked) => {
@@ -2809,7 +2809,7 @@ const globalRanks = {
                     const td = document.createElement('td');
                     td.setAttribute('data-label', s.name);
                     if (p.globalOnly || p.key === 'account.manage' || p.key === 'panel.settings') {
-                        td.innerHTML = '<span class="text-muted" style="font-size:0.8rem;opacity:0.3">â€”</span>';
+                        td.innerHTML = '<span class="text-muted" style="font-size:0.8rem;opacity:0.3">"”</span>';
                     } else {
                         td.appendChild(createMatrixCheckbox(s.id, p.key, false, false, (checked) => {
                             if (!rankServers[s.id]) rankServers[s.id] = [];

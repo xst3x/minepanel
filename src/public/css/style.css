@@ -1755,10 +1755,82 @@ html[data-theme="light"] .log-viewer pre {
     border-bottom: 1px solid var(--border);
 }
 
-/* Overriding styling for dynamic table elements */
+/* ── Matrix Checkbox (Permissions Table) ─────────────────────────────────── */
+.matrix-checkbox-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    width: 20px;
+    height: 20px;
+    margin: 0 auto;
+}
+
+/* Hide the native checkbox but keep it accessible */
+.matrix-checkbox-wrapper input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+/* The visual square */
 .matrix-checkbox-square {
-    border-color: var(--border) !important;
-    background-color: var(--bg-input) !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-input);
+    transition: var(--transition);
+    flex-shrink: 0;
+    position: relative;
+}
+
+/* Checkmark via pseudo-element */
+.matrix-checkbox-square::after {
+    content: '';
+    display: block;
+    width: 5px;
+    height: 9px;
+    border: 2px solid transparent;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+    transition: var(--transition);
+}
+
+/* Hover state (not locked) */
+.matrix-checkbox-wrapper:not(:has(input:disabled)):hover .matrix-checkbox-square {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+}
+
+/* Checked state */
+.matrix-checkbox-wrapper input:checked + .matrix-checkbox-square {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+.matrix-checkbox-wrapper input:checked + .matrix-checkbox-square::after {
+    border-color: #000;
+}
+
+/* Locked / disabled state */
+.matrix-checkbox-square.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: var(--accent) !important;
+    background: var(--accent-subtle) !important;
+}
+.matrix-checkbox-wrapper input:disabled + .matrix-checkbox-square {
+    cursor: not-allowed;
+}
+.matrix-checkbox-wrapper input:disabled:checked + .matrix-checkbox-square::after {
+    border-color: var(--accent);
 }
 
 /* Scrollbar (global) */
