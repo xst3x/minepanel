@@ -16,6 +16,8 @@ const pluginRoutes = require('./routes/pluginRoutes');
 const backupRoutes = require('./routes/backupRoutes');
 const propertiesRoutes = require('./routes/propertiesRoutes');
 const logRoutes = require('./routes/logRoutes');
+const discordRoutes = require('./routes/discordRoutes');
+const discordBotsRoutes = require('./routes/discordBotsRoutes');
 const userRoutes = require('./routes/userRoutes');
 const rankRoutes = require('./routes/rankRoutes');
 const processManager = require('./core/processManager');
@@ -130,6 +132,8 @@ app.use('/api/servers/:serverId/properties', propertiesRoutes);
 app.use('/api/servers/:serverId/logs', logRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/ranks', rankRoutes);
+app.use('/api/servers/:serverId/discord', discordRoutes);
+app.use('/api/discord/bots', discordBotsRoutes);
 
 // Global Error Handler (prevents HTML error pages)
 app.use((err, req, res, next) => {
@@ -280,6 +284,14 @@ initDb().then(async () => {
         console.log('FTP service is disabled in settings.');
     }
 
+    // Start Discord bots for all enabled integrations
+    const discordManager = require('./core/discord/discordManager');
+    try {
+        await discordManager.startAll();
+    } catch (e) {
+        console.error('[Discord] Init warning:', e.message);
+    }
+
     server.listen(PORT, () => {
         console.log(`MinePanel is running on port ${PORT}`);
         // Disable HTTP timeout entirely — large server imports (20GB+) need unlimited time
@@ -291,3 +303,16 @@ initDb().then(async () => {
     console.error('Failed to initialize database:', err);
     process.exit(1);
 });
+
+// Graceful shutdown — destroy all Discord bots
+const gracefulShutdown = async (signal) => {
+    console.log(`\n[${signal}] Shutting down...`);
+    try {
+        const dm = require('./core/discord/discordManager');
+        await dm.destroyAll();
+    } catch (_) {}
+    process.exit(0);
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

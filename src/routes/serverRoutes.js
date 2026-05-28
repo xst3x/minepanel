@@ -597,7 +597,13 @@ router.delete('/:serverId', authenticateToken, checkPermission('account.manage')
                 processManager.clearHistory(serverId.toString());
             }
 
-            // 2. Delete from DB (Ranks, Permissions, Invite Tokens, then Server)
+            // 2. Disconnect Discord bot (if any)
+            try {
+                const discordManager = require('../core/discord/discordManager');
+                await discordManager.disconnect(serverId);
+            } catch (_) {}
+
+            // 3. Delete from DB (Ranks, Permissions, Invite Tokens, then Server)
             await dbRun('DELETE FROM user_server_ranks WHERE server_id = ?', [serverId]);
             await dbRun('DELETE FROM user_server_permissions WHERE server_id = ?', [serverId]);
             await dbRun('DELETE FROM account_creation_tokens');
@@ -1086,6 +1092,20 @@ router.post('/:serverId/settings', authenticateToken, checkPermission('server.pr
             } catch (err) {
                 console.error(`[Settings] Failed to update server.properties for server ${serverId}:`, err.message);
             }
+        }
+
+        // Trigger auto-reprovision on Discord in background if integration exists
+        try {
+            const discordManager = require('../core/discord/discordManager');
+            discordManager.getStatusForServer(serverId).then((status) => {
+                if (status && status.connected) {
+                    discordManager.reprovision(serverId).catch((err) => {
+                        console.error(`[Settings] Failed to reprovision Discord in background for server ${serverId}:`, err.message);
+                    });
+                }
+            }).catch(() => {});
+        } catch (err) {
+            console.error(`[Settings] Discord manager error during settings save:`, err.message);
         }
 
         res.json({ message: 'Settings saved successfully' });

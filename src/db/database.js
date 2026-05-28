@@ -189,6 +189,8 @@ const initDb = () => {
             runMigration(`ALTER TABLE servers ADD COLUMN java_path TEXT DEFAULT 'java'`);
             runMigration(`ALTER TABLE servers ADD COLUMN log_retention_days INTEGER DEFAULT 7`);
             runMigration(`ALTER TABLE servers ADD COLUMN backup_retention_days INTEGER DEFAULT 30`);
+            runMigration(`ALTER TABLE discord_integrations ADD COLUMN bot_id INTEGER`);
+            runMigration(`ALTER TABLE discord_integrations ADD COLUMN category_id TEXT`);
 
             // Account Creation Tokens Table
             db.run(`
@@ -201,6 +203,53 @@ const initDb = () => {
                     ranks TEXT NOT NULL,
                     used INTEGER DEFAULT 0,
                     FOREIGN KEY(created_by) REFERENCES users(id)
+                )
+            `);
+
+            // Discord Bots Table (multi-bot support)
+            db.run(`
+                CREATE TABLE IF NOT EXISTS discord_bots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    bot_token_encrypted TEXT NOT NULL,
+                    guild_id TEXT NOT NULL,
+                    enabled INTEGER DEFAULT 1,
+                    bot_user_id TEXT,
+                    bot_username TEXT,
+                    bot_avatar TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // Bot ↔ Server assignments (many-to-many)
+            db.run(`
+                CREATE TABLE IF NOT EXISTS discord_bot_servers (
+                    bot_id INTEGER NOT NULL,
+                    server_id INTEGER NOT NULL,
+                    PRIMARY KEY (bot_id, server_id),
+                    FOREIGN KEY(bot_id) REFERENCES discord_bots(id) ON DELETE CASCADE,
+                    FOREIGN KEY(server_id) REFERENCES servers(id) ON DELETE CASCADE
+                )
+            `);
+
+            // Discord Integrations Table (per-server bot config)
+            db.run(`
+                CREATE TABLE IF NOT EXISTS discord_integrations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    bot_id INTEGER,
+                    server_id INTEGER NOT NULL,
+                    guild_id TEXT NOT NULL,
+                    admin_role_id TEXT,
+                    viewer_role_id TEXT,
+                    category_id TEXT,
+                    log_channel_id TEXT,
+                    console_channel_id TEXT,
+                    status_channel_id TEXT,
+                    provisioned INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(bot_id) REFERENCES discord_bots(id) ON DELETE CASCADE,
+                    FOREIGN KEY(server_id) REFERENCES servers(id) ON DELETE CASCADE
                 )
             `, (err) => {
                 if (err) return reject(err);

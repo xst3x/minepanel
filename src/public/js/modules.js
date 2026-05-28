@@ -2962,6 +2962,7 @@ const docs = {
             'ranks':             docs._ranks(),
             'panel-settings':    docs._panelSettings(),
             'advanced-features': docs._advanced(),
+            'discord-bot':       docs._discordBot(),
         };
         container.innerHTML = map[tab] || '';
     },
@@ -3349,6 +3350,69 @@ const docs = {
                 ${p(`Icons are stored as ${c('server-icon.png')} in the server directory and served via ${c('GET /api/servers/:id/properties/icon')}.`)}
                 ${p(`The Minecraft item picker renders items using a canvas pipeline. Selecting an item triggers: render → ${c('canvas.toBlob()')} → POST as multipart → saved as ${c('server-icon.png')}.`)}
                 ${p(`Sidebar icons are fetched per-server on load and cached as blob URLs in a ${c('Map')} — no repeated requests until the icon changes.`)}
+            `),
+        ])}`;
+    },
+
+    _discordBot() {
+        const c = docs._c, pre = docs._pre, note = docs._note, table = docs._table, card = docs._card, h = docs._h, p = docs._p, grid = docs._grid;
+        return `
+        ${grid([
+            card('Overview & Features', `
+                ${p('MinePanel features a multi-bot Discord integration that provides real-time server console streaming, live server status updates, and command execution directly from Discord channels.')}
+                ${h('Key Features')}
+                ${table(['Feature', 'Description'], [
+                    ['Multi-Bot System', 'Register multiple bots in the panel, each managing specific game servers.'],
+                    ['Dedicated Categories', `Each server gets a dedicated category with ${c('#console')}, ${c('#commands')}, and ${c('#status')} channels.`],
+                    ['Customizable Names', 'Rename or move categories/channels on Discord; the bot tracks them by their ID.'],
+                    ['Silent Logging', 'All bot messages (console, status, embeds) suppress push notifications and unread badges.'],
+                    ['Console Auto-Clear', 'Automatically deletes messages in the console channel when the server starts, stops, or restarts.'],
+                    ['Instant Commands', 'Executing commands forwards input instantly and deletes the user message immediately.'],
+                    ['Self-Healing', 'Missing or deleted channels are auto-detected and recreated in the background.'],
+                    ['Offline Cleanup', 'When a bot or server is unassigned or deleted, the panel cleans up channels/roles on Discord and leaves the guild.']
+                ])}
+            `),
+            card('Slash Commands', `
+                ${p('Authorized users can run the following slash commands within the dedicated Discord channels:')}
+                ${table(['Command', 'Description'], [
+                    [c('/status'), 'Sends a status panel with Start, Stop, Restart, and Refresh buttons.'],
+                    [c('/console [live]'), 'Streams a live console interface inside any channel.'],
+                    [c('/stats [live]'), 'Streams live CPU and RAM resource usage graphs.'],
+                    [c('/players'), 'Lists online players.'],
+                    [c('/logs'), 'Browses, filters, and paginates server log files.'],
+                    [c('/execute <cmd>'), 'Runs a console command directly on the server.'],
+                    [c('/start | /stop | /restart'), 'Controls the server state.'],
+                    [c('/init [server]'), 'Manually initializes or recreates the channels and roles for a server.']
+                ])}
+                ${note(`Most commands (except ${c('/init')}) will only execute inside the server's dedicated channels to keep other guild channels clean.`)}
+            `),
+        ])}
+        ${grid([
+            card('Discord Developer Portal Setup', `
+                ${h('1. Create the Application')}
+                ${p(`Go to the <a href="https://discord.com/developers/applications" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">Discord Developer Portal</a>, log in, click <strong>New Application</strong>, and name it.`)}
+                
+                ${h('2. Configure the Bot & Token')}
+                ${p(`Go to the <strong>Bot</strong> tab in the sidebar, click <strong>Reset Token</strong>, and copy the token. You will need this token in the MinePanel interface.`)}
+                
+                ${h('3. Enable Gateway Intents (CRITICAL!)')}
+                ${p(`Scroll down on the <strong>Bot</strong> page to <strong>Privileged Gateway Intents</strong>:`)}
+                ${p(`• Enable <strong>Message Content Intent</strong> (Required for reading commands/chat in console).`)}
+                ${p(`• Enable <strong>Guild Members Intent</strong> (Required for fetching members and matching roles).`)}
+                ${note('If Message Content Intent is disabled, the bot will not respond to console inputs or commands!', 'danger')}
+            `),
+            card('Bot Invitation & Connection', `
+                ${h('4. Generate Invite URL (OAuth2)')}
+                ${p(`Go to <strong>OAuth2</strong> -> <strong>URL Generator</strong> in the sidebar:`)}
+                ${p(`• Under <strong>Scopes</strong>, select: ${c('bot')} and ${c('applications.commands')} (required for slash commands to show up).`)}
+                ${p(`• Under <strong>Bot Permissions</strong>, select: <strong>Administrator</strong> (recommended to manage roles, channels, and permissions automatically).`)}
+                ${p(`Copy the URL at the bottom, open it in a browser, and authorize the bot for your Discord server.`)}
+                
+                ${h('5. Connect to MinePanel')}
+                ${p(`In the MinePanel dashboard, go to <strong>Global</strong> -> <strong>Discord Bots</strong> (or a server\'s Discord settings) and click <strong>Add Bot</strong>:`)}
+                ${p(`• Paste the <strong>Bot Token</strong> you copied.`)}
+                ${p(`• Paste the <strong>Server ID (Guild ID)</strong>. (Right-click server icon in Discord and select <strong>Copy Server ID</strong> — requires Discord developer settings enabled).`)}
+                ${p(`• Assign the game servers you want this bot to manage and click <strong>Save</strong>.`)}
             `),
         ])}`;
     }

@@ -178,7 +178,8 @@ const TAB_PERMS = {
     backups: 'server.backups.read',
     logs: 'server.logs.read',
     settings: 'account.manage',
-    ftp: 'server.ftp.access'
+    ftp: 'server.ftp.access',
+    discord: 'server.settings.edit'
 };
 
 function applyPermissions() {
@@ -213,6 +214,8 @@ function applyPermissions() {
     if (ranksBtn) ranksBtn.style.display = hasPerm('account.manage') ? '' : 'none';
     const settingsBtn = document.getElementById('sidebar-settings-btn');
     if (settingsBtn) settingsBtn.style.display = (state.role === 'admin' || hasPerm('panel.settings')) ? '' : 'none';
+    const discordBotsBtn = document.getElementById('sidebar-discord-bots-btn');
+    if (discordBotsBtn) discordBotsBtn.style.display = (state.role === 'admin' || hasPerm('panel.settings')) ? '' : 'none';
 }
 
 function updateSidebarServerStatus(serverId, status) {
@@ -955,6 +958,12 @@ document.querySelectorAll('.sidebar-item').forEach(btn => {
             ui.showView('view-panel-settings');
             panelSettings.load();
             accentColor.buildPicker();
+        } else if (targetView === 'discord-bots') {
+            ui.showView('view-discord-bots');
+            if (typeof discordBots !== 'undefined') {
+                discordBots.init();
+                discordBots.load();
+            }
         } else if (targetView === 'super-important-docs') {
             ui.showView('view-super-important-docs');
             docs.load();
@@ -1422,6 +1431,7 @@ document.querySelectorAll('#server-tabs .sub-nav-item').forEach(btn => {
         if (t === 'logs') logs.init();
         if (t === 'settings') srvSettings.load();
         if (t === 'ftp') ftpManager.load();
+        if (t === 'discord' && typeof discord !== 'undefined') discord.load();
         if (t === 'overview') { resourceChart.reset(); overview.init(); }
     });
 });

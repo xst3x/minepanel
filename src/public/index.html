@@ -127,6 +127,10 @@
                         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                         Panel Settings
                     </button>
+                    <button class="sidebar-item" data-view="discord-bots" id="sidebar-discord-bots-btn">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026 13.83 13.83 0 0 0 1.226-1.963.074.074 0 0 0-.041-.104 13.175 13.175 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028z"/></svg>
+                        Discord Bots
+                    </button>
                     <button class="sidebar-item" data-view="super-important-docs" id="sidebar-super-important-docs-btn">
                         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l-3 3h6l-3-3z"/><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/><path d="M12 17v6"/><path d="M8 17h8"/></svg>
                         Docs
@@ -242,6 +246,7 @@
                             <svg class="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                             FTP
                         </button>
+                        <!-- Discord tab removed — manage bots globally via sidebar Discord Bots -->
                     </div>
 
                     <div class="tab-content-area">
@@ -593,6 +598,114 @@
                             </div>
                         </div>
 
+                        <!-- Discord Integration -->
+                        <div id="tab-discord" class="tab-pane">
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.5rem">
+                                <!-- Status Card -->
+                                <div class="card" id="discord-status-card">
+                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+                                        <h3 style="margin:0;display:flex;align-items:center;gap:0.5rem">
+                                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="var(--accent)" fill="none" stroke-width="1.75"><path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026c.36-.687.772-1.341 1.225-1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028z"/></svg>
+                                            Discord Integration
+                                        </h3>
+                                        <span id="discord-status-badge" class="status-badge offline">NOT CONNECTED</span>
+                                    </div>
+
+                                    <!-- Connected state -->
+                                    <div id="discord-connected-info" style="display:none">
+                                        <div style="display:flex;align-items:center;gap:1rem;padding:1rem;background:var(--bg-input);border-radius:var(--radius);margin-bottom:1rem">
+                                            <img id="discord-bot-avatar" src="" alt="Bot" style="width:48px;height:48px;border-radius:50%;border:2px solid var(--accent)" onerror="this.style.display='none'">
+                                            <div>
+                                                <div style="font-weight:600;color:var(--text)" id="discord-bot-name">Bot Name</div>
+                                                <div style="font-size:0.8rem;color:var(--text-muted)" id="discord-bot-guild">Guild ID</div>
+                                            </div>
+                                        </div>
+                                        <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem">
+                                            <div style="display:flex;justify-content:space-between;font-size:0.85rem">
+                                                <span style="color:var(--text-muted)">Provisioned</span>
+                                                <span id="discord-provisioned" style="color:var(--text)">—</span>
+                                            </div>
+                                            <div style="display:flex;justify-content:space-between;font-size:0.85rem">
+                                                <span style="color:var(--text-muted)">Console Channel</span>
+                                                <span id="discord-console-ch" style="color:var(--text)">—</span>
+                                            </div>
+                                            <div style="display:flex;justify-content:space-between;font-size:0.85rem">
+                                                <span style="color:var(--text-muted)">Log Channel</span>
+                                                <span id="discord-log-ch" style="color:var(--text)">—</span>
+                                            </div>
+                                            <div style="display:flex;justify-content:space-between;font-size:0.85rem">
+                                                <span style="color:var(--text-muted)">Status Channel</span>
+                                                <span id="discord-status-ch" style="color:var(--text)">—</span>
+                                            </div>
+                                        </div>
+                                        <div style="display:flex;gap:0.5rem">
+                                            <label style="display:flex;align-items:center;gap:0.5rem;flex:1">
+                                                <span style="font-size:0.85rem;color:var(--text)">Enabled</span>
+                                                <label class="toggle-switch"><input type="checkbox" id="discord-toggle" checked><span class="toggle-slider"></span></label>
+                                            </label>
+                                            <button class="btn danger" id="btn-discord-disconnect">Disconnect</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Disconnected state -->
+                                    <div id="discord-disconnected-info">
+                                        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem">
+                                            Connect a Discord bot to control this server from Discord. The bot will auto-create roles, channels, and register slash commands.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Connect Form -->
+                                <div class="card" id="discord-connect-card">
+                                    <h3 style="margin-bottom:1rem">Connect Discord Bot</h3>
+                                    <div class="form-group">
+                                        <label>Bot Token</label>
+                                        <input type="password" id="discord-bot-token" placeholder="Paste your Discord bot token" autocomplete="off" style="width:100%">
+                                        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem">
+                                            Get one from <a href="https://discord.com/developers/applications" target="_blank" rel="noopener" style="color:var(--accent)">Discord Developer Portal</a>
+                                        </p>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Guild (Server) ID</label>
+                                        <input type="text" id="discord-guild-id" placeholder="e.g. 123456789012345678" autocomplete="off" style="width:100%">
+                                        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem">
+                                            Right-click your Discord server → Copy Server ID (enable Developer Mode in Discord settings)
+                                        </p>
+                                    </div>
+
+                                    <!-- Token validation preview -->
+                                    <div id="discord-token-preview" style="display:none;padding:0.75rem;background:var(--bg-input);border-radius:var(--radius);margin-bottom:1rem">
+                                        <div style="display:flex;align-items:center;gap:0.75rem">
+                                            <img id="discord-preview-avatar" src="" style="width:36px;height:36px;border-radius:50%" onerror="this.style.display='none'">
+                                            <div>
+                                                <div style="font-weight:600;font-size:0.9rem;color:var(--text)" id="discord-preview-name">—</div>
+                                                <div style="font-size:0.75rem;color:var(--text-muted)">✅ Token validated</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style="display:flex;gap:0.5rem">
+                                        <button class="btn outline" id="btn-discord-validate" style="flex:1">Validate Token</button>
+                                        <button class="btn primary" id="btn-discord-connect" style="flex:1" disabled>Connect Bot</button>
+                                    </div>
+                                </div>
+
+                                <!-- Help Card -->
+                                <div class="card">
+                                    <h3 style="margin-bottom:0.75rem">Setup Guide</h3>
+                                    <ol style="font-size:0.85rem;color:var(--text-secondary);padding-left:1.25rem;line-height:2;margin:0">
+                                        <li>Create a bot at <a href="https://discord.com/developers/applications" target="_blank" rel="noopener" style="color:var(--accent)">Discord Developer Portal</a></li>
+                                        <li>Enable <strong>Message Content</strong> intent in Bot settings</li>
+                                        <li>Copy the Bot Token and paste it above</li>
+                                        <li>Invite the bot to your Discord server with <strong>Admin</strong> permissions</li>
+                                        <li>Copy your Discord Server ID (Guild ID) and paste above</li>
+                                        <li>Click <strong>Validate</strong> then <strong>Connect</strong></li>
+                                    </ol>
+                                    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:0.75rem">The bot will auto-create roles and channels in your Discord server upon connection.</p>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -694,9 +807,24 @@
                     </div>
                 </div>
 
+                <!-- Discord Bots View -->
+                <div id="view-discord-bots" class="content-view">
+                    <button class="back-btn" id="btn-back-from-discord-bots">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                        Back to Servers
+                    </button>
+                    <div class="page-header">
+                        <h2>Discord Bots</h2>
+                        <button class="btn primary" id="btn-create-bot">
+                            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add Bot
+                        </button>
+                    </div>
+                    <div id="discord-bots-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.5rem"></div>
+                </div>
+
                 <!-- Docs View -->
-                <div id="view-super-important-docs" class="content-view">
-                    <button class="back-btn" id="btn-back-from-docs">
+                <div id="view-super-important-docs" class="content-view">                    <button class="back-btn" id="btn-back-from-docs">
                         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                         Back to Servers
                     </button>
@@ -711,6 +839,7 @@
                         <button class="sub-nav-item" data-tab="ranks">Ranks</button>
                         <button class="sub-nav-item" data-tab="panel-settings">Panel Settings</button>
                         <button class="sub-nav-item" data-tab="advanced-features">Advanced Features</button>
+                        <button class="sub-nav-item" data-tab="discord-bot">Discord Bot</button>
                     </div>
                     <div id="docs-content">
                         <!-- Docs content will be populated by JavaScript -->
@@ -1125,6 +1254,51 @@
         </div>
     </div>
 
+    <!-- Discord Bot Modal -->
+    <div class="modal-overlay" id="modal-bot-editor">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="bot-editor-title">Add Discord Bot</h3>
+                <button class="close-btn" id="modal-bot-editor-close">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:1.5rem;display:flex;flex-direction:column;gap:1.25rem">
+                <input type="hidden" id="be-bot-id">
+                <div class="form-group" style="margin:0">
+                    <label>Bot Token</label>
+                    <div style="display:flex;gap:0.5rem">
+                        <input type="password" id="be-token" placeholder="Paste Discord bot token" autocomplete="off" style="flex:1">
+                        <button class="btn outline" id="btn-be-validate" style="white-space:nowrap">Validate</button>
+                    </div>
+                    <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem">Leave blank to keep current token when editing.</p>
+                </div>
+                <!-- Token preview -->
+                <div id="be-token-preview" style="display:none;padding:0.75rem;background:var(--bg-input);border-radius:var(--radius)">
+                    <div style="display:flex;align-items:center;gap:0.75rem">
+                        <img id="be-preview-avatar" src="" style="width:36px;height:36px;border-radius:50%;border:2px solid var(--accent)" onerror="this.style.display='none'">
+                        <div>
+                            <div style="font-weight:600;font-size:0.9rem;color:var(--text)" id="be-preview-name">—</div>
+                            <div style="font-size:0.75rem;color:var(--accent)">✅ Token valid</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group" style="margin:0">
+                    <label>Guild (Server) ID</label>
+                    <input type="text" id="be-guild-id" placeholder="e.g. 123456789012345678" autocomplete="off">
+                    <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem">Right-click your Discord server → Copy Server ID</p>
+                </div>
+                <div class="form-group" style="margin:0">
+                    <label>Managed Minecraft Servers</label>
+                    <p style="font-size:0.78rem;color:var(--text-muted);margin:0.25rem 0 0.5rem">Select which servers this bot can control:</p>
+                    <div id="be-servers-list" style="display:flex;flex-direction:column;gap:0.5rem;max-height:180px;overflow-y:auto;padding:0.25rem 0"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn outline" id="modal-bot-editor-cancel">Cancel</button>
+                <button class="btn primary" id="btn-be-save">Save Bot</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
@@ -1136,6 +1310,8 @@
     <script src="/js/serverIconItems.js"></script>
     <script src="/js/serverIconExporter.js"></script>
     <script src="/js/core.js"></script>
+    <script src="/js/discord.js"></script>
+    <script src="/js/discord-bots.js"></script>
     <script src="/js/players-tab/assetsMapper.js"></script>
     <script src="/js/players-tab/nbtParser.js"></script>
     <script src="/js/players-tab/tooltipRenderer.js"></script>

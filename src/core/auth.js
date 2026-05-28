@@ -18,7 +18,7 @@ const comparePassword = async (password, hash) => {
 };
 
 const generateToken = (user) => {
-    return jwt.sign({ id: user.id, username: user.username }, SECRET_KEY, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
+    return jwt.sign({ id: user.id, username: user.username, role: user.role }, SECRET_KEY, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
 };
 
 const authenticateToken = (req, res, next) => {
