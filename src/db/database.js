@@ -3,11 +3,11 @@ const path = require('path');
 const fs = require('fs');
 
 const dbDir = path.join(__dirname, '../../data');
-if (!fs.existsSync(dbDir)) {
+if (process.env.NODE_ENV !== 'test' && !fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
 }
 
-const dbPath = path.join(dbDir, 'minepanel.db');
+const dbPath = process.env.NODE_ENV === 'test' ? ':memory:' : path.join(dbDir, 'minepanel.db');
 const db = new sqlite3.Database(dbPath);
 
 // Promise wrappers
@@ -78,8 +78,8 @@ const initDb = () => {
         const runMigration = (sql) => {
             db.run(sql, (err) => {
                 if (err) {
-                    if (err.message.includes('duplicate column name') || err.message.includes('already exists')) {
-                        // Safe to ignore: column/table already migrated
+                    if (err.message.includes('duplicate column name') || err.message.includes('already exists') || err.message.includes('no such table')) {
+                        // Safe to ignore: column/table already migrated or doesn't exist yet (will be created in a new db setup)
                     } else {
                         console.error(`Migration error running SQL "${sql}":`, err);
                         reject(err);
@@ -250,6 +250,18 @@ const initDb = () => {
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(bot_id) REFERENCES discord_bots(id) ON DELETE CASCADE,
                     FOREIGN KEY(server_id) REFERENCES servers(id) ON DELETE CASCADE
+                )
+            `);
+
+            // User Custom Accent Colors
+            db.run(`
+                CREATE TABLE IF NOT EXISTS user_custom_accents (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    label TEXT NOT NULL,
+                    value TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             `, (err) => {
                 if (err) return reject(err);

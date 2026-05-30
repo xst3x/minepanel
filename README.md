@@ -96,6 +96,20 @@ MinePanel is a lightweight, self-hosted web panel for managing Minecraft servers
 
 </details>
 
+<details>
+<summary><strong>Discord Bot Integration</strong></summary>
+
+- **Multi-bot system** — link multiple Discord bots to manage different sets of servers
+- **Live console bridge** — bidirectional console streaming between Minecraft and Discord
+- **Remote control** — run slash commands for start, stop, restart, backup, logs, and stats
+- **Zero-spam notifications** — all status notifications and console messages suppress push notifications/unread badges
+- **Auto-clean logs** — console channels clear automatically on server status transitions to keep history fresh
+- **Command channel protection** — restrict execute commands to authorized channels with automatic user input message cleanup
+- **Self-healing categories** — automatic recreation of server categories and console/commands/status channels if deleted on Discord
+- **Automatic deprovisioning** — cleans up Discord channels and roles automatically when a bot is deleted or settings are updated
+
+</details>
+
 ---
 
 ## Tech Stack
@@ -112,6 +126,7 @@ MinePanel is a lightweight, self-hosted web panel for managing Minecraft servers
 | FTP | ftp-srv |
 | NBT parsing | prismarine-nbt |
 | Process stats | pidusage |
+| Discord integration | discord.js |
 
 No build step. The frontend is plain HTML/CSS/JS served as static files.
 
@@ -176,6 +191,7 @@ MinePanel/
 │   │   ├── processManager.js # Minecraft process lifecycle + console buffer
 │   │   ├── resolvers.js      # JAR download + version resolution
 │   │   ├── ftpServer.js      # Per-server FTP
+│   │   ├── discord/          # Discord Bot integration (manager, commands, provisioner)
 │   │   └── ...
 │   ├── db/database.js        # SQLite init + helpers
 │   ├── routes/               # Express route handlers
@@ -239,6 +255,7 @@ Full docs are available in the [`docs/`](docs/) folder and inside the panel unde
 - [Ranks](docs/ranks.md)
 - [Configuration](docs/configuration.md)
 - [Advanced / Internals](docs/advanced.md)
+- [Discord Bot Integration](docs/discord-bot.md)
 
 ---
 
@@ -247,7 +264,3 @@ Full docs are available in the [`docs/`](docs/) folder and inside the panel unde
 GNU GPLv3 — free to use, modify, and distribute.
 
 ---
-
-<div align="center">
-  <sub>Built with ☕ and too many late nights :)</sub>
-</div>

@@ -2,6 +2,8 @@ const express = require('express');
 const { dbRun, dbGet, dbAll } = require('../db/database');
 const { authenticateToken } = require('../core/auth');
 const { checkGlobalPermission, AVAILABLE_PERMISSIONS } = require('../core/permissions');
+const { validate } = require('../middleware/validation');
+const V = require('../middleware/validators');
 
 const router = express.Router();
 
@@ -36,7 +38,7 @@ router.get('/permissions', authenticateToken, (req, res) => {
 });
 
 // Create a new rank
-router.post('/create', authenticateToken, checkGlobalPermission('account.manage'), async (req, res) => {
+router.post('/create', authenticateToken, checkGlobalPermission('account.manage'), validate(V.createRank), async (req, res) => {
     const { name, color } = req.body;
 
     if (!name) {
@@ -62,13 +64,9 @@ router.post('/create', authenticateToken, checkGlobalPermission('account.manage'
 });
 
 // PUT update rank (New spec)
-router.put('/:rankId', authenticateToken, checkGlobalPermission('account.manage'), async (req, res) => {
+router.put('/:rankId', authenticateToken, checkGlobalPermission('account.manage'), validate(V.updateRank), async (req, res) => {
     const { rankId } = req.params;
     const { name, color, global, servers } = req.body;
-
-    if (!name || !Array.isArray(global) || typeof servers !== 'object' || servers === null) {
-        return res.status(400).json({ error: 'Name, global permissions and servers mapping are required' });
-    }
 
     try {
         const rank = await dbGet('SELECT * FROM ranks WHERE id = ?', [rankId]);

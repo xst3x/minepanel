@@ -1,4 +1,60 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+
+// --- Launcher Process Logic (must be the absolute first thing) ---
+if (process.env.MINEPANEL_SERVER !== 'true' && process.env.NODE_ENV !== 'test') {
+    const { spawn } = require('child_process');
+    const path = require('path');
+    const fs = require('fs');
+    const { updateEnvPort } = require('./core/utils/envHelper');
+
+    function getPortFromEnv() {
+        const envPath = path.resolve(__dirname, '../.env');
+        if (fs.existsSync(envPath)) {
+            const content = fs.readFileSync(envPath, 'utf8');
+            const match = content.match(/^PORT=(\d+)/m);
+            if (match) return parseInt(match[1], 10);
+        }
+        return 8082;
+    }
+
+    let lastKnownGoodPort = getPortFromEnv();
+
+    function startServer() {
+        const currentPort = getPortFromEnv();
+        console.log(`[Launcher] Starting MinePanel server on port ${currentPort}...`);
+        
+        const child = spawn(process.execPath, [__filename], {
+            stdio: 'inherit',
+            env: { ...process.env, MINEPANEL_SERVER: 'true' }
+        });
+        
+        child.on('exit', (code) => {
+            console.log(`[Launcher] Server child process exited with code ${code}`);
+            if (code === 100) {
+                // Port change initiated!
+                lastKnownGoodPort = currentPort;
+                console.log('[Launcher] Re-launching server on new port...');
+                startServer();
+            } else if (code === 101) {
+                // Port bind failure during startup! Revert and restart.
+                console.error(`[Launcher] Server failed to bind to port. Rolling back to last known good port ${lastKnownGoodPort}...`);
+                try {
+                    updateEnvPort(lastKnownGoodPort);
+                } catch (err) {
+                    console.error('[Launcher] Failed to update rollback port in .env:', err.message);
+                }
+                startServer();
+            } else {
+                // Standard termination (PM2 stop, SIGINT, or crash)
+                process.exit(code || 0);
+            }
+        });
+    }
+
+    startServer();
+} else {
+// -----------------------------------------------------------------
+
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -22,7 +78,8 @@ const userRoutes = require('./routes/userRoutes');
 const rankRoutes = require('./routes/rankRoutes');
 const processManager = require('./core/processManager');
 const { initFtpServer } = require('./core/ftpServer');
-const { SECRET_KEY } = require('./core/auth');
+const { authenticateToken } = require('./core/auth');
+const SECRET_KEY = process.env.JWT_SECRET;
 const { hasPermission } = require('./core/permissions');
 const { migrateServerDirectories } = require('./core/serverHelper');
 const CONFIG = require('./config');
@@ -32,10 +89,15 @@ const app = express();
 
 // --- HTTPS / HTTP server setup ---
 let server;
+let secureServer;
+let redirectServer;
+
 if (CONFIG.HTTPS_ENABLED) {
     const https = require('https');
     const fs = require('fs');
     const path = require('path');
+    const net = require('net');
+    
     const keyPath = require('path').resolve(__dirname, '..', CONFIG.HTTPS_KEY);
     const certPath = require('path').resolve(__dirname, '..', CONFIG.HTTPS_CERT);
     if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
@@ -50,15 +112,65 @@ if (CONFIG.HTTPS_ENABLED) {
         key: fs.readFileSync(keyPath),
         cert: fs.readFileSync(certPath),
     };
-    server = require('https').createServer(sslOptions, app);
+    
+    // Create the secure HTTPS server running the main Express app
+    secureServer = https.createServer(sslOptions, app);
     console.log('[HTTPS] Running in HTTPS mode');
+    
+    // Create the redirecting HTTP server
+    redirectServer = http.createServer((req, res) => {
+        res.writeHead(301, { "Location": `https://${req.headers.host}${req.url}` });
+        res.end();
+    });
+    
+    secureServer.on('error', (err) => console.error('[Secure Server Error]', err));
+    redirectServer.on('error', (err) => console.error('[Redirect Server Error]', err));
+    
+    const activeSockets = new Set();
+    global.activeSockets = activeSockets;
+    
+    // Create a TCP server (net) to sniff incoming connections on the same port
+    server = net.createServer((socket) => {
+        activeSockets.add(socket);
+        socket.on('close', () => activeSockets.delete(socket));
+        
+        socket.once('data', (buffer) => {
+            // Pause socket to avoid data loss while switching handlers
+            socket.pause();
+            
+            // Check the first byte: 22 (0x16) is the handshake byte for TLS/SSL (HTTPS)
+            if (buffer[0] === 22) {
+                secureServer.emit('connection', socket);
+            } else {
+                redirectServer.emit('connection', socket);
+            }
+            
+            // Push the buffer back and resume
+            socket.unshift(buffer);
+            process.nextTick(() => socket.resume());
+        });
+        
+        socket.on('error', (err) => {
+            // Suppress noise like ECONNRESET from socket aborts
+            if (err.code !== 'ECONNRESET') {
+                console.error('[Sniffer Socket Error]', err.message);
+            }
+        });
+    });
 } else {
     server = http.createServer(app);
     console.log('[HTTP] Running in HTTP mode (use Nginx + Let\'s Encrypt for production HTTPS)');
+    
+    const activeSockets = new Set();
+    global.activeSockets = activeSockets;
+    server.on('connection', (socket) => {
+        activeSockets.add(socket);
+        socket.on('close', () => activeSockets.delete(socket));
+    });
 }
 // ----------------------------------
 
-const wss = new WebSocket.Server({ server, path: '/ws' });
+const wss = new WebSocket.Server({ server: CONFIG.HTTPS_ENABLED ? secureServer : server, path: '/ws' });
 
 const allowedOrigins = CONFIG.ALLOWED_ORIGINS;
 if (allowedOrigins.length === 0) {
@@ -139,6 +251,10 @@ app.use('/api/discord/bots', discordBotsRoutes);
 app.use((err, req, res, next) => {
     if (err.message === 'Not allowed by CORS') {
         return res.status(403).json({ error: 'Origin not allowed by CORS' });
+    }
+    // AppError instances have a structured toResponse()
+    if (err.code && err.status && typeof err.toResponse === 'function') {
+        return res.status(err.status).json(err.toResponse());
     }
     console.error('[Global Error]', err);
     res.status(500).json({ error: err.message || 'Internal Server Error' });
@@ -292,17 +408,87 @@ initDb().then(async () => {
         console.error('[Discord] Init warning:', e.message);
     }
 
-    server.listen(PORT, () => {
-        console.log(`MinePanel is running on port ${PORT}`);
-        // Disable HTTP timeout entirely — large server imports (20GB+) need unlimited time
-        server.timeout = 0;
-        server.keepAliveTimeout = 0;
-        server.headersTimeout = 0;
+    // Global port switch and restart trigger
+    global.changePortAndRestart = async (newPort) => {
+        try {
+            console.log(`[Server] Re-routing server port to ${newPort} and triggering restart...`);
+
+            // 1. Destroy all active connections immediately
+            if (global.activeSockets) {
+                for (const socket of global.activeSockets) {
+                    socket.destroy();
+                }
+                global.activeSockets.clear();
+            }
+
+            // 2. Gracefully clean up active Discord bots
+            try {
+                const discordManager = require('./core/discord/discordManager');
+                await discordManager.destroyAll();
+                console.log('[Server] Discord bots disconnected.');
+            } catch (e) {
+                console.error('[Server] Discord bots cleanup error:', e.message);
+            }
+
+            // 3. Gracefully stop active FTP server
+            try {
+                const { stopFtpServer } = require('./core/ftpServer');
+                stopFtpServer();
+                console.log('[Server] FTP service stopped.');
+            } catch (e) {
+                console.error('[Server] FTP cleanup error:', e.message);
+            }
+
+            // 4. Close the server listener and exit with code 100
+            server.close(() => {
+                console.log(`[Server] Core listeners closed. Exiting process with code 100 for port switch.`);
+                process.exit(100);
+            });
+
+            // Fail-safe: force exit after 2 seconds if socket close hangs
+            setTimeout(() => {
+                console.log('[Server] Force exiting process with code 100.');
+                process.exit(100);
+            }, 2000);
+        } catch (err) {
+            console.error('[Server] Error in changePortAndRestart:', err);
+            // Still try to exit with 100 so the launcher can restart
+            process.exit(100);
+        }
+    };
+
+    // Attach server socket bind error handlers to catch EADDRINUSE / EACCES
+    server.on('error', (err) => {
+        console.error('[Server Bind Error]', err);
+        if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+            console.error(`[Server] Failed to bind to port ${PORT}. Exiting with code 101 for self-healing rollback.`);
+            process.exit(101);
+        }
     });
+
+    if (process.env.NODE_ENV !== 'test') {
+        server.listen(PORT, () => {
+            console.log(`MinePanel is running on port ${PORT}`);
+            if (CONFIG.HTTPS_ENABLED) {
+                secureServer.timeout = 0;
+                secureServer.keepAliveTimeout = 0;
+                secureServer.headersTimeout = 0;
+                redirectServer.timeout = 0;
+                redirectServer.keepAliveTimeout = 0;
+                redirectServer.headersTimeout = 0;
+            } else {
+                server.timeout = 0;
+                server.keepAliveTimeout = 0;
+                server.headersTimeout = 0;
+            }
+        });
+    }
 }).catch(err => {
     console.error('Failed to initialize database:', err);
     process.exit(1);
 });
+
+module.exports = { app, server };
 
 // Graceful shutdown — destroy all Discord bots
 const gracefulShutdown = async (signal) => {
@@ -316,3 +502,4 @@ const gracefulShutdown = async (signal) => {
 
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+}

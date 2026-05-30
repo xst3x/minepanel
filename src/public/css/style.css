@@ -1570,8 +1570,11 @@ html[data-theme="light"] #terminal-input {
     border-bottom: none;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
-.col { flex: 1; padding: 0 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.col.col-wide { flex: 2; }
+.col { flex: 1; min-width: 0; padding: 0 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col.col-wide { flex: 3; min-width: 0; }
+.col.col-rank  { flex: 0 0 120px; }
+.col.col-status { flex: 0 0 90px; }
+.col.col-created { flex: 0 0 110px; }
 .col.actions {
     display: flex;
     flex-wrap: nowrap;
@@ -1580,6 +1583,7 @@ html[data-theme="light"] #terminal-input {
     align-items: center;
     flex: 0 0 auto;
     white-space: nowrap;
+    padding-right: 0;
 }
 
 .toolbar {
@@ -2175,9 +2179,49 @@ html[data-theme="light"] .log-viewer pre {
     transition: var(--transition);
 }
 .rank-card:hover {
-    border-color: var(--accent);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
+    border-color: var(--rank-color, var(--accent));
+    border-top-color: var(--rank-color, var(--accent));
+    box-shadow: 0 0 0 1px var(--rank-color, var(--accent)), var(--shadow-md);
+}
+
+/* Reorder drag item */
+.reorder-rank-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: grab;
+    user-select: none;
+    transition: var(--transition);
+}
+.reorder-rank-item:active { cursor: grabbing; }
+.reorder-rank-item.dragging {
+    opacity: 0.4;
+}
+.reorder-rank-item.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+}
+.reorder-rank-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.reorder-rank-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex: 1;
+}
+.reorder-handle {
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
 }
 .rank-card h3 {
     margin: 0;
@@ -2782,8 +2826,20 @@ html[data-theme="light"] .log-viewer pre {
     }
 
     .sidebar-footer {
-        display: block !important;
+        display: flex !important;
+        flex-direction: column !important;
         margin-top: auto !important;
+    }
+
+    .sidebar-bottom-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+
+    .sidebar-actions {
+        display: flex !important;
+        gap: 0.3rem !important;
     }
 
     .content-area {
@@ -3481,6 +3537,256 @@ html[data-theme="light"] .accent-circle.active {
     transition: color 0.2s ease;
 }
 
+/* Custom accent color button */
+.accent-custom-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px dashed var(--border-hover);
+    background: var(--bg-input);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: var(--transition);
+    flex-shrink: 0;
+    padding: 0;
+}
+.accent-custom-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: scale(1.1);
+}
+
+/* Delete button on custom accent swatches */
+.accent-delete-btn {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+    line-height: 1;
+}
+.accent-swatch-item:hover .accent-delete-btn {
+    opacity: 1;
+}
+.accent-delete-btn:hover {
+    background: var(--red, #ef4444);
+    color: #fff;
+    border-color: var(--red, #ef4444);
+}
+
+/* Custom color picker modal overlay */
+.color-well-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+.color-well-modal {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    width: 100%;
+    max-width: 340px;
+    box-shadow: var(--shadow-lg);
+    animation: modalSpringIn 0.28s cubic-bezier(0.34,1.3,0.64,1) forwards;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+.color-well-modal h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+}
+.color-well-wheel-wrap {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: crosshair;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.color-well-wheel-wrap canvas {
+    display: block;
+    width: 200px;
+    height: 200px;
+}
+.color-well-cursor {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 4px rgba(0,0,0,0.6);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    top: 50%;
+    left: 50%;
+}
+.color-well-preview {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    transition: background 0.1s;
+}
+.cw-preview-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+.cw-preview-row .color-well-name-input {
+    flex: 1;
+}
+/* Brightness slider row */
+.cw-brightness-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.cw-slider-label {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    min-width: 60px;
+}
+.cw-brightness-val {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    min-width: 32px;
+    text-align: right;
+}
+.cw-brightness-track {
+    flex: 1;
+    border-radius: 999px;
+    height: 8px;
+    background: linear-gradient(to right, #111, #fff);
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.cw-brightness-track input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    margin: 0;
+}
+.cw-brightness-track input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid rgba(0,0,0,0.3);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    cursor: pointer;
+}
+.cw-brightness-track input[type=range]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid rgba(0,0,0,0.3);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    cursor: pointer;
+}
+/* RGB + HEX row */
+.cw-rgb-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+.cw-rgb-field, .cw-hex-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.cw-rgb-field {
+    flex: 1;
+}
+.cw-hex-field {
+    flex: 1.6;
+}
+.cw-rgb-field label, .cw-hex-field label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.cw-rgb-field input, .cw-hex-field input {
+    width: 100%;
+    padding: 6px 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace, inherit;
+    font-size: 12.5px;
+    outline: none;
+    text-align: center;
+    box-sizing: border-box;
+}
+.cw-rgb-field input:focus, .cw-hex-field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+/* hide number spinners */
+.cw-rgb-field input::-webkit-outer-spin-button,
+.cw-rgb-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.cw-rgb-field input[type=number] { -moz-appearance: textfield; }
+
+.color-well-name-input {
+    padding: 9px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13.5px;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+.color-well-name-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.color-well-footer {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
 /* Responsive: tighter grid on small screens */
 @media (max-width: 480px) {
     .accent-picker {
@@ -3703,3 +4009,225 @@ html[data-theme="light"] .CodeMirror-activeline-background {
     justify-content: center; gap: 6px; padding: 20px 0;
     color: var(--text-muted); font-size: 0.82rem;
 }
+
+/* ── Users Table Column Alignment Fix ──────────────────────────────────────── */
+/* Force all columns in the users list to use identical flex-basis values
+   so header and row cells stay perfectly aligned */
+
+#view-users .list-header,
+#view-users .list-item {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0;
+}
+
+/* Username — wide column */
+#view-users .list-header .col-wide,
+#view-users .list-item .col-wide {
+    flex: 0 0 200px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Rank */
+#view-users .list-header .col:nth-child(2),
+#view-users .list-item .col:nth-child(2) {
+    flex: 0 0 110px;
+    min-width: 0;
+}
+
+/* Status */
+#view-users .list-header .col:nth-child(3),
+#view-users .list-item .col:nth-child(3) {
+    flex: 0 0 90px;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Created */
+#view-users .list-header .col:nth-child(4),
+#view-users .list-item .col:nth-child(4) {
+    flex: 0 0 120px;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+/* Actions — let it grow to fill remaining space, right-aligned */
+#view-users .list-header .col.actions,
+#view-users .list-item .col.actions {
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* On narrower screens fall back to wrap */
+@media (max-width: 900px) {
+    #view-users .list-header .col-wide,
+    #view-users .list-item .col-wide   { flex: 0 0 140px; }
+    #view-users .list-header .col:nth-child(2),
+    #view-users .list-item .col:nth-child(2) { flex: 0 0 80px; }
+    #view-users .list-header .col:nth-child(3),
+    #view-users .list-item .col:nth-child(3) { flex: 0 0 70px; }
+    #view-users .list-header .col:nth-child(4),
+    #view-users .list-item .col:nth-child(4) { flex: 0 0 90px; }
+}
+
+@media (max-width: 650px) {
+    #view-users .list-header { display: none; }
+    #view-users .list-item {
+        flex-direction: column;
+        align-items: flex-start;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 1rem;
+        margin-bottom: 0.6rem;
+        background: var(--bg-surface);
+        gap: 0.4rem;
+    }
+    #view-users .list-item .col-wide,
+    #view-users .list-item .col:nth-child(2),
+    #view-users .list-item .col:nth-child(3),
+    #view-users .list-item .col:nth-child(4) {
+        flex: none;
+        width: 100%;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+    }
+    #view-users .list-item .col.actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        border-top: 1px solid var(--border);
+        padding-top: 0.6rem;
+        margin-top: 0.25rem;
+        width: 100%;
+    }
+    #view-users .list-item .col.actions .btn {
+        flex: 1 1 auto;
+        min-width: 90px;
+        justify-content: center;
+    }
+}
+/* ── End Users Table Column Alignment Fix ────────────────────────────────── */
+
+
+/* ── Users Table Column Alignment Fix ──────────────────────────────────────── */
+#view-users .list-header,
+#view-users .list-item {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0;
+    padding: 10px 20px;
+}
+
+/* Username — wide column */
+#view-users .list-header .col-wide,
+#view-users .list-item .col-wide {
+    flex: 0 0 200px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 0.5rem;
+}
+
+/* Rank */
+#view-users .list-header .col:nth-child(2),
+#view-users .list-item .col:nth-child(2) {
+    flex: 0 0 120px;
+    min-width: 0;
+    padding: 0 0.5rem;
+}
+
+/* Status */
+#view-users .list-header .col:nth-child(3),
+#view-users .list-item .col:nth-child(3) {
+    flex: 0 0 80px !important;
+    min-width: 0;
+    display: flex !important;
+    align-items: center;
+    padding: 0 0.5rem;
+}
+
+/* Created */
+#view-users .list-header .col:nth-child(4),
+#view-users .list-item .col:nth-child(4) {
+    flex: 0 0 110px;
+    min-width: 0;
+    white-space: nowrap;
+    padding: 0 0.5rem;
+}
+
+/* Actions — grows to fill remaining space, right-aligned */
+#view-users .list-header .col.actions,
+#view-users .list-item .col.actions {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    flex-wrap: nowrap !important;
+    white-space: nowrap !important;
+    min-width: 0;
+    padding: 0 0 0 0.5rem;
+}
+
+/* Responsive fallback */
+@media (max-width: 900px) {
+    #view-users .list-header .col-wide,
+    #view-users .list-item .col-wide { flex: 0 0 140px; }
+    #view-users .list-header .col:nth-child(2),
+    #view-users .list-item .col:nth-child(2) { flex: 0 0 90px; }
+    #view-users .list-header .col:nth-child(3),
+    #view-users .list-item .col:nth-child(3) { flex: 0 0 70px !important; }
+    #view-users .list-header .col:nth-child(4),
+    #view-users .list-item .col:nth-child(4) { flex: 0 0 90px; }
+}
+
+@media (max-width: 650px) {
+    #view-users .list-header { display: none !important; }
+    #view-users .list-item {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-lg) !important;
+        padding: 1rem !important;
+        margin-bottom: 0.6rem !important;
+        background: var(--bg-surface) !important;
+        gap: 0.4rem !important;
+    }
+    #view-users .list-item .col-wide,
+    #view-users .list-item .col:nth-child(2),
+    #view-users .list-item .col:nth-child(3),
+    #view-users .list-item .col:nth-child(4) {
+        flex: none !important;
+        width: 100% !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: normal !important;
+    }
+    #view-users .list-item .col.actions {
+        justify-content: flex-start !important;
+        flex-wrap: wrap !important;
+        border-top: 1px solid var(--border) !important;
+        padding-top: 0.6rem !important;
+        margin-top: 0.25rem !important;
+        width: 100% !important;
+    }
+    #view-users .list-item .col.actions .btn {
+        flex: 1 1 auto !important;
+        min-width: 90px !important;
+        justify-content: center !important;
+    }
+}
+/* ── End Users Table Column Alignment Fix ────────────────────────────────── */

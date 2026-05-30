@@ -118,29 +118,31 @@ router.post('/:filename/restore', authenticateToken, checkPermission('server.bac
 
 // Scheduled backups
 const runScheduledBackups = () => {
-    dbAll('SELECT * FROM servers WHERE auto_backup = 1').then(servers => {
-        servers.forEach(async s => {
+    dbAll('SELECT * FROM servers WHERE auto_backup = 1').then(async servers => {
+        for (const s of servers) {
             const serverDir = path.join(SERVERS_DIR, s.directory_name || s.id.toString());
             const backupsDir = path.join(serverDir, 'backups');
-            if (!fs.existsSync(serverDir)) return;
+            if (!fs.existsSync(serverDir)) continue;
             if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true });
             try {
                 const existing = fs.readdirSync(backupsDir).filter(f => f.endsWith('.zip'));
                 if (existing.length > 0) {
                     const latest = existing.map(f => ({ name: f, time: fs.statSync(path.join(backupsDir, f)).mtime })).sort((a, b) => b.time - a.time)[0];
                     const intervalMs = (s.backup_interval || 24) * 3600000;
-                    if (latest.time.getTime() > Date.now() - intervalMs) return;
+                    if (latest.time.getTime() > Date.now() - intervalMs) continue;
                 }
             } catch (_) {}
-            
+
             try {
                 await createBackup(serverDir, 'auto', s.backup_includes || 'all');
                 console.log(`[Backup] Auto backup completed for server ${s.id}`);
             } catch (err) {
                 console.error(`[Backup] Auto backup failed for server ${s.id}:`, err);
             }
-        });
-    }).catch(() => {});
+        }
+    }).catch(err => {
+        console.error('[Backup] Failed to fetch servers for scheduled backup:', err);
+    });
 
     // Run retention cleanups alongside scheduled backups
     runRetentionCleanups();

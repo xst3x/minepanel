@@ -45,10 +45,12 @@ const ui = {
         const i = Math.floor(Math.log(b) / Math.log(k));
         return `${parseFloat((b / Math.pow(k, i)).toFixed(d))} ${s[i]}`;
     },
-    confirm(desc, title = 'Confirm') {
+    confirm(desc, title = 'Confirm', okLabel = 'Confirm', cancelLabel = 'Cancel') {
         return new Promise(resolve => {
             document.getElementById('ui-confirm-title').textContent = title;
             document.getElementById('ui-confirm-desc').textContent = desc;
+            document.getElementById('modal-ui-confirm-ok').textContent = okLabel;
+            document.getElementById('modal-ui-confirm-cancel').textContent = cancelLabel;
             ui.showModal('modal-ui-confirm');
             
             const cleanup = () => {
@@ -129,7 +131,7 @@ const api = {
                     ui.toast("Your account has been disabled", 'error');
                 } else if (r.status === 401 || (d && d.error && (d.error.toLowerCase().includes('expired') || d.error.toLowerCase().includes('invalid token')))) {
                     if (state.token) {
-                        document.getElementById('logout-btn')?.click(); // Auto logout on expire or invalid token
+                        doLogout(); // Auto logout on expire or invalid token — no popup shown
                     }
                 }
             }
@@ -486,32 +488,40 @@ const server = {
 
 // Theme Toggler Helper
 const theme = {
+    _listenerAttached: false,
     init() {
         const stored = localStorage.getItem('mp_theme') || 'dark';
         document.documentElement.setAttribute('data-theme', stored);
         this.updateButtons(stored);
 
-        document.getElementById('theme-toggle-btn').addEventListener('click', () => {
-            const curr = document.documentElement.getAttribute('data-theme');
-            const next = curr === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', next);
-            localStorage.setItem('mp_theme', next);
-            this.updateButtons(next);
-            // Update any open CodeMirror editors
-            const cmTheme = next === 'light' ? 'default' : 'dracula';
-            if (window.fm?.editor) fm.editor.setOption('theme', cmTheme);
-            if (window.props?.editor) props.editor.setOption('theme', cmTheme);
-        });
+        // Guard: only attach the click listener once to prevent duplicate toggles
+        // when initDashboard() is called multiple times (e.g. page load + after login).
+        if (!this._listenerAttached) {
+            const btn = document.getElementById('theme-toggle-btn');
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    const curr = document.documentElement.getAttribute('data-theme');
+                    const next = curr === 'dark' ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', next);
+                    localStorage.setItem('mp_theme', next);
+                    this.updateButtons(next);
+                    // Update any open CodeMirror editors
+                    const cmTheme = next === 'light' ? 'default' : 'dracula';
+                    if (window.fm?.editor) fm.editor.setOption('theme', cmTheme);
+                    if (window.props?.editor) props.editor.setOption('theme', cmTheme);
+                });
+                this._listenerAttached = true;
+            }
+        }
     },
     updateButtons(t) {
         const darkIcon = document.getElementById('theme-icon-dark');
         const lightIcon = document.getElementById('theme-icon-light');
-        if (t === 'dark') {
-            darkIcon.style.display = 'block';
-            lightIcon.style.display = 'none';
-        } else {
-            darkIcon.style.display = 'none';
-            lightIcon.style.display = 'block';
+        if (darkIcon) {
+            darkIcon.style.display = (t === 'dark') ? 'block' : 'none';
+        }
+        if (lightIcon) {
+            lightIcon.style.display = (t === 'dark') ? 'none' : 'block';
         }
     }
 };
@@ -874,37 +884,256 @@ const accentColor = {
         document.querySelectorAll('.accent-circle').forEach(el => {
             el.classList.toggle('active', el.dataset.accent === hslValue);
         });
-        const found = ACCENT_COLORS.find(c => c.value === hslValue);
+        const allColors = [...ACCENT_COLORS, ...this._customColors];
+        const found = allColors.find(c => c.value === hslValue);
         const nameEl = document.getElementById('accent-selected-name');
-        if (nameEl && found) nameEl.textContent = found.label;
+        if (nameEl) nameEl.textContent = found ? found.label : 'Custom';
     },
 
-    async save(hslValue) {
-        try {
-            await api.req('/users/me/accent', {
-                method: 'POST',
-                body: JSON.stringify({ accent: hslValue })
-            });
-        } catch (e) {
-            console.warn('Failed to save accent color:', e.message);
+    _customColors: [],
+
+    _hexToHsl(hex) {
+        let r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+        const max = Math.max(r,g,b), min = Math.min(r,g,b);
+        let h, s, l = (max+min)/2;
+        if (max === min) { h = s = 0; }
+        else {
+            const d = max-min; s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+            switch(max){ case r: h=(g-b)/d+(g<b?6:0); break; case g: h=(b-r)/d+2; break; case b: h=(r-g)/d+4; break; }
+            h /= 6;
         }
+        return `hsl(${Math.round(h*360)},${Math.round(s*100)}%,${Math.round(l*100)}%)`;
     },
 
-    async load() {
-        try {
-            const r = await api.req('/users/me/accent');
-            const color = r.accent || ACCENT_COLORS[0].value;
-            this.apply(color);
-        } catch (e) {
-            this.apply(ACCENT_COLORS[0].value);
+    openColorWell() {
+        const overlay = document.createElement('div');
+        overlay.className = 'color-well-overlay';
+
+        overlay.innerHTML = `
+            <div class="color-well-modal">
+                <h3>Custom Accent Color</h3>
+                <div class="color-well-wheel-wrap" id="cww">
+                    <canvas id="cw-canvas" width="200" height="200"></canvas>
+                    <div class="color-well-cursor" id="cw-cursor"></div>
+                </div>
+                <div class="cw-brightness-row">
+                    <span class="cw-slider-label">Brightness</span>
+                    <div class="cw-brightness-track" id="cw-brightness-track">
+                        <input type="range" id="cw-brightness" min="10" max="90" value="50" step="1">
+                    </div>
+                    <span class="cw-brightness-val" id="cw-brightness-val">50%</span>
+                </div>
+                <div class="cw-rgb-row">
+                    <div class="cw-rgb-field">
+                        <label>R</label>
+                        <input type="number" id="cw-r" min="0" max="255" value="99">
+                    </div>
+                    <div class="cw-rgb-field">
+                        <label>G</label>
+                        <input type="number" id="cw-g" min="0" max="255" value="102">
+                    </div>
+                    <div class="cw-rgb-field">
+                        <label>B</label>
+                        <input type="number" id="cw-b" min="0" max="255" value="241">
+                    </div>
+                    <div class="cw-hex-field">
+                        <label>HEX</label>
+                        <input type="text" id="cw-hex" maxlength="7" value="#6366f1">
+                    </div>
+                </div>
+                <div class="cw-preview-row">
+                    <div class="color-well-preview" id="cw-preview" style="background:#6366f1"></div>
+                    <input class="color-well-name-input" id="cw-name" type="text" placeholder="Name this color…" maxlength="24">
+                </div>
+                <div class="color-well-footer">
+                    <button class="btn outline" id="cw-cancel">Cancel</button>
+                    <button class="btn primary" id="cw-apply">Apply</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        // ── State ───────────────────────────────────────────────────────────
+        // hue/sat come from wheel pick; brightness comes from slider
+        let wheelH = 0, wheelS = 0, brightness = 50;
+
+        // ── Helpers ──────────────────────────────────────────────────────────
+        function hslToRgb(h, s, l) {
+            s /= 100; l /= 100;
+            const k = n => (n + h / 30) % 12;
+            const a = s * Math.min(l, 1 - l);
+            const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+            return [Math.round(f(0)*255), Math.round(f(8)*255), Math.round(f(4)*255)];
         }
+        function rgbToHex(r, g, b) {
+            return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+        }
+        function hexToRgb(hex) {
+            const h = hex.replace('#','');
+            if (h.length !== 6) return null;
+            return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+        }
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r,g,b), min = Math.min(r,g,b);
+            let h, s, l = (max+min)/2;
+            if (max === min) { h = s = 0; }
+            else {
+                const d = max-min; s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+                switch(max){ case r: h=(g-b)/d+(g<b?6:0); break; case g: h=(b-r)/d+2; break; case b: h=(r-g)/d+4; break; }
+                h /= 6;
+            }
+            return [Math.round(h*360), Math.round(s*100), Math.round(l*100)];
+        }
+
+        const canvas   = overlay.querySelector('#cw-canvas');
+        const ctx      = canvas.getContext('2d');
+        const cursor   = overlay.querySelector('#cw-cursor');
+        const preview  = overlay.querySelector('#cw-preview');
+        const slider   = overlay.querySelector('#cw-brightness');
+        const sliderValEl = overlay.querySelector('#cw-brightness-val');
+        const trackEl  = overlay.querySelector('#cw-brightness-track');
+        const rInp     = overlay.querySelector('#cw-r');
+        const gInp     = overlay.querySelector('#cw-g');
+        const bInp     = overlay.querySelector('#cw-b');
+        const hexInp   = overlay.querySelector('#cw-hex');
+
+        // ── Draw wheel ───────────────────────────────────────────────────────
+        const size = 200, cx = size/2, cy = size/2;
+        function drawWheel() {
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const dx = x-cx, dy = y-cy, dist = Math.sqrt(dx*dx+dy*dy);
+                    if (dist <= cx) {
+                        const hue = (Math.atan2(dy,dx) * 180/Math.PI + 360) % 360;
+                        const sat = dist/cx * 100;
+                        ctx.fillStyle = `hsl(${hue},${sat}%,50%)`;
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
+            }
+        }
+        drawWheel();
+
+        // ── Update all UI from current state ─────────────────────────────────
+        function syncUI() {
+            const [r, g, b] = hslToRgb(wheelH, wheelS, brightness);
+            const hex = rgbToHex(r, g, b);
+            preview.style.background = hex;
+            rInp.value = r; gInp.value = g; bInp.value = b;
+            hexInp.value = hex;
+            sliderValEl.textContent = brightness + '%';
+            // Update brightness slider track gradient (full sat hue at current brightness range)
+            const darkEnd = rgbToHex(...hslToRgb(wheelH, wheelS, 10));
+            const brightEnd = rgbToHex(...hslToRgb(wheelH, wheelS, 90));
+            trackEl.style.background = `linear-gradient(to right, ${darkEnd}, ${brightEnd})`;
+        }
+
+        // Initial sync
+        syncUI();
+
+        // ── Wheel interaction ─────────────────────────────────────────────────
+        function pickWheel(x, y) {
+            const dx = x-cx, dy = y-cy, dist = Math.sqrt(dx*dx+dy*dy);
+            const clampedDist = Math.min(dist, cx);
+            // clamp cursor to circle edge
+            const angle = Math.atan2(dy, dx);
+            const cx2 = cx + (dist > cx ? Math.cos(angle)*cx : dx);
+            const cy2 = cy + (dist > cx ? Math.sin(angle)*cx : dy);
+            cursor.style.left = cx2 + 'px';
+            cursor.style.top  = cy2 + 'px';
+            wheelH = (angle * 180/Math.PI + 360) % 360;
+            wheelS = clampedDist/cx * 100;
+            syncUI();
+        }
+
+        cursor.style.left = cx + 'px';
+        cursor.style.top  = cy + 'px';
+
+        let dragging = false;
+        canvas.addEventListener('mousedown', e => { dragging = true; const rc = canvas.getBoundingClientRect(); pickWheel(e.clientX-rc.left, e.clientY-rc.top); });
+        window.addEventListener('mousemove', e => { if (!dragging) return; const rc = canvas.getBoundingClientRect(); pickWheel(e.clientX-rc.left, e.clientY-rc.top); });
+        window.addEventListener('mouseup', () => dragging = false);
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); const t=e.touches[0]; const rc=canvas.getBoundingClientRect(); pickWheel(t.clientX-rc.left, t.clientY-rc.top); }, {passive:false});
+        canvas.addEventListener('touchmove',  e => { e.preventDefault(); const t=e.touches[0]; const rc=canvas.getBoundingClientRect(); pickWheel(t.clientX-rc.left, t.clientY-rc.top); }, {passive:false});
+
+        // ── Brightness slider ─────────────────────────────────────────────────
+        slider.addEventListener('input', () => {
+            brightness = parseInt(slider.value);
+            syncUI();
+        });
+
+        // ── RGB inputs ────────────────────────────────────────────────────────
+        function onRgbChange() {
+            const r = Math.max(0, Math.min(255, parseInt(rInp.value)||0));
+            const g = Math.max(0, Math.min(255, parseInt(gInp.value)||0));
+            const b = Math.max(0, Math.min(255, parseInt(bInp.value)||0));
+            rInp.value = r; gInp.value = g; bInp.value = b;
+            const [h, s, l] = rgbToHsl(r, g, b);
+            wheelH = h; wheelS = s; brightness = l;
+            slider.value = l;
+            hexInp.value = rgbToHex(r, g, b);
+            preview.style.background = rgbToHex(r, g, b);
+            sliderValEl.textContent = l + '%';
+            const darkEnd = rgbToHex(...hslToRgb(h, s, 10));
+            const brightEnd = rgbToHex(...hslToRgb(h, s, 90));
+            trackEl.style.background = `linear-gradient(to right, ${darkEnd}, ${brightEnd})`;
+        }
+        rInp.addEventListener('input', onRgbChange);
+        gInp.addEventListener('input', onRgbChange);
+        bInp.addEventListener('input', onRgbChange);
+
+        // ── HEX input ─────────────────────────────────────────────────────────
+        hexInp.addEventListener('input', () => {
+            let val = hexInp.value.trim();
+            if (!val.startsWith('#')) val = '#' + val;
+            if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+                const rgb = hexToRgb(val);
+                if (rgb) {
+                    rInp.value = rgb[0]; gInp.value = rgb[1]; bInp.value = rgb[2];
+                    const [h, s, l] = rgbToHsl(...rgb);
+                    wheelH = h; wheelS = s; brightness = l;
+                    slider.value = l;
+                    preview.style.background = val;
+                    sliderValEl.textContent = l + '%';
+                    const darkEnd = rgbToHex(...hslToRgb(h, s, 10));
+                    const brightEnd = rgbToHex(...hslToRgb(h, s, 90));
+                    trackEl.style.background = `linear-gradient(to right, ${darkEnd}, ${brightEnd})`;
+                }
+            }
+        });
+
+        // ── Buttons ───────────────────────────────────────────────────────────
+        overlay.querySelector('#cw-cancel').onclick = () => overlay.remove();
+        overlay.querySelector('#cw-apply').onclick = async () => {
+            const name = overlay.querySelector('#cw-name').value.trim() || 'Custom';
+            const hsl = `hsl(${Math.round(wheelH)},${Math.round(wheelS)}%,${Math.round(brightness)}%)`;
+            overlay.remove();
+            try {
+                const created = await api.req('/users/me/custom-accents', {
+                    method: 'POST',
+                    body: JSON.stringify({ label: name, value: hsl })
+                });
+                this._customColors.push({ id: created.id, label: created.label, value: created.value, custom: true });
+            } catch (e) {
+                ui.toast('Could not save custom color', 'error');
+                return;
+            }
+            this.apply(hsl);
+            await this.save(hsl);
+            this.buildPicker();
+            ui.toast(`Accent: ${name}`, 'success');
+        };
     },
 
     buildPicker() {
         const grid = document.getElementById('accent-color-grid');
         if (!grid) return;
         grid.innerHTML = '';
-        ACCENT_COLORS.forEach(color => {
+
+        const allColors = [...ACCENT_COLORS, ...this._customColors];
+
+        allColors.forEach(color => {
             const item = document.createElement('div');
             item.className = 'accent-swatch-item';
 
@@ -925,14 +1154,86 @@ const accentColor = {
             label.className = 'accent-label';
             label.textContent = color.label;
 
+            // X button for custom colors
+            if (color.custom) {
+                const delBtn = document.createElement('button');
+                delBtn.className = 'accent-delete-btn';
+                delBtn.title = 'Delete color';
+                delBtn.innerHTML = `<svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" fill="none" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+                delBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    try {
+                        await api.req(`/users/me/custom-accents/${color.id}`, { method: 'DELETE' });
+                        this._customColors = this._customColors.filter(c => c.id !== color.id);
+                        // If deleted color was active, switch to default
+                        if (this._current === color.value) {
+                            this.apply(ACCENT_COLORS[0].value);
+                            await this.save(ACCENT_COLORS[0].value);
+                        }
+                        this.buildPicker();
+                        ui.toast('Color deleted', 'info');
+                    } catch (e) {
+                        ui.toast('Could not delete color', 'error');
+                    }
+                });
+                item.style.position = 'relative';
+                item.appendChild(delBtn);
+            }
+
             item.appendChild(btn);
             item.appendChild(label);
             grid.appendChild(item);
         });
+
+        // + custom button — only if under 5 custom colors
+        if (this._customColors.length < 5) {
+            const customItem = document.createElement('div');
+            customItem.className = 'accent-swatch-item';
+            const customBtn = document.createElement('button');
+            customBtn.className = 'accent-custom-btn';
+            customBtn.title = 'Custom color';
+            customBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+            customBtn.addEventListener('click', () => accentColor.openColorWell());
+            const customLabel = document.createElement('span');
+            customLabel.className = 'accent-label';
+            customLabel.textContent = 'Custom';
+            customItem.appendChild(customBtn);
+            customItem.appendChild(customLabel);
+            grid.appendChild(customItem);
+        }
+
         const nameEl = document.getElementById('accent-selected-name');
         if (nameEl && this._current) {
-            const found = ACCENT_COLORS.find(c => c.value === this._current);
-            if (found) nameEl.textContent = found.label;
+            const found = allColors.find(c => c.value === this._current);
+            if (nameEl) nameEl.textContent = found ? found.label : 'Custom';
+        }
+    },
+
+    async save(hslValue) {
+        try {
+            await api.req('/users/me/accent', {
+                method: 'POST',
+                body: JSON.stringify({ accent: hslValue })
+            });
+        } catch (e) {
+            console.warn('Failed to save accent color:', e.message);
+        }
+    },
+
+    async load() {
+        try {
+            // Load custom colors from DB first
+            const customRes = await api.req('/users/me/custom-accents');
+            this._customColors = (customRes.colors || []).map(c => ({ ...c, custom: true }));
+        } catch (e) {
+            this._customColors = [];
+        }
+        try {
+            const r = await api.req('/users/me/accent');
+            const color = r.accent || ACCENT_COLORS[0].value;
+            this.apply(color);
+        } catch (e) {
+            this.apply(ACCENT_COLORS[0].value);
         }
     }
 };
@@ -1003,13 +1304,17 @@ document.getElementById('btn-back-from-docs')?.addEventListener('click', () => {
 // Auth form listeners
 document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
-    const u = document.getElementById('username').value, p = document.getElementById('password').value;
+    const uField = document.getElementById('username');
+    const pField = document.getElementById('password');
+    const u = uField.value, p = pField.value;
     try {
         const d = await api.req('/auth/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
         state.token = d.token; state.user = d.username; state.role = d.role || 'user'; state.userId = d.userId;
         localStorage.setItem('mp_token', d.token); localStorage.setItem('mp_user', d.username); localStorage.setItem('mp_role', d.role || 'user'); localStorage.setItem('mp_userid', d.userId);
+        uField.value = ''; pField.value = '';
         initDashboard();
     } catch (e) {
+        uField.value = ''; pField.value = '';
         if (e.message === 'Invalid credentials') {
             try { 
                 await api.req('/auth/setup', { method: 'POST', body: JSON.stringify({ username: u, password: p }) }); 
@@ -1066,7 +1371,17 @@ document.getElementById('register-form')?.addEventListener('submit', async e => 
     }
 });
 
-document.getElementById('logout-btn').addEventListener('click', () => {
+// ── LOGOUT ────────────────────────────────────────────────────────────────────
+// The confirmation popup appears ONLY when the user manually clicks the logout button.
+// Token expiry, account disabled, and other automatic logouts call doLogout() directly
+// without any popup, so the user is never spammed with a "sure you want to logout?" dialog.
+document.getElementById('logout-btn').addEventListener('click', async () => {
+    const confirmed = await ui.confirm('Are you sure you want to log out?', 'Log Out', 'Yes, log out', 'Cancel');
+    if (!confirmed) return;
+    doLogout();
+});
+
+function doLogout() {
     if (metricsInterval) { clearInterval(metricsInterval); metricsInterval = null; }
     state.token = null; state.user = null; state.role = null; state.userId = null; state.currentServer = null;
     localStorage.removeItem('mp_token'); localStorage.removeItem('mp_user'); localStorage.removeItem('mp_role'); localStorage.removeItem('mp_userid');
@@ -1074,7 +1389,8 @@ document.getElementById('logout-btn').addEventListener('click', () => {
     ui.showView('auth-view');
     document.getElementById('auth-view').classList.add('active');
     document.getElementById('main-view').classList.remove('active');
-});
+}
+// ── END LOGOUT ────────────────────────────────────────────────────────────────
 
 // Helper: clear the frontend console view
 function clearConsoleView() {
@@ -1396,7 +1712,7 @@ function initDashboard() {
         try {
             const r = await fetch('/api/system/metrics', { headers: { 'Authorization': `Bearer ${state.token}` } });
             if (r.status === 401) {
-                document.getElementById('logout-btn')?.click();
+                doLogout(); // Token expired — silent logout, no popup
                 return;
             }
             if (r.ok) {

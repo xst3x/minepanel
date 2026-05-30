@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { dbGet } = require('../db/database');
+const { E, sendError } = require('./errors');
 
 const SECRET_KEY = process.env.JWT_SECRET;
 if (!SECRET_KEY) {
@@ -23,25 +24,21 @@ const generateToken = (user) => {
 
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    let token = authHeader && authHeader.split(' ')[1];
+    const token = authHeader && authHeader.split(' ')[1];
 
-    if (!token && req.query.token) {
-        token = req.query.token;
-    }
-
-    if (token == null) return res.status(401).json({ error: 'Unauthorized' });
+    if (token == null) return sendError(res, E.AUTH_UNAUTHORIZED, 401);
 
     jwt.verify(token, SECRET_KEY, async (err, user) => {
-        if (err) return res.status(401).json({ error: 'Session expired or invalid token' });
+        if (err) return sendError(res, E.AUTH_TOKEN_INVALID, 401);
         try {
             const dbUser = await dbGet('SELECT disabled FROM users WHERE id = ?', [user.id]);
             if (dbUser && dbUser.disabled === 1) {
-                return res.status(401).json({ error: 'Account disabled' });
+                return sendError(res, E.AUTH_ACCOUNT_DISABLED, 403);
             }
             req.user = user;
             next();
         } catch (dbErr) {
-            return res.status(500).json({ error: 'Database error' });
+            return sendError(res, E.INTERNAL_ERROR, 500);
         }
     });
 };
@@ -50,7 +47,6 @@ module.exports = {
     hashPassword,
     comparePassword,
     generateToken,
-    authenticateToken,
-    SECRET_KEY
+    authenticateToken
 };
 

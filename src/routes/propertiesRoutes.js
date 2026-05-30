@@ -99,7 +99,8 @@ router.get('/icon', authenticateToken, checkPermission('server.files.read'), asy
             return res.status(404).json({ error: 'No server icon set' });
         }
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error(`[propertiesRoutes] Icon read error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        res.status(500).json({ error: 'Failed to read server icon' });
     }
 });
 
@@ -113,8 +114,8 @@ router.post('/icon', authenticateToken, checkPermission('server.files.write'), i
         await fsp.writeFile(iconPath, req.file.buffer);
         res.json({ message: 'Server icon updated successfully' });
     } catch (e) {
-        console.error(`[propertiesRoutes] Icon upload error:`, e);
-        res.status(500).json({ error: e.message });
+        console.error(`[propertiesRoutes] Icon upload error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        res.status(500).json({ error: 'Failed to upload server icon' });
     }
 });
 
@@ -131,7 +132,8 @@ router.delete('/icon', authenticateToken, checkPermission('server.files.delete')
         }
         res.json({ message: 'Server icon removed' });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error(`[propertiesRoutes] Icon delete error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        res.status(500).json({ error: 'Failed to remove server icon' });
     }
 });
 

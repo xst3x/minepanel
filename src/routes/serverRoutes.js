@@ -2,6 +2,9 @@ const express = require('express');
 const { db, dbRun, dbGet, dbAll } = require('../db/database');
 const { authenticateToken } = require('../core/auth');
 const { checkPermission, getEffectivePermissions } = require('../core/permissions');
+const { E, sendError } = require('../core/errors');
+const { validate } = require('../middleware/validation');
+const V = require('../middleware/validators');
 const { resolveJar, downloadJar } = require('../core/resolvers');
 const processManager = require('../core/processManager');
 const { SERVERS_DIR, sanitizeDirName, ensureUniqueDirName, getServer, getServerDir, createBackup } = require('../core/serverHelper');
@@ -24,7 +27,7 @@ const importUpload = multer({
             cb(null, `minepanel-import-${rand}.zip`);
         }
     }),
-    limits: { fileSize: Infinity }, // no size cap — servers can be 20GB+
+    limits: { fileSize: 50 * 1024 * 1024 * 1024 }, // 50 GB max
     fileFilter: (_req, file, cb) => {
         if (file.mimetype === 'application/zip' ||
             file.mimetype === 'application/x-zip-compressed' ||
@@ -92,7 +95,7 @@ router.get('/', authenticateToken, async (req, res) => {
         res.json(result);
     } catch (e) {
         console.error(`[serverRoutes] GET / error (User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to list servers' });
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -100,12 +103,12 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:serverId', authenticateToken, async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         server.status = processManager.getStatus(server.id.toString());
         res.json(server);
     } catch (e) {
         console.error(`[serverRoutes] GET /:serverId error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to retrieve server details' });
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -119,26 +122,26 @@ router.get('/:serverId/my-permissions', authenticateToken, async (req, res) => {
         res.json({ admin: user && user.role === 'admin', permissions: perms });
     } catch (e) {
         console.error(`[serverRoutes] GET /:serverId/my-permissions error (Server: ${serverId}, User: ${userId}):`, e);
-        res.status(500).json({ error: 'Database error' });
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 
 // ─── Create a server (admin only) ────────────────────────────────────────────
-router.post('/create', authenticateToken, async (req, res) => {
+router.post('/create', authenticateToken, validate(V.createServer), async (req, res) => {
     const { name, software, version, ram_mb, port } = req.body;
     const userId = req.user.id;
 
     const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
     if (!user || user.role !== 'admin') {
-        return res.status(403).json({ error: 'Only administrators can create servers' });
+        return sendError(res, E.FORBIDDEN_ADMIN_ONLY, 403);
     }
 
     if (!name || !software || !version || !ram_mb || !port) {
-        return res.status(400).json({ error: 'All fields required: name, software, version, ram_mb, port' });
+        return sendError(res, E.SERVER_FIELDS_REQUIRED, 400);
     }
-    if (ram_mb < 512 || ram_mb > 16384) return res.status(400).json({ error: 'RAM must be 512-16384 MB' });
-    if (port < 1024 || port > 65535) return res.status(400).json({ error: 'Port must be 1024-65535' });
+    if (ram_mb < 512 || ram_mb > 16384) return sendError(res, E.SERVER_RAM_INVALID, 400);
+    if (port < 1024 || port > 65535) return sendError(res, E.SERVER_PORT_INVALID, 400);
 
     try {
         const jarInfo = await resolveJar(software, version);
@@ -188,39 +191,39 @@ router.post('/create', authenticateToken, async (req, res) => {
             } catch (dbErr) {
                 console.error(`Failed to clean up database record ${serverId} after server creation failure:`, dbErr);
             }
-            res.status(500).json({ error: `Server deployment failed during installation: ${e.message}` });
+            return sendError(res, E.INTERNAL_ERROR, 500, `Server deployment failed during installation: ${e.message}`);
         } finally {
             processManager.releaseLock(serverId);
         }
     } catch (error) {
         if (error.code === 'SQLITE_CONSTRAINT') {
             if (error.message.includes('servers.name')) {
-                return res.status(400).json({ error: 'A server with this name already exists. Please choose a different name.' });
+                return sendError(res, E.SERVER_NAME_TAKEN, 409);
             }
             if (error.message.includes('servers.port')) {
-                return res.status(400).json({ error: 'This port is already in use by another server.' });
+                return sendError(res, E.SERVER_PORT_TAKEN, 409);
             }
         }
-        res.status(400).json({ error: error.message || 'An error occurred during server creation.' });
+        return sendError(res, E.BAD_REQUEST, 400, error.message || null);
     }
 });
 
 // ─── Change server version ───────────────────────────────────────────────────
-router.post('/:serverId/change-version', authenticateToken, checkPermission('server.properties.write'), async (req, res) => {
+router.post('/:serverId/change-version', authenticateToken, checkPermission('server.properties.write'), validate(V.changeVersion), async (req, res) => {
     const { serverId } = req.params;
     const { version } = req.body;
-    if (!version) return res.status(400).json({ error: 'Version required' });
+    if (!version) return sendError(res, E.BAD_REQUEST, 400, 'Version required');
 
     try {
         const server = await getServer(serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
         if (processManager.getStatus(serverId.toString()) === 'online') {
-            return res.status(400).json({ error: 'Stop the server before changing version' });
+            return sendError(res, E.SERVER_MUST_BE_STOPPED, 400);
         }
 
         if (!processManager.acquireLock(serverId)) {
-            return res.status(409).json({ error: 'Another lifecycle action is in progress for this server.' });
+            return sendError(res, E.SERVER_LOCKED, 409);
         }
 
         try {
@@ -245,32 +248,30 @@ router.post('/:serverId/change-version', authenticateToken, checkPermission('ser
         }
     } catch (e) {
         console.error(`[serverRoutes] Change version error (Server: ${serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: e.message || 'Failed to change server version' });
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 
 // ─── Switch server software (e.g. Paper -> Fabric) ──────────────────────────
-router.post('/:serverId/switch-software', authenticateToken, checkPermission('server.properties.write'), async (req, res) => {
+router.post('/:serverId/switch-software', authenticateToken, checkPermission('server.properties.write'), validate(V.switchSoftware), async (req, res) => {
     const { serverId } = req.params;
     const { software, version, confirm } = req.body;
 
     if (!software || !version) {
-        return res.status(400).json({ error: 'Software and version are required' });
+        return sendError(res, E.BAD_REQUEST, 400, 'Software and version are required');
     }
 
     try {
         const server = await getServer(serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
-        // CRITICAL: Ensure the server process is fully stopped before modifying files
         if (processManager.getStatus(serverId.toString()) === 'online') {
-            return res.status(400).json({ error: 'Stop the server before switching software. Wait for the process to fully exit.' });
+            return sendError(res, E.SERVER_MUST_BE_STOPPED, 400);
         }
 
-        // Double-check: wait for any lingering process exit
         const exited = await processManager.waitForExit(serverId.toString(), 3000);
         if (!exited && processManager.getStatus(serverId.toString()) === 'online') {
-            return res.status(400).json({ error: 'Server process is still running. Please wait for it to fully stop.' });
+            return sendError(res, E.SERVER_MUST_BE_STOPPED, 400);
         }
 
         const oldType = server.software.toLowerCase();
@@ -306,7 +307,7 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
         }
 
         if (!processManager.acquireLock(serverId)) {
-            return res.status(409).json({ error: 'Another lifecycle action is in progress for this server.' });
+            return sendError(res, E.SERVER_LOCKED, 409);
         }
 
         let backupInfo;
@@ -320,7 +321,7 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
                 backupInfo = await createBackup(serverDir, `autoswitch-${oldType}-to-${newType}`);
                 console.log(`Automatic rollback backup created: ${backupInfo.filename}`);
             } catch (backupErr) {
-                return res.status(500).json({ error: `Automatic backup failed: ${backupErr.message}. Switch aborted.` });
+                return sendError(res, E.BACKUP_FAILED, 500, `Automatic backup failed: ${backupErr.message}. Switch aborted.`);
             }
 
             // 3. Migrate folders/deactivate incompatibilities with retry logic
@@ -334,7 +335,7 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
                             if (fs.existsSync(disabledMods)) await retryDelete(disabledMods);
                             await retryRename(modsPath, disabledMods);
                         } catch (err) {
-                            return res.status(500).json({ error: `Failed to deactivate mods folder: ${err.message}. Ensure no files are open.` });
+                            return sendError(res, E.INTERNAL_ERROR, 500, `Failed to deactivate mods folder: ${err.message}. Ensure no files are open.`);
                         }
                     }
                     // Re-enable plugins if they were disabled
@@ -354,7 +355,7 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
                             if (fs.existsSync(disabledPlugins)) await retryDelete(disabledPlugins);
                             await retryRename(pluginsPath, disabledPlugins);
                         } catch (err) {
-                            return res.status(500).json({ error: `Failed to deactivate plugins folder: ${err.message}. Ensure no files are open.` });
+                            return sendError(res, E.INTERNAL_ERROR, 500, `Failed to deactivate plugins folder: ${err.message}. Ensure no files are open.`);
                         }
                     }
                     // Re-enable mods if they were disabled
@@ -391,7 +392,7 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
         }
     } catch (e) {
         console.error(`[serverRoutes] Switch software error (Server: ${serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: e.message || 'Failed to switch server software' });
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 
@@ -400,16 +401,16 @@ router.post('/:serverId/start', authenticateToken, checkPermission('server.start
     const serverId = req.params.serverId;
     try {
         const server = await getServer(serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
         const { serverDir, jarFile, customArgs } = getStartInfo(server);
 
         if (!fs.existsSync(jarFile) && !customArgs) {
-            return res.status(400).json({ error: 'Server jar not found. May still be downloading.' });
+            return sendError(res, E.BAD_REQUEST, 400, 'Server jar not found. May still be downloading.');
         }
 
         if (!processManager.acquireLock(serverId)) {
-            return res.status(409).json({ error: 'Another lifecycle action is in progress for this server.' });
+            return sendError(res, E.SERVER_LOCKED, 409);
         }
 
         try {
@@ -423,7 +424,7 @@ router.post('/:serverId/start', authenticateToken, checkPermission('server.start
         }
     } catch (e) {
         console.error(`[serverRoutes] Start error (Server: ${serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: e.message || 'Failed to start server' });
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 
@@ -432,34 +433,27 @@ router.post('/:serverId/stop', authenticateToken, checkPermission('server.stop')
     const serverId = req.params.serverId;
     try {
         const server = await getServer(serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
         if (!processManager.acquireLock(serverId.toString())) {
-            return res.status(409).json({ error: 'Another lifecycle action is in progress for this server.' });
+            return sendError(res, E.SERVER_LOCKED, 409);
         }
 
         try {
             const result = await processManager.gracefulStop(serverId.toString(), 15000);
-
-            if (!result.wasRunning) {
-                return res.json({ message: 'Server was not running', graceful: true });
-            }
+            if (!result.wasRunning) return res.json({ message: 'Server was not running', graceful: true });
             if (result.graceful) {
-                // Clear history after stop for clean restart
                 processManager.clearHistory(serverId.toString());
                 return res.json({ message: 'Server stopped gracefully', graceful: true });
             } else {
-                return res.json({
-                    message: 'Stop command sent but server has not exited yet. You can use Kill to force terminate.',
-                    graceful: false
-                });
+                return res.json({ message: 'Stop command sent but server has not exited yet. You can use Kill to force terminate.', graceful: false });
             }
         } finally {
             processManager.releaseLock(serverId.toString());
         }
     } catch (e) {
         console.error(`[serverRoutes] Stop error (Server: ${serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to stop server' });
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -468,45 +462,33 @@ router.post('/:serverId/restart', authenticateToken, checkPermission('server.res
     const serverId = req.params.serverId;
     try {
         const server = await getServer(serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
         const { serverDir, jarFile, customArgs } = getStartInfo(server);
 
         if (!fs.existsSync(jarFile) && !customArgs) {
-            return res.status(400).json({ error: 'Server jar not found.' });
+            return sendError(res, E.BAD_REQUEST, 400, 'Server jar not found.');
         }
 
         if (!processManager.acquireLock(serverId)) {
-            return res.status(409).json({ error: 'Another lifecycle action is in progress for this server.' });
+            return sendError(res, E.SERVER_LOCKED, 409);
         }
 
         try {
-            // Clear console history for the fresh restart
             processManager.clearHistory(serverId.toString());
-
             const result = await processManager.restartGraceful(
                 serverId.toString(), serverDir, [], jarFile, server.ram_mb, 15000, customArgs, server.java_path || 'java'
             );
-
             if (!result.graceful) {
-                return res.json({
-                    message: result.message || 'Server did not stop within timeout. Use Kill to force terminate, then start manually.',
-                    graceful: false,
-                    started: false
-                });
+                return res.json({ message: result.message || 'Server did not stop within timeout. Use Kill to force terminate, then start manually.', graceful: false, started: false });
             }
-
-            res.json({
-                message: result.started ? 'Server restarted successfully' : `Restart failed: ${result.message}`,
-                graceful: true,
-                started: result.started
-            });
+            res.json({ message: result.started ? 'Server restarted successfully' : `Restart failed: ${result.message}`, graceful: true, started: result.started });
         } finally {
             processManager.releaseLock(serverId);
         }
     } catch (e) {
         console.error(`[serverRoutes] Restart error (Server: ${serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: e.message || 'Failed to restart server' });
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 
@@ -515,10 +497,10 @@ router.post('/:serverId/kill', authenticateToken, checkPermission('server.kill')
     const serverId = req.params.serverId;
     try {
         const server = await getServer(serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
         if (!processManager.acquireLock(serverId.toString())) {
-            return res.status(409).json({ error: 'Another lifecycle action is in progress for this server.' });
+            return sendError(res, E.SERVER_LOCKED, 409);
         }
 
         try {
@@ -530,7 +512,7 @@ router.post('/:serverId/kill', authenticateToken, checkPermission('server.kill')
         }
     } catch (e) {
         console.error(`[serverRoutes] Kill error (Server: ${serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to force kill server' });
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -539,13 +521,13 @@ router.post('/:serverId/clear-console', authenticateToken, checkPermission('serv
     const serverId = req.params.serverId;
     try {
         const server = await getServer(serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
         processManager.clearHistory(serverId.toString());
         res.json({ message: 'Console history cleared' });
     } catch (e) {
         console.error(`[serverRoutes] Clear-console error (Server: ${serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to clear console' });
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -553,16 +535,16 @@ router.post('/:serverId/clear-console', authenticateToken, checkPermission('serv
 router.get('/:serverId/backup-config', authenticateToken, checkPermission('server.backups.read'), async (req, res) => {
     try {
         const row = await dbGet('SELECT auto_backup, backup_interval, backup_includes FROM servers WHERE id = ?', [req.params.serverId]);
-        if (!row) return res.status(404).json({ error: 'Server not found' });
+        if (!row) return sendError(res, E.SERVER_NOT_FOUND, 404);
         res.json(row);
     } catch (e) {
         console.error(`[serverRoutes] GET backup-config error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Database error' });
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 // ─── Update backup config ────────────────────────────────────────────────────
-router.post('/:serverId/backup-config', authenticateToken, checkPermission('server.backups.create'), (req, res) => {
+router.post('/:serverId/backup-config', authenticateToken, checkPermission('server.backups.create'), validate(V.backupConfig), (req, res) => {
     const { serverId } = req.params;
     const { enabled, interval, includes } = req.body;
     db.run(
@@ -571,9 +553,9 @@ router.post('/:serverId/backup-config', authenticateToken, checkPermission('serv
         function(err) {
             if (err) {
                 console.error(`[serverRoutes] POST backup-config error (Server: ${serverId}, User: ${req.user.id}):`, err);
-                return res.status(500).json({ error: 'Database error' });
+                return sendError(res, E.INTERNAL_ERROR, 500);
             }
-            if (this.changes === 0) return res.status(404).json({ error: 'Server not found' });
+            if (this.changes === 0) return sendError(res, E.SERVER_NOT_FOUND, 404);
             res.json({ message: 'Backup configuration saved' });
         }
     );
@@ -584,10 +566,10 @@ router.delete('/:serverId', authenticateToken, checkPermission('account.manage')
     const { serverId } = req.params;
     try {
         const server = await getServer(serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
         if (!processManager.acquireLock(serverId.toString())) {
-            return res.status(409).json({ error: 'Cannot delete server while a lifecycle action is in progress.' });
+            return sendError(res, E.SERVER_LOCKED, 409);
         }
 
         try {
@@ -606,7 +588,6 @@ router.delete('/:serverId', authenticateToken, checkPermission('account.manage')
             // 3. Delete from DB (Ranks, Permissions, Invite Tokens, then Server)
             await dbRun('DELETE FROM user_server_ranks WHERE server_id = ?', [serverId]);
             await dbRun('DELETE FROM user_server_permissions WHERE server_id = ?', [serverId]);
-            await dbRun('DELETE FROM account_creation_tokens');
             await dbRun('DELETE FROM servers WHERE id = ?', [serverId]);
 
             // 3. Delete the physical directory
@@ -622,7 +603,7 @@ router.delete('/:serverId', authenticateToken, checkPermission('account.manage')
         }
     } catch (e) {
         console.error('Error deleting server:', e);
-        res.status(500).json({ error: 'Failed to delete server' });
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -633,21 +614,21 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
     const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
     if (!user || user.role !== 'admin') {
         if (req.file) fsp.unlink(req.file.path).catch(() => {});
-        return res.status(403).json({ error: 'Only administrators can import servers' });
+        return sendError(res, E.FORBIDDEN_ADMIN_ONLY, 403);
     }
 
-    if (!req.file) return res.status(400).json({ error: 'No archive uploaded' });
+    if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No archive uploaded');
 
     const { name, software, version, ram_mb, port, jar_path, root_path } = req.body;
     if (!name || !software || !version || !ram_mb || !port || !jar_path) {
         fsp.unlink(req.file.path).catch(() => {});
-        return res.status(400).json({ error: 'Missing required fields: name, software, version, ram_mb, port, jar_path' });
+        return sendError(res, E.BAD_REQUEST, 400, 'Missing required fields: name, software, version, ram_mb, port, jar_path');
     }
 
     const ramNum = parseInt(ram_mb, 10);
     const portNum = parseInt(port, 10);
-    if (ramNum < 512 || ramNum > 16384) { fsp.unlink(req.file.path).catch(() => {}); return res.status(400).json({ error: 'RAM must be 512–16384 MB' }); }
-    if (portNum < 1024 || portNum > 65535) { fsp.unlink(req.file.path).catch(() => {}); return res.status(400).json({ error: 'Port must be 1024–65535' }); }
+    if (ramNum < 512 || ramNum > 16384) { fsp.unlink(req.file.path).catch(() => {}); return sendError(res, E.SERVER_RAM_INVALID, 400); }
+    if (portNum < 1024 || portNum > 65535) { fsp.unlink(req.file.path).catch(() => {}); return sendError(res, E.SERVER_PORT_INVALID, 400); }
 
     // Normalise paths: strip leading slashes, ensure forward slashes
     const normJar  = jar_path.replace(/^[/\\]+/, '').replace(/\\/g, '/');
@@ -769,10 +750,10 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
 
         console.error('[serverRoutes] Import error:', e);
         if (e.code === 'SQLITE_CONSTRAINT') {
-            if (e.message.includes('servers.name'))  return res.status(400).json({ error: 'A server with this name already exists.' });
-            if (e.message.includes('servers.port'))  return res.status(400).json({ error: 'This port is already in use.' });
+            if (e.message.includes('servers.name')) return sendError(res, E.SERVER_NAME_TAKEN, 409);
+            if (e.message.includes('servers.port')) return sendError(res, E.SERVER_PORT_TAKEN, 409);
         }
-        res.status(500).json({ error: e.message || 'Import failed' });
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 
@@ -941,34 +922,27 @@ function findForgeJarRecursive(dir) {
 // GET FTP config for a server (requires server.ftp.access)
 router.get('/:serverId/ftp', authenticateToken, checkPermission('server.ftp.access'), async (req, res) => {
     try {
-        const sv = await dbGet('SELECT id, ftp_enabled, ftp_port, ftp_username, ftp_password_plain FROM servers WHERE id = ?', [req.params.serverId]);
-        if (!sv) return res.status(404).json({ error: 'Server not found' });
-        res.json({
-            enabled: !!sv.ftp_enabled,
-            port: sv.ftp_port || null,
-            username: sv.ftp_username || null,
-            password: sv.ftp_password_plain || null,
-            running: isServerFtpRunning(sv.id)
-        });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+        const sv = await dbGet('SELECT id, ftp_enabled, ftp_port, ftp_username FROM servers WHERE id = ?', [req.params.serverId]);
+        if (!sv) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        res.json({ enabled: !!sv.ftp_enabled, port: sv.ftp_port || null, username: sv.ftp_username || null, running: isServerFtpRunning(sv.id) });
+    } catch (e) { return sendError(res, E.INTERNAL_ERROR, 500, e.message); }
 });
 
 // POST FTP config (requires server.ftp.manage)
-router.post('/:serverId/ftp/config', authenticateToken, checkPermission('server.ftp.manage'), async (req, res) => {
+router.post('/:serverId/ftp/config', authenticateToken, checkPermission('server.ftp.manage'), validate(V.ftpConfig), async (req, res) => {
     try {
         const { username, password, port } = req.body;
-        if (!username || !port) return res.status(400).json({ error: 'username and port are required' });
-        if (port < 1024 || port > 65535) return res.status(400).json({ error: 'Port must be between 1024-65535' });
+        if (!username || !port) return sendError(res, E.BAD_REQUEST, 400, 'username and port are required');
+        if (port < 1024 || port > 65535) return sendError(res, E.SERVER_PORT_INVALID, 400);
 
-        // Check port not used by another server
         const conflict = await dbGet('SELECT id FROM servers WHERE ftp_port = ? AND id != ?', [port, req.params.serverId]);
-        if (conflict) return res.status(400).json({ error: `Port ${port} already used by another server` });
+        if (conflict) return sendError(res, E.FTP_PORT_TAKEN, 400);
 
         let updateSql, updateParams;
         if (password) {
             const hashed = await bcrypt.hash(password, 10);
-            updateSql = 'UPDATE servers SET ftp_username=?, ftp_password=?, ftp_password_plain=?, ftp_port=? WHERE id=?';
-            updateParams = [username, hashed, password, port, req.params.serverId];
+            updateSql = 'UPDATE servers SET ftp_username=?, ftp_password=?, ftp_port=? WHERE id=?';
+            updateParams = [username, hashed, port, req.params.serverId];
         } else {
             updateSql = 'UPDATE servers SET ftp_username=?, ftp_port=? WHERE id=?';
             updateParams = [username, port, req.params.serverId];
@@ -982,60 +956,63 @@ router.post('/:serverId/ftp/config', authenticateToken, checkPermission('server.
             await startServerFtp(req.params.serverId);
         }
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { return sendError(res, E.INTERNAL_ERROR, 500, e.message); }
 });
 
 // POST toggle FTP enabled/disabled
 router.post('/:serverId/ftp/toggle', authenticateToken, checkPermission('server.ftp.manage'), async (req, res) => {
     try {
         const sv = await dbGet('SELECT * FROM servers WHERE id = ?', [req.params.serverId]);
-        if (!sv) return res.status(404).json({ error: 'Server not found' });
+        if (!sv) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
         const newEnabled = sv.ftp_enabled ? 0 : 1;
         await dbRun('UPDATE servers SET ftp_enabled=? WHERE id=?', [newEnabled, req.params.serverId]);
 
         if (newEnabled) {
             if (!sv.ftp_port || !sv.ftp_username || !sv.ftp_password) {
-                return res.status(400).json({ error: 'Configure FTP credentials and port first' });
+                return sendError(res, E.FTP_CONFIG_INCOMPLETE, 400);
             }
             await startServerFtp(req.params.serverId);
         } else {
             await stopServerFtp(req.params.serverId);
         }
         res.json({ enabled: !!newEnabled, running: isServerFtpRunning(req.params.serverId) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { return sendError(res, E.INTERNAL_ERROR, 500, e.message); }
 });
 
 // POST update advanced server settings (requires server.properties.write)
-router.post('/:serverId/settings', authenticateToken, checkPermission('server.properties.write'), async (req, res) => {
+router.post('/:serverId/settings', authenticateToken, checkPermission('server.properties.write'), validate(V.serverSettings), async (req, res) => {
     const { serverId } = req.params;
     const { name, port, ram_mb, java_path, log_retention_days, backup_retention_days } = req.body;
 
     try {
         const server = await getServer(serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
         // 1. Validation
-        if (!name) return res.status(400).json({ error: 'Server name is required' });
+        if (!name) return sendError(res, E.BAD_REQUEST, 400, 'Server name is required');
         const portNum = parseInt(port, 10);
         if (isNaN(portNum) || portNum < 1024 || portNum > 65535) {
-            return res.status(400).json({ error: 'Port must be between 1024 and 65535' });
+            return sendError(res, E.SERVER_PORT_INVALID, 400);
         }
         const ramNum = parseInt(ram_mb, 10);
         if (isNaN(ramNum) || ramNum < 512 || ramNum > 16384) {
-            return res.status(400).json({ error: 'RAM must be between 512 and 16384 MB' });
+            return sendError(res, E.SERVER_RAM_INVALID, 400);
         }
         const logRet = parseInt(log_retention_days, 10);
         if (isNaN(logRet) || logRet < 0) {
-            return res.status(400).json({ error: 'Log retention must be a non-negative number' });
+            return sendError(res, E.BAD_REQUEST, 400, 'Log retention must be a non-negative number');
         }
         const backupRet = parseInt(backup_retention_days, 10);
         if (isNaN(backupRet) || backupRet < 0) {
-            return res.status(400).json({ error: 'Backup retention must be a non-negative number' });
+            return sendError(res, E.BAD_REQUEST, 400, 'Backup retention must be a non-negative number');
         }
         const javaPathStr = (java_path || 'java').trim();
         if (!javaPathStr) {
-            return res.status(400).json({ error: 'Java path cannot be empty' });
+            return sendError(res, E.SERVER_JAVA_PATH_INVALID, 400);
+        }
+        if (!/^(java|java\.exe|([A-Za-z]:)?[/\\][^\0]+[/\\]java(\.exe)?)$/.test(javaPathStr)) {
+            return sendError(res, E.SERVER_JAVA_PATH_INVALID, 400);
         }
 
         // 2. Check if the server is online and any process-impacting settings are changed
@@ -1045,16 +1022,14 @@ router.post('/:serverId/settings', authenticateToken, checkPermission('server.pr
         const isJavaChanged = server.java_path !== javaPathStr;
 
         if (isOnline && (isRamChanged || isPortChanged || isJavaChanged)) {
-            return res.status(400).json({
-                error: 'Stop the server before changing memory (RAM), port, or Java executable path.'
-            });
+            return sendError(res, E.SERVER_MUST_BE_STOPPED, 400);
         }
 
         // 3. Check if the new port is already in use by another server
         if (isPortChanged) {
             const conflict = await dbGet('SELECT id FROM servers WHERE port = ? AND id != ?', [portNum, serverId]);
             if (conflict) {
-                return res.status(400).json({ error: `Port ${portNum} is already in use by another server.` });
+                return sendError(res, E.SERVER_PORT_TAKEN, 409);
             }
         }
 
@@ -1111,7 +1086,7 @@ router.post('/:serverId/settings', authenticateToken, checkPermission('server.pr
         res.json({ message: 'Settings saved successfully' });
     } catch (e) {
         console.error(`[serverRoutes] Update settings error (Server: ${serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: e.message || 'Failed to save advanced settings' });
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 

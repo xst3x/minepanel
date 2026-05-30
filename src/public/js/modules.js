@@ -2137,9 +2137,9 @@ const globalUsers = {
 
                 el.innerHTML = `
                     <div class="col col-wide" data-label="Username"><strong>${u.username}</strong></div>
-                    <div class="col" data-label="Rank">${rankHtml}</div>
-                    <div class="col" style="display:flex;align-items:center" data-label="Status">${toggleHtml}</div>
-                    <div class="col" data-label="Created">${new Date(u.created_at).toLocaleDateString()}</div>
+                    <div class="col col-rank" data-label="Rank">${rankHtml}</div>
+                    <div class="col col-status" style="display:flex;align-items:center" data-label="Status">${toggleHtml}</div>
+                    <div class="col col-created" data-label="Created">${new Date(u.created_at).toLocaleDateString()}</div>
                     <div class="col actions" data-label="Actions">
                         ${actionsHtml}
                     </div>
@@ -2586,19 +2586,42 @@ document.getElementById('btn-rpa-confirm')?.addEventListener('click', async () =
 });
 
 // Global Ranks Management
+const RANK_ORDER = ['owner','manager','admin','helper','player'];
+function rankSortKey(name) {
+    const n = (name || '').toLowerCase();
+    const i = RANK_ORDER.indexOf(n);
+    return i === -1 ? 999 : i;
+}
+
 const globalRanks = {
     currentEditId: null,
+    _rankOrder: [], // persisted order from drag/drop
+
     async load() {
         const grid = document.getElementById('ranks-grid');
         grid.innerHTML = '<p class="text-muted">Loading ranks...</p>';
         try {
-            const data = await api.req('/ranks');
+            let data = await api.req('/ranks');
+            // apply saved order if exists
+            if (this._rankOrder.length) {
+                data.sort((a,b) => {
+                    const ia = this._rankOrder.indexOf(a.id);
+                    const ib = this._rankOrder.indexOf(b.id);
+                    if (ia === -1 && ib === -1) return rankSortKey(a.name) - rankSortKey(b.name);
+                    if (ia === -1) return 1;
+                    if (ib === -1) return -1;
+                    return ia - ib;
+                });
+            } else {
+                data.sort((a,b) => rankSortKey(a.name) - rankSortKey(b.name));
+            }
             grid.innerHTML = '';
             data.forEach(r => {
                 const el = document.createElement('div');
                 el.className = 'rank-card';
                 el.style.borderTopColor = r.color;
-                
+                el.style.setProperty('--rank-color', r.color);
+
                 const deleteBtn = r.is_builtin ? '' : `<button class="btn danger small" data-del-rank="${r.id}">Delete</button>`;
                 
                 // Calculate permissions counts
@@ -2864,6 +2887,70 @@ document.getElementById('btn-create-rank')?.addEventListener('click', () => glob
 document.getElementById('modal-rank-editor-close')?.addEventListener('click', () => ui.closeModals());
 document.getElementById('modal-rank-editor-cancel')?.addEventListener('click', () => ui.closeModals());
 
+// ── Reorder Ranks ─────────────────────────────────────────────────────────────
+document.getElementById('btn-reorder-ranks')?.addEventListener('click', async () => {
+    let data;
+    try { data = await api.req('/ranks'); } catch(e) { return ui.toast(e.message, 'error'); }
+
+    // apply current order
+    if (globalRanks._rankOrder.length) {
+        data.sort((a,b) => {
+            const ia = globalRanks._rankOrder.indexOf(a.id);
+            const ib = globalRanks._rankOrder.indexOf(b.id);
+            if (ia === -1 && ib === -1) return rankSortKey(a.name) - rankSortKey(b.name);
+            if (ia === -1) return 1; if (ib === -1) return -1;
+            return ia - ib;
+        });
+    } else {
+        data.sort((a,b) => rankSortKey(a.name) - rankSortKey(b.name));
+    }
+
+    const list = document.getElementById('reorder-ranks-list');
+    list.innerHTML = '';
+    let dragSrc = null;
+
+    data.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'reorder-rank-item';
+        item.draggable = true;
+        item.dataset.id = r.id;
+        item.innerHTML = `
+            <span class="reorder-handle"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><circle cx="9" cy="5" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="19" r="1" fill="currentColor"/><circle cx="15" cy="5" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="19" r="1" fill="currentColor"/></svg></span>
+            <span class="reorder-rank-dot" style="background:${r.color}"></span>
+            <span class="reorder-rank-name">${r.name}</span>
+            ${r.is_builtin ? '<span class="status-badge" style="font-size:0.6rem;padding:0.1rem 0.4rem">Built-in</span>' : ''}
+        `;
+        item.addEventListener('dragstart', () => { dragSrc = item; setTimeout(() => item.classList.add('dragging'), 0); });
+        item.addEventListener('dragend', () => item.classList.remove('dragging'));
+        item.addEventListener('dragover', e => { e.preventDefault(); item.classList.add('drag-over'); });
+        item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+        item.addEventListener('drop', e => {
+            e.preventDefault();
+            item.classList.remove('drag-over');
+            if (dragSrc && dragSrc !== item) {
+                const items = [...list.children];
+                const srcIdx = items.indexOf(dragSrc);
+                const dstIdx = items.indexOf(item);
+                if (srcIdx < dstIdx) list.insertBefore(dragSrc, item.nextSibling);
+                else list.insertBefore(dragSrc, item);
+            }
+        });
+        list.appendChild(item);
+    });
+
+    document.getElementById('btn-reorder-ranks-apply').onclick = () => {
+        globalRanks._rankOrder = [...list.children].map(el => Number(el.dataset.id));
+        globalRanks.load();
+        ui.closeModals();
+        ui.toast('Rank order updated', 'success');
+    };
+
+    ui.showModal('modal-reorder-ranks');
+});
+document.getElementById('modal-reorder-ranks-close')?.addEventListener('click', () => ui.closeModals());
+document.getElementById('modal-reorder-ranks-cancel')?.addEventListener('click', () => ui.closeModals());
+// ── End Reorder Ranks ─────────────────────────────────────────────────────────
+
 document.getElementById('btn-rank-save')?.addEventListener('click', async () => {
     const name = document.getElementById('re-name').value;
     const color = document.getElementById('re-color').value;
@@ -2890,6 +2977,8 @@ document.getElementById('btn-rank-save')?.addEventListener('click', async () => 
 
 // Panel Settings Controller
 const panelSettings = {
+    isSwitchingPort: false,
+    
     async load() {
         try {
             const s = await api.req('/system/settings');
@@ -2901,11 +2990,51 @@ const panelSettings = {
             document.getElementById('ps-default-ram').value = s.defaultRam;
             document.getElementById('ps-default-port').value = s.defaultPort;
             document.getElementById('ps-max-ram').value = s.maxRam;
+
+            // Invite token toggle
+            const requireToggle = document.getElementById('ps-require-invite-token');
+            if (requireToggle) {
+                requireToggle.checked = s.requireInviteTokenToCreateAccount !== false;
+                panelSettings._updateDefaultRankVisibility(requireToggle.checked);
+                requireToggle.onchange = () => panelSettings._updateDefaultRankVisibility(requireToggle.checked);
+            }
+
+            // Populate default rank dropdown from ranks API
+            await panelSettings._loadRanksDropdown(s.defaultRankId || null);
+
+            // Prefill current port from window.location
+            document.getElementById('ps-server-port').value = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
         } catch (e) {
             ui.toast('Failed to load settings: ' + e.message, 'error');
         }
     },
+
+    _updateDefaultRankVisibility(requireToken) {
+        const group = document.getElementById('ps-default-rank-group');
+        if (group) group.style.display = requireToken ? 'none' : '';
+    },
+
+    async _loadRanksDropdown(selectedRankId) {
+        const sel = document.getElementById('ps-default-rank');
+        if (!sel) return;
+        try {
+            const data = await api.req('/ranks');
+            const ranks = data.ranks || data || [];
+            sel.innerHTML = '<option value="">— No rank —</option>';
+            ranks.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = r.name;
+                if (selectedRankId && Number(r.id) === Number(selectedRankId)) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        } catch (e) {
+            // ranks load failure is non-critical
+        }
+    },
     async save() {
+        const defaultRankEl = document.getElementById('ps-default-rank');
+        const requireTokenEl = document.getElementById('ps-require-invite-token');
         const payload = {
             loginCooldown: +document.getElementById('ps-login-cooldown').value,
             maxAttempts: +document.getElementById('ps-login-attempts').value,
@@ -2914,7 +3043,9 @@ const panelSettings = {
             ftpEnabled: document.getElementById('ps-ftp-enabled').checked,
             defaultRam: +document.getElementById('ps-default-ram').value,
             defaultPort: +document.getElementById('ps-default-port').value,
-            maxRam: +document.getElementById('ps-max-ram').value
+            maxRam: +document.getElementById('ps-max-ram').value,
+            requireInviteTokenToCreateAccount: requireTokenEl ? requireTokenEl.checked : true,
+            defaultRankId: defaultRankEl && defaultRankEl.value ? Number(defaultRankEl.value) : null
         };
         try {
             const r = await api.req('/system/settings', {
@@ -2925,10 +3056,153 @@ const panelSettings = {
         } catch (e) {
             ui.toast('Failed to save settings: ' + e.message, 'error');
         }
+    },
+    async changePort() {
+        if (panelSettings.isSwitchingPort) return;
+        
+        const portInput = document.getElementById('ps-server-port');
+        const newPort = parseInt(portInput.value, 10);
+        
+        if (isNaN(newPort) || newPort < 1 || newPort > 65535) {
+            return ui.toast('Invalid port number. Must be between 1 and 65535.', 'error');
+        }
+        
+        const currentPort = parseInt(window.location.port || (window.location.protocol === 'https:' ? '443' : '80'), 10);
+        if (newPort === currentPort) {
+            return ui.toast('The new port is the same as the current port.', 'warning');
+        }
+        
+        if (!confirm(`Are you sure you want to change the server port to ${newPort}? This will temporarily disconnect your current session and restart the panel process.`)) {
+            return;
+        }
+        
+        panelSettings.isSwitchingPort = true;
+        
+        // Enter saving/loading state
+        const settingsView = document.getElementById('view-panel-settings');
+        const btnSaveGlobal = document.getElementById('btn-save-panel-settings');
+        const btnApplyPort = document.getElementById('btn-apply-server-port');
+        
+        settingsView.classList.add('loading-state');
+        if (btnSaveGlobal) btnSaveGlobal.disabled = true;
+        if (btnApplyPort) {
+            btnApplyPort.disabled = true;
+            btnApplyPort.innerText = 'Restarting...';
+        }
+        portInput.disabled = true;
+        
+        ui.toast('Applying changes and restarting server...', 'info');
+        
+        try {
+            await api.req('/system/change-port', {
+                method: 'POST',
+                body: JSON.stringify({ port: newPort })
+            });
+            
+            // Wait 1.5 seconds to let the server close socket and start the new process
+            setTimeout(() => {
+                panelSettings.pollNewPort(newPort, currentPort);
+            }, 1500);
+            
+        } catch (e) {
+            ui.toast('Failed to change port: ' + e.message, 'error');
+            panelSettings.isSwitchingPort = false;
+            settingsView.classList.remove('loading-state');
+            if (btnSaveGlobal) btnSaveGlobal.disabled = false;
+            if (btnApplyPort) {
+                btnApplyPort.disabled = false;
+                btnApplyPort.innerText = 'Apply Changes';
+            }
+            portInput.disabled = false;
+        }
+    },
+    
+    pollNewPort(newPort, oldPort) {
+        const protocol = window.location.protocol;
+        const hostname = window.location.hostname;
+        const testUrl = `${protocol}//${hostname}:${newPort}/api/system/health`;
+        
+        let attempt = 0;
+        let delay = 500;
+        
+        function check() {
+            attempt++;
+            fetch(testUrl, { cache: 'no-cache' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.booted === true) {
+                        ui.toast('Server is back online! Redirecting...', 'success');
+                        setTimeout(() => {
+                            window.location.href = `${protocol}//${hostname}:${newPort}${window.location.pathname}${window.location.search}${window.location.hash}`;
+                        }, 1000);
+                    } else {
+                        throw new Error('Not fully booted');
+                    }
+                })
+                .catch(() => {
+                    // Check max limits (total roughly 30 seconds)
+                    if (attempt > 30) {
+                        ui.toast('New port connection timed out. Reconnection failed.', 'error');
+                        panelSettings.pollOldPortFallback(oldPort);
+                        return;
+                    }
+                    
+                    // Smart dynamic retry delay backoff
+                    if (attempt <= 5) {
+                        delay = 500; // Fast retry first 2.5s
+                    } else if (attempt <= 20) {
+                        delay = 1000; // Standard 1s polling up to 17.5s
+                    } else {
+                        delay = 2000; // Backoff to 2s
+                    }
+                    
+                    setTimeout(check, delay);
+                });
+        }
+        
+        check();
+    },
+    
+    pollOldPortFallback(oldPort) {
+        const protocol = window.location.protocol;
+        const hostname = window.location.hostname;
+        const testUrl = `${protocol}//${hostname}:${oldPort}/api/system/health`;
+        
+        ui.toast('Checking if server recovered on original port...', 'info');
+        
+        fetch(testUrl, { cache: 'no-cache' })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.booted === true) {
+                    ui.toast('Reconnected to server on original port. Port change failed or was rolled back.', 'warning');
+                    
+                    // Re-enable settings UI
+                    const settingsView = document.getElementById('view-panel-settings');
+                    const btnSaveGlobal = document.getElementById('btn-save-panel-settings');
+                    const btnApplyPort = document.getElementById('btn-apply-server-port');
+                    const portInput = document.getElementById('ps-server-port');
+                    
+                    panelSettings.isSwitchingPort = false;
+                    settingsView.classList.remove('loading-state');
+                    if (btnSaveGlobal) btnSaveGlobal.disabled = false;
+                    if (btnApplyPort) {
+                        btnApplyPort.disabled = false;
+                        btnApplyPort.innerText = 'Apply Changes';
+                    }
+                    portInput.disabled = false;
+                    panelSettings.load();
+                } else {
+                    throw new Error('Not booted');
+                }
+            })
+            .catch(() => {
+                ui.toast('Server appears offline. Please check logs manually.', 'error');
+            });
     }
 };
 
 document.getElementById('btn-save-panel-settings')?.addEventListener('click', () => panelSettings.save());
+document.getElementById('btn-apply-server-port')?.addEventListener('click', () => panelSettings.changePort());
 
 
 // ── Docs Controller ───────────────────────────────────────────────────────────

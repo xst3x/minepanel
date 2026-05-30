@@ -9,6 +9,8 @@ const { ZipArchive } = require('archiver');
 const { authenticateToken } = require('../core/auth');
 const { checkPermission } = require('../core/permissions');
 const { getServer, getServerDir } = require('../core/serverHelper');
+const { validate } = require('../middleware/validation');
+const V = require('../middleware/validators');
 
 const router = express.Router({ mergeParams: true });
 
@@ -47,7 +49,13 @@ const upload = multer({
                 cb(null, safePath);
             } catch (e) { cb(e); }
         },
-        filename: (req, file, cb) => cb(null, file.originalname)
+        filename: (req, file, cb) => {
+            const safeName = path.basename(file.originalname).replace(/[^\w.\-]/g, '_');
+            if (!safeName || safeName === '.' || safeName === '..') {
+                return cb(new Error('Invalid filename'));
+            }
+            cb(null, safeName);
+        }
     }),
     limits: { fileSize: 100 * 1024 * 1024 }
 });
@@ -65,7 +73,12 @@ router.get('/list', authenticateToken, checkPermission('server.files.read'), asy
             return { name: item.name, isDirectory: item.isDirectory(), size: stats.size, modifiedAt: stats.mtime };
         }));
         res.json(items);
-    } catch (e) { res.status(403).json({ error: e.message }); }
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) {
+            return res.status(403).json({ code: 'FILE_ACCESS_DENIED', error: e.message });
+        }
+        res.status(403).json({ error: e.message });
+    }
 });
 
 // Read file
@@ -80,26 +93,34 @@ router.get('/read', authenticateToken, checkPermission('server.files.read'), asy
         if (stats.size > 5 * 1024 * 1024) return res.status(400).json({ error: 'File too large. Use download.' });
         const content = await fsp.readFile(safePath, 'utf8');
         res.json({ content });
-    } catch (e) { res.status(403).json({ error: e.message }); }
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) {
+            return res.status(403).json({ code: 'FILE_ACCESS_DENIED', error: e.message });
+        }
+        res.status(403).json({ error: e.message });
+    }
 });
 
 // Write file
-router.post('/write', authenticateToken, checkPermission('server.files.write'), async (req, res) => {
+router.post('/write', authenticateToken, checkPermission('server.files.write'), validate(V.fileWrite), async (req, res) => {
     const { path: filePath, content } = req.body;
-    if (!filePath || content === undefined) return res.status(400).json({ error: 'Path and content required' });
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return res.status(404).json({ error: 'Server not found' });
         const safePath = getSafePath(getServerDir(server), filePath);
         await fsp.writeFile(safePath, content, 'utf8');
-        res.json({ message: 'File saved' });
-    } catch (e) { res.status(403).json({ error: e.message }); }
+        res.json({ message: 'File saved successfully' });
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) {
+            return res.status(403).json({ code: 'FILE_ACCESS_DENIED', error: e.message });
+        }
+        res.status(403).json({ error: e.message });
+    }
 });
 
 // Rename
-router.post('/rename', authenticateToken, checkPermission('server.files.write'), async (req, res) => {
+router.post('/rename', authenticateToken, checkPermission('server.files.write'), validate(V.fileRenameBody), async (req, res) => {
     const { oldPath, newPath } = req.body;
-    if (!oldPath || !newPath) return res.status(400).json({ error: 'Old and new path required' });
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return res.status(404).json({ error: 'Server not found' });
@@ -110,8 +131,7 @@ router.post('/rename', authenticateToken, checkPermission('server.files.write'),
 });
 
 // Delete
-router.post('/delete', authenticateToken, checkPermission('server.files.delete'), async (req, res) => {
-    if (!req.body.path) return res.status(400).json({ error: 'Path required' });
+router.post('/delete', authenticateToken, checkPermission('server.files.delete'), validate(V.fileDelete), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return res.status(404).json({ error: 'Server not found' });
@@ -122,8 +142,7 @@ router.post('/delete', authenticateToken, checkPermission('server.files.delete')
 });
 
 // Create folder
-router.post('/mkdir', authenticateToken, checkPermission('server.files.write'), async (req, res) => {
-    if (!req.body.path) return res.status(400).json({ error: 'Path required' });
+router.post('/mkdir', authenticateToken, checkPermission('server.files.write'), validate(V.mkdirSimple), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return res.status(404).json({ error: 'Server not found' });
@@ -133,8 +152,7 @@ router.post('/mkdir', authenticateToken, checkPermission('server.files.write'), 
 });
 
 // Create file
-router.post('/create', authenticateToken, checkPermission('server.files.write'), async (req, res) => {
-    if (!req.body.path) return res.status(400).json({ error: 'Path required' });
+router.post('/create', authenticateToken, checkPermission('server.files.write'), validate(V.fileCreate), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return res.status(404).json({ error: 'Server not found' });

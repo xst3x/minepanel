@@ -5,6 +5,8 @@ const path = require('path');
 const { authenticateToken } = require('../core/auth');
 const { dbGet } = require('../db/database');
 const { hasPermission } = require('../core/permissions');
+const { validate } = require('../middleware/validation');
+const V = require('../middleware/validators');
 const { initFtpServer, stopFtpServer, isFtpRunning } = require('../core/ftpServer');
 
 const router = express.Router();
@@ -20,7 +22,8 @@ const getSettings = async () => {
         defaultRam: 2048,
         defaultPort: 25565,
         maxRam: 16384,
-        requireInviteTokenToCreateAccount: true
+        requireInviteTokenToCreateAccount: true,
+        defaultRankId: null
     };
     try {
         if (await fsp.access(SETTINGS_FILE).then(() => true).catch(() => false)) {
@@ -150,7 +153,7 @@ router.get('/settings', authenticateToken, async (req, res) => {
     }
 });
 
-router.post('/settings', authenticateToken, async (req, res) => {
+router.post('/settings', authenticateToken, validate(V.panelSettings), async (req, res) => {
     const userId = req.user.id;
     try {
         const isAllowed = await hasPermission(userId, null, 'panel.settings');
@@ -167,7 +170,13 @@ router.post('/settings', authenticateToken, async (req, res) => {
             ftpEnabled: payload.ftpEnabled !== undefined ? !!payload.ftpEnabled : current.ftpEnabled,
             defaultRam: Number(payload.defaultRam) || current.defaultRam,
             defaultPort: Number(payload.defaultPort) || current.defaultPort,
-            maxRam: Number(payload.maxRam) || current.maxRam
+            maxRam: Number(payload.maxRam) || current.maxRam,
+            requireInviteTokenToCreateAccount: payload.requireInviteTokenToCreateAccount !== undefined
+                ? !!payload.requireInviteTokenToCreateAccount
+                : current.requireInviteTokenToCreateAccount,
+            defaultRankId: payload.defaultRankId !== undefined
+                ? (payload.defaultRankId === null ? null : Number(payload.defaultRankId))
+                : current.defaultRankId
         };
         await saveSettings(updated);
         const ftpRunning = isFtpRunning();
@@ -201,6 +210,80 @@ router.get('/versions', authenticateToken, async (req, res) => {
     } catch (e) {
         console.error(`[systemRoutes] GET versions error (User: ${req.user.id}):`, e);
         res.status(500).json({ error: 'Failed to retrieve version options' });
+    }
+});
+
+// Lightweight health check endpoint (unauthenticated for reconnect polling)
+router.get('/health', (req, res) => {
+    res.json({ status: 'ok', booted: true });
+});
+
+// Helper to check if a port is free on the host
+function checkPortFree(port) {
+    const net = require('net');
+    return new Promise((resolve) => {
+        const server = net.createServer();
+        server.once('error', (err) => {
+            resolve(false); // Any error (EADDRINUSE, EACCES) means the port is not available
+        });
+        server.once('listening', () => {
+            server.close(() => {
+                resolve(true);
+            });
+        });
+        server.listen(port);
+    });
+}
+
+// POST change port endpoint
+router.post('/change-port', authenticateToken, validate(V.changePort), async (req, res) => {
+    const userId = req.user.id;
+    try {
+        const isAllowed = await hasPermission(userId, null, 'panel.settings');
+        if (!isAllowed) {
+            return res.status(403).json({ error: 'Forbidden: Missing panel.settings permission' });
+        }
+        
+        // Prevent concurrent port switches
+        if (global.isSwitchingPort) {
+            return res.status(409).json({ error: 'A port change and server restart is already in progress.' });
+        }
+        
+        const newPort = parseInt(req.body.port, 10);
+        
+        const currentPort = process.env.PORT ? parseInt(process.env.PORT, 10) : 8082;
+        if (newPort === currentPort) {
+            return res.status(400).json({ error: 'The new port must be different from the current port.' });
+        }
+        
+        // Validate if port is free
+        const isFree = await checkPortFree(newPort);
+        if (!isFree) {
+            return res.status(400).json({ error: `Port ${newPort} is already in use or restricted.` });
+        }
+        
+        // Lock backend switches
+        global.isSwitchingPort = true;
+        
+        // Save new port atomically to .env
+        const { updateEnvPort } = require('../core/utils/envHelper');
+        updateEnvPort(newPort);
+        
+        // Respond immediately to the frontend so it can start polling
+        res.json({ success: true, message: 'Server port updated successfully. Restarting...' });
+        
+        // Trigger graceful shutdown and launcher self-restart in the background after 500ms
+        setTimeout(() => {
+            if (global.changePortAndRestart) {
+                global.changePortAndRestart(newPort);
+            } else {
+                console.error('[systemRoutes] global.changePortAndRestart is not defined. Exiting process directly.');
+                process.exit(100); // Fail-safe: exit with 100 so launcher restarts anyway
+            }
+        }, 500);
+    } catch (e) {
+        console.error(`[systemRoutes] POST change-port error (User: ${userId}):`, e);
+        res.status(500).json({ error: e.message || 'Failed to update server port' });
     }
 });
 

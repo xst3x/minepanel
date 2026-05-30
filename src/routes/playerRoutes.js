@@ -275,7 +275,7 @@ router.get('/:uuid', authenticateToken, checkPermission('server.players.read'), 
 
         const extractEffects = (effectsList) => {
             if (!effectsList || !effectsList.value || !effectsList.value.value) return [];
-            return e = effectsList.value.value.map(eff => {
+            return effectsList.value.value.map(eff => {
                 const rawId = (eff.id && eff.id.value !== undefined) ? eff.id.value : 
                               ((eff.Id && eff.Id.value !== undefined) ? eff.Id.value : -1);
                 
@@ -398,11 +398,17 @@ router.get('/:uuid', authenticateToken, checkPermission('server.players.read'), 
 router.post('/:uuid/command', authenticateToken, checkPermission('server.players.manage'), async (req, res) => {
     const { serverId, uuid } = req.params;
     const { action, value } = req.body;
-    const server = await getServer(serverId);
-    if (!server) return res.status(404).json({ error: 'Server not found' });
-    const serverDir = getServerDir(server);
-    const usercache = loadUsercache(serverDir);
-    const username = resolveUsername(usercache, uuid);
+    let server, serverDir, username;
+    try {
+        server = await getServer(serverId);
+        if (!server) return res.status(404).json({ error: 'Server not found' });
+        serverDir = getServerDir(server);
+        const usercache = loadUsercache(serverDir);
+        username = resolveUsername(usercache, uuid);
+    } catch (e) {
+        console.error(`[playerRoutes] command pre-check error (Server: ${serverId}, Player: ${uuid}):`, e);
+        return res.status(500).json({ error: 'Failed to load server data' });
+    }
     if (!username) return res.status(400).json({ error: 'Cannot resolve username' });
 
     const allowedActions = ['kick', 'ban', 'pardon', 'op', 'deop', 'gamemode', 'xp', 'give', 'effect', 'clear', 'wipe', 'teleport', 'heal', 'kill'];
