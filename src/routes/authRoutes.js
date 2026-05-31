@@ -1,10 +1,12 @@
 const express = require('express');
 const { db, dbGet, dbRun, dbAll } = require('../db/database');
-const { hashPassword, comparePassword, generateToken } = require('../core/auth');
+const { hashPassword, comparePassword, generateToken, invalidateToken } = require('../core/auth');
 const { E, sendError } = require('../core/errors');
 const { validate } = require('../middleware/validation');
 const V = require('../middleware/validators');
 const rateLimit = require('express-rate-limit');
+const { validatePasswordStrength } = require('../core/utils/passwordValidator');
+const logger = require('../core/utils/logger');
 const fs = require('fs');
 const path = require('path');
 
@@ -59,7 +61,7 @@ router.post('/login', loginLimiter, validate(V.login), async (req, res) => {
         const token = generateToken(user);
         res.json({ token, userId: user.id, username: user.username, role: user.role });
     } catch (err) {
-        console.error('[authRoutes] Login error:', err);
+        logger.error('[authRoutes] Login error:', err);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -69,9 +71,15 @@ router.post('/register', validate(V.register), async (req, res) => {
     if (!username || !password || !confirmPassword) {
         return sendError(res, E.BAD_REQUEST, 400, 'Username, password, and confirm password are required');
     }
+
+    // Validate password strength
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.valid) {
+        return sendError(res, E.BAD_REQUEST, 400, passwordValidation.error);
+    }
+
     if (username.length < 3) return sendError(res, E.USER_USERNAME_TOO_SHORT, 400);
     if (username.length > 32) return sendError(res, E.USER_USERNAME_TOO_LONG, 400);
-    if (password.length < 8) return sendError(res, E.USER_PASSWORD_TOO_SHORT, 400);
     if (password !== confirmPassword) return sendError(res, E.BAD_REQUEST, 400, "Passwords don't match");
 
     try {
@@ -161,6 +169,13 @@ router.post('/register', validate(V.register), async (req, res) => {
 });
 
 router.post('/logout', (req, res) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token) {
+        invalidateToken(token);
+    }
+
     res.json({ success: true, message: 'Logged out successfully' });
 });
 

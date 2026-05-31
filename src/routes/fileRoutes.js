@@ -11,6 +11,8 @@ const { checkPermission } = require('../core/permissions');
 const { getServer, getServerDir } = require('../core/serverHelper');
 const { validate } = require('../middleware/validation');
 const V = require('../middleware/validators');
+const { E, sendError } = require('../core/errors');
+const logger = require('../core/utils/logger');
 
 const router = express.Router({ mergeParams: true });
 
@@ -22,9 +24,7 @@ setInterval(() => {
     const now = Date.now();
     for (const [token, entry] of _dlTokens) {
         if (entry.expires < now) {
-            if (entry.deleteAfter) {
-                fsp.unlink(entry.file).catch(() => {});
-            }
+            if (entry.deleteAfter) fsp.unlink(entry.file).catch(() => {});
             _dlTokens.delete(token);
         }
     }
@@ -64,9 +64,9 @@ const upload = multer({
 router.get('/list', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const safePath = getSafePath(getServerDir(server), req.query.path || '');
-        try { await fsp.access(safePath); } catch { return res.status(404).json({ error: 'Directory not found' }); }
+        try { await fsp.access(safePath); } catch { return sendError(res, E.DIRECTORY_NOT_FOUND, 404); }
         const itemsRaw = await fsp.readdir(safePath, { withFileTypes: true });
         const items = await Promise.all(itemsRaw.map(async item => {
             const stats = await fsp.stat(path.join(safePath, item.name));
@@ -75,29 +75,31 @@ router.get('/list', authenticateToken, checkPermission('server.files.read'), asy
         res.json(items);
     } catch (e) {
         if (e.message && e.message.includes('Access denied')) {
-            return res.status(403).json({ code: 'FILE_ACCESS_DENIED', error: e.message });
+            return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
-        res.status(403).json({ error: e.message });
+        logger.error(`[fileRoutes] list error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 // Read file
 router.get('/read', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
-    if (!req.query.path) return res.status(400).json({ error: 'Path required' });
+    if (!req.query.path) return sendError(res, E.FILE_PATH_REQUIRED, 400);
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const safePath = getSafePath(getServerDir(server), req.query.path);
-        try { await fsp.access(safePath); } catch { return res.status(404).json({ error: 'File not found' }); }
+        try { await fsp.access(safePath); } catch { return sendError(res, E.FILE_NOT_FOUND, 404); }
         const stats = await fsp.stat(safePath);
-        if (stats.size > 5 * 1024 * 1024) return res.status(400).json({ error: 'File too large. Use download.' });
+        if (stats.size > 5 * 1024 * 1024) return sendError(res, E.FILE_TOO_LARGE, 400);
         const content = await fsp.readFile(safePath, 'utf8');
         res.json({ content });
     } catch (e) {
         if (e.message && e.message.includes('Access denied')) {
-            return res.status(403).json({ code: 'FILE_ACCESS_DENIED', error: e.message });
+            return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
-        res.status(403).json({ error: e.message });
+        logger.error(`[fileRoutes] read error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -106,15 +108,16 @@ router.post('/write', authenticateToken, checkPermission('server.files.write'), 
     const { path: filePath, content } = req.body;
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const safePath = getSafePath(getServerDir(server), filePath);
         await fsp.writeFile(safePath, content, 'utf8');
         res.json({ message: 'File saved successfully' });
     } catch (e) {
         if (e.message && e.message.includes('Access denied')) {
-            return res.status(403).json({ code: 'FILE_ACCESS_DENIED', error: e.message });
+            return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
-        res.status(403).json({ error: e.message });
+        logger.error(`[fileRoutes] write error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -123,67 +126,85 @@ router.post('/rename', authenticateToken, checkPermission('server.files.write'),
     const { oldPath, newPath } = req.body;
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const serverDir = getServerDir(server);
         await fsp.rename(getSafePath(serverDir, oldPath), getSafePath(serverDir, newPath));
         res.json({ message: 'Renamed successfully' });
-    } catch (e) { res.status(403).json({ error: e.message }); }
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) {
+            return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        }
+        logger.error(`[fileRoutes] rename error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
 });
 
 // Delete
 router.post('/delete', authenticateToken, checkPermission('server.files.delete'), validate(V.fileDelete), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const safePath = getSafePath(getServerDir(server), req.body.path);
         await fsp.rm(safePath, { recursive: true, force: true });
         res.json({ message: 'Deleted successfully' });
-    } catch (e) { res.status(403).json({ error: e.message }); }
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) {
+            return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        }
+        logger.error(`[fileRoutes] delete error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
 });
 
 // Create folder
 router.post('/mkdir', authenticateToken, checkPermission('server.files.write'), validate(V.mkdirSimple), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         await fsp.mkdir(getSafePath(getServerDir(server), req.body.path), { recursive: true });
         res.json({ message: 'Folder created' });
-    } catch (e) { res.status(403).json({ error: e.message }); }
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) {
+            return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        }
+        logger.error(`[fileRoutes] mkdir error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
 });
 
 // Create file
 router.post('/create', authenticateToken, checkPermission('server.files.write'), validate(V.fileCreate), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const safePath = getSafePath(getServerDir(server), req.body.path);
-        try { await fsp.access(safePath); return res.status(409).json({ error: 'File already exists' }); } catch {}
+        try { await fsp.access(safePath); return sendError(res, E.FILE_ALREADY_EXISTS, 409); } catch {}
         await fsp.mkdir(path.dirname(safePath), { recursive: true });
         await fsp.writeFile(safePath, '', 'utf8');
         res.json({ message: 'File created' });
-    } catch (e) { res.status(403).json({ error: e.message }); }
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) {
+            return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        }
+        logger.error(`[fileRoutes] create error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
 });
 
 // ── Download ──────────────────────────────────────────────────────────────────
-// For plain files  → streams the file directly (unchanged behaviour).
-// For directories  → zips into a temp file, returns a one-time token URL that
-//                    the frontend opens in a new tab; the temp file is deleted
-//                    immediately after the browser has downloaded it.
 router.get('/download', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
-    if (!req.query.path) return res.status(400).json({ error: 'Path required' });
+    if (!req.query.path) return sendError(res, E.FILE_PATH_REQUIRED, 400);
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const safePath = getSafePath(getServerDir(server), req.query.path);
-        try { await fsp.access(safePath); } catch { return res.status(404).json({ error: 'Not found' }); }
+        try { await fsp.access(safePath); } catch { return sendError(res, E.FILE_NOT_FOUND, 404); }
         const stats = await fsp.stat(safePath);
 
         if (!stats.isDirectory()) {
-            // Plain file — stream directly
             return res.download(safePath);
         }
 
-        // ── Folder: build temp zip then issue a one-time token ──────────────
         const folderName = path.basename(safePath);
         const tmpFile = path.join(os.tmpdir(), `minepanel-dl-${crypto.randomBytes(8).toString('hex')}.zip`);
 
@@ -197,7 +218,6 @@ router.get('/download', authenticateToken, checkPermission('server.files.read'),
             archive.finalize();
         });
 
-        // Mint a single-use token valid for 5 minutes
         const token = crypto.randomBytes(24).toString('hex');
         _dlTokens.set(token, {
             file: tmpFile,
@@ -206,12 +226,10 @@ router.get('/download', authenticateToken, checkPermission('server.files.read'),
             expires: Date.now() + 5 * 60 * 1000
         });
 
-        // Return the token URL — frontend will window.open() it
         res.json({ downloadUrl: `/api/files/dl/${token}` });
-
     } catch (e) {
-        console.error('[fileRoutes] download error:', e);
-        res.status(500).json({ error: e.message });
+        logger.error('[fileRoutes] download error:', e);
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message);
     }
 });
 
@@ -220,33 +238,26 @@ router.get('/dl/:token', async (req, res) => {
     const entry = _dlTokens.get(req.params.token);
     if (!entry || entry.expires < Date.now()) {
         _dlTokens.delete(req.params.token);
-        return res.status(410).json({ error: 'Download link expired or already used' });
+        return sendError(res, E.NOT_FOUND, 410);
     }
 
-    // Consume token immediately so it can only be used once
     _dlTokens.delete(req.params.token);
 
     try {
         await fsp.access(entry.file);
     } catch {
-        return res.status(404).json({ error: 'Temp file not found' });
+        return sendError(res, E.FILE_NOT_FOUND, 404);
     }
 
     res.download(entry.file, entry.name, err => {
-        // Delete temp file after transfer completes (or fails)
-        if (entry.deleteAfter) {
-            fsp.unlink(entry.file).catch(() => {});
-        }
-        if (err && !res.headersSent) {
-            res.status(500).json({ error: 'Download failed' });
-        }
+        if (entry.deleteAfter) fsp.unlink(entry.file).catch(() => {});
+        if (err && !res.headersSent) sendError(res, E.INTERNAL_ERROR, 500);
     });
 });
-// ── End Download ──────────────────────────────────────────────────────────────
 
 // Upload
 router.post('/upload', authenticateToken, checkPermission('server.files.write'), upload.single('file'), (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No file uploaded');
     res.json({ message: 'File uploaded', filename: req.file.originalname });
 });
 

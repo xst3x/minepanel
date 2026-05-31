@@ -2,8 +2,10 @@ const express = require('express');
 const { dbRun, dbGet, dbAll } = require('../db/database');
 const { authenticateToken } = require('../core/auth');
 const { checkGlobalPermission, AVAILABLE_PERMISSIONS } = require('../core/permissions');
+const { E, sendError } = require('../core/errors');
 const { validate } = require('../middleware/validation');
 const V = require('../middleware/validators');
+const logger = require('../core/utils/logger');
 
 const router = express.Router();
 
@@ -13,22 +15,14 @@ router.get('/', authenticateToken, async (req, res) => {
         const ranks = await dbAll('SELECT * FROM ranks ORDER BY is_builtin DESC, name ASC');
         res.json(ranks.map(r => {
             let parsedPerms = {};
-            try {
-                parsedPerms = JSON.parse(r.permissions);
-            } catch(e) {}
+            try { parsedPerms = JSON.parse(r.permissions); } catch(e) {}
             let parsedGlobal = [];
-            try {
-                parsedGlobal = JSON.parse(r.global_permissions || '[]');
-            } catch(e) {}
-            return {
-                ...r,
-                permissions: parsedPerms,
-                global_permissions: parsedGlobal
-            };
+            try { parsedGlobal = JSON.parse(r.global_permissions || '[]'); } catch(e) {}
+            return { ...r, permissions: parsedPerms, global_permissions: parsedGlobal };
         }));
     } catch (e) {
-        console.error(`[rankRoutes] List ranks error (User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Database error' });
+        logger.error(`[rankRoutes] List ranks error (User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -41,12 +35,8 @@ router.get('/permissions', authenticateToken, (req, res) => {
 router.post('/create', authenticateToken, checkGlobalPermission('account.manage'), validate(V.createRank), async (req, res) => {
     const { name, color } = req.body;
 
-    if (!name) {
-        return res.status(400).json({ error: 'Name required' });
-    }
-    if (name.length < 2 || name.length > 32) {
-        return res.status(400).json({ error: 'Name must be 2-32 characters' });
-    }
+    if (!name) return sendError(res, E.RANK_FIELDS_INVALID, 400);
+    if (name.length < 2 || name.length > 32) return sendError(res, E.BAD_REQUEST, 400, 'Name must be 2-32 characters');
 
     try {
         const result = await dbRun(
@@ -56,21 +46,21 @@ router.post('/create', authenticateToken, checkGlobalPermission('account.manage'
         res.json({ message: 'Rank created', rankId: result.lastID });
     } catch (e) {
         if (e.message && e.message.includes('UNIQUE')) {
-            return res.status(409).json({ error: 'Rank name already exists' });
+            return sendError(res, E.RANK_NAME_TAKEN, 409);
         }
-        console.error(`[rankRoutes] Create rank error (User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to create rank' });
+        logger.error(`[rankRoutes] Create rank error (User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
-// PUT update rank (New spec)
+// PUT update rank
 router.put('/:rankId', authenticateToken, checkGlobalPermission('account.manage'), validate(V.updateRank), async (req, res) => {
     const { rankId } = req.params;
     const { name, color, global, servers } = req.body;
 
     try {
         const rank = await dbGet('SELECT * FROM ranks WHERE id = ?', [rankId]);
-        if (!rank) return res.status(404).json({ error: 'Rank not found' });
+        if (!rank) return sendError(res, E.RANK_NOT_FOUND, 404);
 
         const nextName = rank.is_builtin ? rank.name : name;
 
@@ -80,12 +70,12 @@ router.put('/:rankId', authenticateToken, checkGlobalPermission('account.manage'
         );
         res.json({ message: 'Rank updated' });
     } catch (e) {
-        console.error(`[rankRoutes] Update rank PUT error (Rank: ${rankId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to update rank' });
+        logger.error(`[rankRoutes] Update rank PUT error (Rank: ${rankId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
-// Update a rank (legacy POST update endpoint, robust to support both formats)
+// Update a rank (legacy POST update endpoint)
 router.post('/:rankId/update', authenticateToken, checkGlobalPermission('account.manage'), async (req, res) => {
     const { rankId } = req.params;
     const { name, color, global, servers } = req.body;
@@ -95,7 +85,7 @@ router.post('/:rankId/update', authenticateToken, checkGlobalPermission('account
 
     try {
         const rank = await dbGet('SELECT * FROM ranks WHERE id = ?', [rankId]);
-        if (!rank) return res.status(404).json({ error: 'Rank not found' });
+        if (!rank) return sendError(res, E.RANK_NOT_FOUND, 404);
 
         const nextName = rank.is_builtin ? rank.name : (name || rank.name);
         const nextColor = color || rank.color;
@@ -106,8 +96,8 @@ router.post('/:rankId/update', authenticateToken, checkGlobalPermission('account
         );
         res.json({ message: 'Rank updated' });
     } catch (e) {
-        console.error(`[rankRoutes] Update rank POST error (Rank: ${rankId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to update rank' });
+        logger.error(`[rankRoutes] Update rank POST error (Rank: ${rankId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -116,18 +106,16 @@ router.post('/:rankId/delete', authenticateToken, checkGlobalPermission('account
     const { rankId } = req.params;
     try {
         const rank = await dbGet('SELECT * FROM ranks WHERE id = ?', [rankId]);
-        if (!rank) return res.status(404).json({ error: 'Rank not found' });
-        if (rank.is_builtin) return res.status(403).json({ error: 'Cannot delete built-in ranks' });
+        if (!rank) return sendError(res, E.RANK_NOT_FOUND, 404);
+        if (rank.is_builtin) return sendError(res, E.RANK_BUILTIN_PROTECTED, 403);
 
-        // Update users having this rank globally to null
         await dbRun('UPDATE users SET rank_id = NULL WHERE rank_id = ?', [rankId]);
-
         await dbRun('DELETE FROM user_server_ranks WHERE rank_id = ?', [rankId]);
         await dbRun('DELETE FROM ranks WHERE id = ?', [rankId]);
         res.json({ message: 'Rank deleted' });
     } catch (e) {
-        console.error(`[rankRoutes] Delete rank error (Rank: ${rankId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to delete rank' });
+        logger.error(`[rankRoutes] Delete rank error (Rank: ${rankId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 

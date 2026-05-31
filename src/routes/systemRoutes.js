@@ -1,13 +1,16 @@
 const express = require('express');
 const os = require('os');
+const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
 const { authenticateToken } = require('../core/auth');
 const { dbGet } = require('../db/database');
 const { hasPermission } = require('../core/permissions');
+const { E, sendError } = require('../core/errors');
 const { validate } = require('../middleware/validation');
 const V = require('../middleware/validators');
 const { initFtpServer, stopFtpServer, isFtpRunning } = require('../core/ftpServer');
+const logger = require('../core/utils/logger');
 
 const router = express.Router();
 const SETTINGS_FILE = path.resolve(__dirname, '../../settings.json');
@@ -44,7 +47,7 @@ let cachedCpuPercent = 0;
 setInterval(() => {
     const cpus = os.cpus();
     if (!cpus || cpus.length === 0) return;
-    
+
     let user = 0, system = 0, idle = 0;
     cpus.forEach(c => {
         user += c.times.user;
@@ -54,13 +57,11 @@ setInterval(() => {
 
     const total = user + system + idle;
     const lastTotal = lastCpuUsage.user + lastCpuUsage.system + lastCpuUsage.idle;
-    
+
     if (lastTotal > 0) {
         const diffTotal = total - lastTotal;
         const diffIdle = idle - lastCpuUsage.idle;
-        if (diffTotal > 0) {
-            cachedCpuPercent = 100 * (1 - diffIdle / diffTotal);
-        }
+        if (diffTotal > 0) cachedCpuPercent = 100 * (1 - diffIdle / diffTotal);
     }
 
     lastCpuUsage = { user, system, idle };
@@ -78,10 +79,7 @@ function getCpuTemperature() {
                 const lines = stdout.split('\n').map(l => l.trim()).filter(Boolean);
                 if (lines.length > 1) {
                     const tempRaw = parseInt(lines[1], 10);
-                    if (!isNaN(tempRaw)) {
-                        const tempC = (tempRaw - 2732) / 10;
-                        return resolve(tempC);
-                    }
+                    if (!isNaN(tempRaw)) return resolve((tempRaw - 2732) / 10);
                 }
                 resolve(null);
             });
@@ -89,9 +87,7 @@ function getCpuTemperature() {
             fs.readFile('/sys/class/thermal/thermal_zone0/temp', 'utf8', (err, data) => {
                 if (err) return resolve(null);
                 const tempRaw = parseInt(data.trim(), 10);
-                if (!isNaN(tempRaw)) {
-                    return resolve(tempRaw / 1000);
-                }
+                if (!isNaN(tempRaw)) return resolve(tempRaw / 1000);
                 resolve(null);
             });
         } else if (platform === 'darwin') {
@@ -115,16 +111,10 @@ router.get('/metrics', authenticateToken, async (req, res) => {
         const totalMem = os.totalmem();
         const freeMem = os.freemem();
         const usedMem = totalMem - freeMem;
-        
         const cpuPercent = cachedCpuPercent || 0;
         const temp = await getCpuTemperature();
-        
         res.json({
-            cpu: {
-                usage: cpuPercent,
-                count: os.cpus().length,
-                temp
-            },
+            cpu: { usage: cpuPercent, count: os.cpus().length, temp },
             memory: {
                 totalMb: Math.round(totalMem / 1024 / 1024),
                 usedMb: Math.round(usedMem / 1024 / 1024),
@@ -134,22 +124,20 @@ router.get('/metrics', authenticateToken, async (req, res) => {
             uptime: os.uptime()
         });
     } catch (e) {
-        console.error('System metrics error:', e);
-        res.status(500).json({ error: 'Failed to retrieve system metrics' });
+        logger.error('[systemRoutes] Metrics error:', e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 router.get('/settings', authenticateToken, async (req, res) => {
     try {
         const isAllowed = await hasPermission(req.user.id, null, 'panel.settings');
-        if (!isAllowed) {
-            return res.status(403).json({ error: 'Forbidden: Missing panel.settings permission' });
-        }
+        if (!isAllowed) return sendError(res, E.FORBIDDEN, 403);
         const settings = await getSettings();
         res.json(settings);
     } catch (e) {
-        console.error(`[systemRoutes] GET settings error (User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Database error' });
+        logger.error(`[systemRoutes] GET settings error (User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -157,9 +145,7 @@ router.post('/settings', authenticateToken, validate(V.panelSettings), async (re
     const userId = req.user.id;
     try {
         const isAllowed = await hasPermission(userId, null, 'panel.settings');
-        if (!isAllowed) {
-            return res.status(403).json({ error: 'Forbidden: Missing panel.settings permission' });
-        }
+        if (!isAllowed) return sendError(res, E.FORBIDDEN, 403);
         const payload = req.body;
         const current = await getSettings();
         const updated = {
@@ -182,108 +168,89 @@ router.post('/settings', authenticateToken, validate(V.panelSettings), async (re
         const ftpRunning = isFtpRunning();
         if (updated.ftpEnabled === true) {
             if (!ftpRunning) {
-                try {
-                    await initFtpServer(updated.ftpPort);
-                } catch (ftpErr) {
-                    console.error('[FTP] Failed to start FTP service:', ftpErr.message);
+                try { await initFtpServer(updated.ftpPort); } catch (ftpErr) {
+                    logger.error('[FTP] Failed to start FTP service:', ftpErr);
                 }
             }
         } else {
-            if (ftpRunning) {
-                stopFtpServer();
-            }
+            if (ftpRunning) stopFtpServer();
         }
         res.json({ message: 'Panel settings updated successfully', settings: updated });
     } catch (e) {
-        console.error(`[systemRoutes] POST settings error (User: ${userId}):`, e);
-        res.status(500).json({ error: e.message || 'Failed to save settings' });
+        logger.error(`[systemRoutes] POST settings error (User: ${userId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 
 router.get('/versions', authenticateToken, async (req, res) => {
     try {
         const versionManager = require('../core/versionManager');
-        if (req.query.refresh === 'true') {
-            await versionManager.updateVersions(true);
-        }
+        if (req.query.refresh === 'true') await versionManager.updateVersions(true);
         res.json(versionManager.getVersions());
     } catch (e) {
-        console.error(`[systemRoutes] GET versions error (User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to retrieve version options' });
+        logger.error(`[systemRoutes] GET versions error (User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
-// Lightweight health check endpoint (unauthenticated for reconnect polling)
+// Lightweight health check (unauthenticated)
 router.get('/health', (req, res) => {
     res.json({ status: 'ok', booted: true });
 });
 
-// Helper to check if a port is free on the host
 function checkPortFree(port) {
     const net = require('net');
     return new Promise((resolve) => {
         const server = net.createServer();
-        server.once('error', (err) => {
-            resolve(false); // Any error (EADDRINUSE, EACCES) means the port is not available
-        });
-        server.once('listening', () => {
-            server.close(() => {
-                resolve(true);
-            });
-        });
+        server.once('error', () => resolve(false));
+        server.once('listening', () => { server.close(() => resolve(true)); });
         server.listen(port);
     });
 }
 
-// POST change port endpoint
 router.post('/change-port', authenticateToken, validate(V.changePort), async (req, res) => {
     const userId = req.user.id;
     try {
         const isAllowed = await hasPermission(userId, null, 'panel.settings');
-        if (!isAllowed) {
-            return res.status(403).json({ error: 'Forbidden: Missing panel.settings permission' });
-        }
-        
-        // Prevent concurrent port switches
+        if (!isAllowed) return sendError(res, E.FORBIDDEN, 403);
+
         if (global.isSwitchingPort) {
-            return res.status(409).json({ error: 'A port change and server restart is already in progress.' });
+            return sendError(res, E.SYSTEM_PORT_SWITCH_IN_PROGRESS, 409);
         }
-        
+
         const newPort = parseInt(req.body.port, 10);
-        
+        if (isNaN(newPort) || newPort < 1 || newPort > 65535) {
+            return sendError(res, E.SYSTEM_PORT_INVALID, 400);
+        }
+
         const currentPort = process.env.PORT ? parseInt(process.env.PORT, 10) : 8082;
         if (newPort === currentPort) {
-            return res.status(400).json({ error: 'The new port must be different from the current port.' });
+            return sendError(res, E.SYSTEM_PORT_SAME, 400);
         }
-        
-        // Validate if port is free
+
         const isFree = await checkPortFree(newPort);
         if (!isFree) {
-            return res.status(400).json({ error: `Port ${newPort} is already in use or restricted.` });
+            return sendError(res, E.SYSTEM_PORT_IN_USE, 400);
         }
-        
-        // Lock backend switches
+
         global.isSwitchingPort = true;
-        
-        // Save new port atomically to .env
+
         const { updateEnvPort } = require('../core/utils/envHelper');
         updateEnvPort(newPort);
-        
-        // Respond immediately to the frontend so it can start polling
+
         res.json({ success: true, message: 'Server port updated successfully. Restarting...' });
-        
-        // Trigger graceful shutdown and launcher self-restart in the background after 500ms
+
         setTimeout(() => {
             if (global.changePortAndRestart) {
                 global.changePortAndRestart(newPort);
             } else {
-                console.error('[systemRoutes] global.changePortAndRestart is not defined. Exiting process directly.');
-                process.exit(100); // Fail-safe: exit with 100 so launcher restarts anyway
+                logger.error('[systemRoutes] global.changePortAndRestart is not defined. Force exiting.');
+                process.exit(100);
             }
         }, 500);
     } catch (e) {
-        console.error(`[systemRoutes] POST change-port error (User: ${userId}):`, e);
-        res.status(500).json({ error: e.message || 'Failed to update server port' });
+        logger.error(`[systemRoutes] POST change-port error (User: ${userId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 

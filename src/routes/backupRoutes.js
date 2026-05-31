@@ -7,13 +7,15 @@ const { dbAll } = require('../db/database');
 const { authenticateToken } = require('../core/auth');
 const { checkPermission } = require('../core/permissions');
 const { getServer, getServerDir, SERVERS_DIR, createBackup } = require('../core/serverHelper');
+const { E, sendError } = require('../core/errors');
+const logger = require('../core/utils/logger');
 
 const router = express.Router({ mergeParams: true });
 
 router.get('/', authenticateToken, checkPermission('server.backups.read'), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const backupsDir = path.join(getServerDir(server), 'backups');
         if (!fs.existsSync(backupsDir)) return res.json([]);
         const files = fs.readdirSync(backupsDir).filter(f => f.endsWith('.zip')).map(f => {
@@ -22,86 +24,89 @@ router.get('/', authenticateToken, checkPermission('server.backups.read'), async
         }).sort((a, b) => b.date - a.date);
         res.json(files);
     } catch (e) {
-        console.error(`[backupRoutes] List error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to list backups' });
+        logger.error(`[backupRoutes] List error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 router.post('/create', authenticateToken, checkPermission('server.backups.create'), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const serverDir = getServerDir(server);
         const includes = req.body.includes || 'all';
         const result = await createBackup(serverDir, 'backup', includes);
         res.json({ message: 'Backup created', filename: result.filename, size: result.size });
     } catch (e) {
-        console.error(`[backupRoutes] Create error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to create backup' });
+        logger.error(`[backupRoutes] Create error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.BACKUP_FAILED, 500);
     }
 });
 
 router.get('/:filename/download', authenticateToken, checkPermission('server.backups.read'), async (req, res) => {
     const { filename } = req.params;
-    if (!filename.endsWith('.zip') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) return res.status(400).json({ error: 'Invalid filename' });
+    if (!filename.endsWith('.zip') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return sendError(res, E.BACKUP_INVALID_FILENAME, 400);
+    }
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const backupPath = path.join(getServerDir(server), 'backups', filename);
-        if (fs.existsSync(backupPath)) res.download(backupPath);
-        else res.status(404).json({ error: 'Backup not found' });
+        if (fs.existsSync(backupPath)) {
+            res.download(backupPath);
+        } else {
+            return sendError(res, E.BACKUP_NOT_FOUND, 404);
+        }
     } catch (e) {
-        console.error(`[backupRoutes] Download error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to download backup' });
+        logger.error(`[backupRoutes] Download error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 router.post('/:filename/delete', authenticateToken, checkPermission('server.backups.delete'), async (req, res) => {
     const { filename } = req.params;
-    if (!filename.endsWith('.zip') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) return res.status(400).json({ error: 'Invalid filename' });
+    if (!filename.endsWith('.zip') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return sendError(res, E.BACKUP_INVALID_FILENAME, 400);
+    }
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const backupPath = path.join(getServerDir(server), 'backups', filename);
-        if (fs.existsSync(backupPath)) { fs.unlinkSync(backupPath); res.json({ message: 'Backup deleted' }); }
-        else res.status(404).json({ error: 'Backup not found' });
+        if (fs.existsSync(backupPath)) {
+            fs.unlinkSync(backupPath);
+            res.json({ message: 'Backup deleted' });
+        } else {
+            return sendError(res, E.BACKUP_NOT_FOUND, 404);
+        }
     } catch (e) {
-        console.error(`[backupRoutes] Delete error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to delete backup' });
+        logger.error(`[backupRoutes] Delete error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 router.post('/:filename/restore', authenticateToken, checkPermission('server.backups.restore'), async (req, res) => {
     const { filename } = req.params;
-    if (!filename.endsWith('.zip') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) return res.status(400).json({ error: 'Invalid filename' });
+    if (!filename.endsWith('.zip') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return sendError(res, E.BACKUP_INVALID_FILENAME, 400);
+    }
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const processManager = require('../core/processManager');
         if (processManager.getStatus(server.id.toString()) === 'online') {
-            return res.status(400).json({ error: 'Stop the server before restoring a backup' });
+            return sendError(res, E.SERVER_MUST_BE_STOPPED, 400);
         }
 
         const serverDir = getServerDir(server);
         const backupPath = path.join(serverDir, 'backups', filename);
-        if (!fs.existsSync(backupPath)) return res.status(404).json({ error: 'Backup not found' });
+        if (!fs.existsSync(backupPath)) return sendError(res, E.BACKUP_NOT_FOUND, 404);
 
         const unzipper = require('unzipper');
 
         await new Promise((resolvePromise, rejectPromise) => {
             let done = false;
-            const handleSuccess = () => {
-                if (!done) {
-                    done = true;
-                    resolvePromise();
-                }
-            };
-            const handleError = (err) => {
-                if (!done) {
-                    done = true;
-                    rejectPromise(err);
-                }
-            };
+            const handleSuccess = () => { if (!done) { done = true; resolvePromise(); } };
+            const handleError = (err) => { if (!done) { done = true; rejectPromise(err); } };
 
             fs.createReadStream(backupPath)
                 .pipe(unzipper.Extract({ path: serverDir }))
@@ -111,8 +116,8 @@ router.post('/:filename/restore', authenticateToken, checkPermission('server.bac
         });
         res.json({ message: `Backup ${filename} restored. Restart server to apply.` });
     } catch (e) {
-        console.error(`[backupRoutes] Restore error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to restore backup' });
+        logger.error(`[backupRoutes] Restore error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -135,16 +140,15 @@ const runScheduledBackups = () => {
 
             try {
                 await createBackup(serverDir, 'auto', s.backup_includes || 'all');
-                console.log(`[Backup] Auto backup completed for server ${s.id}`);
+                logger.info(`[Backup] Auto backup completed for server ${s.id}`);
             } catch (err) {
-                console.error(`[Backup] Auto backup failed for server ${s.id}:`, err);
+                logger.error(`[Backup] Auto backup failed for server ${s.id}:`, err);
             }
         }
     }).catch(err => {
-        console.error('[Backup] Failed to fetch servers for scheduled backup:', err);
+        logger.error('[Backup] Failed to fetch servers for scheduled backup:', err);
     });
 
-    // Run retention cleanups alongside scheduled backups
     runRetentionCleanups();
 };
 
@@ -155,7 +159,7 @@ const runRetentionCleanups = () => {
             const serverDir = path.join(SERVERS_DIR, s.directory_name || s.id.toString());
             if (!fs.existsSync(serverDir)) return;
 
-            // 1. Clean logs
+            // Clean logs
             const logsDir = path.join(serverDir, 'logs');
             if (fs.existsSync(logsDir)) {
                 try {
@@ -169,17 +173,17 @@ const runRetentionCleanups = () => {
                                 const stats = fs.statSync(fp);
                                 if (stats.mtimeMs < cutoff) {
                                     fs.unlinkSync(fp);
-                                    console.log(`[Retention] Deleted old log ${f} for server ${s.id} (older than ${logRetention} days)`);
+                                    logger.info(`[Retention] Deleted old log ${f} for server ${s.id} (older than ${logRetention} days)`);
                                 }
                             } catch (_) {}
                         });
                     }
                 } catch (err) {
-                    console.error(`[Retention] Failed to clean logs for server ${s.id}:`, err);
+                    logger.error(`[Retention] Failed to clean logs for server ${s.id}:`, err);
                 }
             }
 
-            // 2. Clean backups
+            // Clean backups
             const backupsDir = path.join(serverDir, 'backups');
             if (fs.existsSync(backupsDir)) {
                 try {
@@ -193,18 +197,18 @@ const runRetentionCleanups = () => {
                                 const stats = fs.statSync(fp);
                                 if (stats.mtimeMs < cutoff) {
                                     fs.unlinkSync(fp);
-                                    console.log(`[Retention] Deleted old backup ${f} for server ${s.id} (older than ${backupRetention} days)`);
+                                    logger.info(`[Retention] Deleted old backup ${f} for server ${s.id} (older than ${backupRetention} days)`);
                                 }
                             } catch (_) {}
                         });
                     }
                 } catch (err) {
-                    console.error(`[Retention] Failed to clean backups for server ${s.id}:`, err);
+                    logger.error(`[Retention] Failed to clean backups for server ${s.id}:`, err);
                 }
             }
         });
     }).catch(err => {
-        console.error(`[Retention] Failed to fetch servers for cleanup:`, err);
+        logger.error(`[Retention] Failed to fetch servers for cleanup:`, err);
     });
 };
 

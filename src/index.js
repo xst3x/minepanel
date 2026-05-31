@@ -84,6 +84,7 @@ const { hasPermission } = require('./core/permissions');
 const { migrateServerDirectories } = require('./core/serverHelper');
 const CONFIG = require('./config');
 const jwt = require('jsonwebtoken');
+const logger = require('./core/utils/logger');
 
 const app = express();
 
@@ -189,6 +190,16 @@ app.use(cors({
         return callback(new Error('Not allowed by CORS'));
     },
 }));
+// --- Security Headers ---
+app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' ws: wss: https:; frame-ancestors 'none'");
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    next();
+});
 app.use(express.json({ limit: '10mb' }));
 
 let cachedSettings = null;
@@ -227,6 +238,16 @@ app.use('/api/', (req, res, next) => {
 // Serve static frontend files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Health check endpoint (no auth required)
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        version: require('../package.json').version,
+        uptime: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
+    });
+});
+
 // Serve static assets from root directory
 app.use('/assets', express.static(path.join(__dirname, '../assets')));
 
@@ -256,7 +277,7 @@ app.use((err, req, res, next) => {
     if (err.code && err.status && typeof err.toResponse === 'function') {
         return res.status(err.status).json(err.toResponse());
     }
-    console.error('[Global Error]', err);
+    logger.error('[Global Error]', err);
     res.status(500).json({ error: err.message || 'Internal Server Error' });
 });
 
@@ -364,7 +385,7 @@ wss.on('connection', (ws, req) => {
 const PORT = CONFIG.PORT;
 
 initDb().then(async () => {
-    console.log('Database initialized successfully.');
+    logger.info('Database initialized successfully.');
 
     // Initialize version manager
     const versionManager = require('./core/versionManager');
@@ -376,16 +397,16 @@ initDb().then(async () => {
         try {
             await dbRun('DELETE FROM account_creation_tokens WHERE expires_at < ?', [new Date().toISOString()]);
         } catch (err) {
-            console.error('[Cleanup Error] Failed to delete expired tokens:', err);
+            logger.error('[Cleanup Error] Failed to delete expired tokens:', err);
         }
     }, 60 * 60 * 1000);
     
     // Migrate server directories from numeric to named
     try {
         await migrateServerDirectories();
-        console.log('Server directory migration complete.');
+        logger.info('Server directory migration complete.');
     } catch (e) {
-        console.error('Directory migration warning:', e.message);
+        logger.warn('Directory migration warning: ' + e.message);
     }
 
     // Start FTP Server
@@ -394,10 +415,10 @@ initDb().then(async () => {
         try {
             await initFtpServer(settings.ftpPort || 2121);
         } catch (ftpErr) {
-            console.error('Failed to start FTP service:', ftpErr.message);
+            logger.error('Failed to start FTP service: ' + ftpErr.message);
         }
     } else {
-        console.log('FTP service is disabled in settings.');
+        logger.info('FTP service is disabled in settings.');
     }
 
     // Start Discord bots for all enabled integrations
@@ -405,13 +426,13 @@ initDb().then(async () => {
     try {
         await discordManager.startAll();
     } catch (e) {
-        console.error('[Discord] Init warning:', e.message);
+        logger.warn('[Discord] Init warning: ' + e.message);
     }
 
     // Global port switch and restart trigger
     global.changePortAndRestart = async (newPort) => {
         try {
-            console.log(`[Server] Re-routing server port to ${newPort} and triggering restart...`);
+            logger.info(`[Server] Re-routing server port to ${newPort} and triggering restart...`);
 
             // 1. Destroy all active connections immediately
             if (global.activeSockets) {
@@ -425,33 +446,33 @@ initDb().then(async () => {
             try {
                 const discordManager = require('./core/discord/discordManager');
                 await discordManager.destroyAll();
-                console.log('[Server] Discord bots disconnected.');
+                logger.info('[Server] Discord bots disconnected.');
             } catch (e) {
-                console.error('[Server] Discord bots cleanup error:', e.message);
+                logger.error('[Server] Discord bots cleanup error: ' + e.message);
             }
 
             // 3. Gracefully stop active FTP server
             try {
                 const { stopFtpServer } = require('./core/ftpServer');
                 stopFtpServer();
-                console.log('[Server] FTP service stopped.');
+                logger.info('[Server] FTP service stopped.');
             } catch (e) {
-                console.error('[Server] FTP cleanup error:', e.message);
+                logger.error('[Server] FTP cleanup error: ' + e.message);
             }
 
             // 4. Close the server listener and exit with code 100
             server.close(() => {
-                console.log(`[Server] Core listeners closed. Exiting process with code 100 for port switch.`);
+                logger.info('[Server] Core listeners closed. Exiting process with code 100 for port switch.');
                 process.exit(100);
             });
 
             // Fail-safe: force exit after 2 seconds if socket close hangs
             setTimeout(() => {
-                console.log('[Server] Force exiting process with code 100.');
+                logger.warn('[Server] Force exiting process with code 100.');
                 process.exit(100);
             }, 2000);
         } catch (err) {
-            console.error('[Server] Error in changePortAndRestart:', err);
+            logger.error('[Server] Error in changePortAndRestart:', err);
             // Still try to exit with 100 so the launcher can restart
             process.exit(100);
         }
@@ -459,16 +480,16 @@ initDb().then(async () => {
 
     // Attach server socket bind error handlers to catch EADDRINUSE / EACCES
     server.on('error', (err) => {
-        console.error('[Server Bind Error]', err);
+        logger.error('[Server Bind Error]', err);
         if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
-            console.error(`[Server] Failed to bind to port ${PORT}. Exiting with code 101 for self-healing rollback.`);
+            logger.error(`[Server] Failed to bind to port ${PORT}. Exiting with code 101 for self-healing rollback.`);
             process.exit(101);
         }
     });
 
     if (process.env.NODE_ENV !== 'test') {
         server.listen(PORT, () => {
-            console.log(`MinePanel is running on port ${PORT}`);
+            logger.info(`MinePanel is running on port ${PORT}`);
             if (CONFIG.HTTPS_ENABLED) {
                 secureServer.timeout = 0;
                 secureServer.keepAliveTimeout = 0;
@@ -492,7 +513,7 @@ module.exports = { app, server };
 
 // Graceful shutdown — destroy all Discord bots
 const gracefulShutdown = async (signal) => {
-    console.log(`\n[${signal}] Shutting down...`);
+    logger.info(`[${signal}] Shutting down...`);
     try {
         const dm = require('./core/discord/discordManager');
         await dm.destroyAll();

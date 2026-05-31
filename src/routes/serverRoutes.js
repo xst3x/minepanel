@@ -9,7 +9,7 @@ const { resolveJar, downloadJar } = require('../core/resolvers');
 const processManager = require('../core/processManager');
 const { SERVERS_DIR, sanitizeDirName, ensureUniqueDirName, getServer, getServerDir, createBackup } = require('../core/serverHelper');
 const { retryRename, retryDelete, retryUnlink, retryCopy } = require('../core/utils/fsRetry');
-const { startServerFtp, stopServerFtp, isServerFtpRunning } = require('../core/ftpServer');
+const { startServerFtp, stopServerFtp, isServerFtpRunning, storePasswordCache, getPasswordCache } = require('../core/ftpServer');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
@@ -17,8 +17,9 @@ const fsp = fs.promises;
 const multer = require('multer');
 const os = require('os');
 const StreamZip = require('adm-zip');
+const logger = require('../core/utils/logger');
 
-// Multer — store uploaded zip in OS temp dir
+// Multer â€” store uploaded zip in OS temp dir
 const importUpload = multer({
     storage: multer.diskStorage({
         destination: (_req, _file, cb) => cb(null, os.tmpdir()),
@@ -72,7 +73,7 @@ function getStartInfo(server) {
     return { serverDir, jarFile, customArgs };
 }
 
-// ─── List all servers ────────────────────────────────────────────────────────
+// â”€â”€â”€ List all servers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
@@ -94,12 +95,12 @@ router.get('/', authenticateToken, async (req, res) => {
         }));
         res.json(result);
     } catch (e) {
-        console.error(`[serverRoutes] GET / error (User: ${req.user.id}):`, e);
+        logger.error(`[serverRoutes] GET / error (User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
-// ─── Get single server details ───────────────────────────────────────────────
+// â”€â”€â”€ Get single server details â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get('/:serverId', authenticateToken, async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
@@ -107,12 +108,12 @@ router.get('/:serverId', authenticateToken, async (req, res) => {
         server.status = processManager.getStatus(server.id.toString());
         res.json(server);
     } catch (e) {
-        console.error(`[serverRoutes] GET /:serverId error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        logger.error(`[serverRoutes] GET /:serverId error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
-// ─── Get current user's permissions for a server ─────────────────────────────
+// â”€â”€â”€ Get current user's permissions for a server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get('/:serverId/my-permissions', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { serverId } = req.params;
@@ -121,13 +122,13 @@ router.get('/:serverId/my-permissions', authenticateToken, async (req, res) => {
         const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
         res.json({ admin: user && user.role === 'admin', permissions: perms });
     } catch (e) {
-        console.error(`[serverRoutes] GET /:serverId/my-permissions error (Server: ${serverId}, User: ${userId}):`, e);
+        logger.error(`[serverRoutes] GET /:serverId/my-permissions error (Server: ${serverId}, User: ${userId}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 
-// ─── Create a server (admin only) ────────────────────────────────────────────
+// â”€â”€â”€ Create a server (admin only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/create', authenticateToken, validate(V.createServer), async (req, res) => {
     const { name, software, version, ram_mb, port } = req.body;
     const userId = req.user.id;
@@ -175,21 +176,21 @@ router.post('/create', authenticateToken, validate(V.createServer), async (req, 
             if (!fs.existsSync(path.join(serverDir, 'server.properties'))) {
                 fs.writeFileSync(path.join(serverDir, 'server.properties'), `server-port=${port}\n`);
             }
-            console.log(`Server ${serverId} (${dirName}) setup complete.`);
+            logger.info(`Server ${serverId} (${dirName}) setup complete.`);
             res.json({ message: 'Server deployed successfully', id: serverId, uuid, directory_name: dirName });
         } catch (e) {
-            console.error('Download/Install failed for server', serverId, e);
+            logger.error('Download/Install failed for server', serverId, e);
             try {
                 if (fs.existsSync(serverDir)) {
                     fs.rmSync(serverDir, { recursive: true, force: true });
                 }
             } catch (rmErr) {
-                console.error(`Failed to clean up directory ${serverDir} after server creation failure:`, rmErr);
+                logger.error(`Failed to clean up directory ${serverDir} after server creation failure:`, rmErr);
             }
             try {
                 await dbRun('DELETE FROM servers WHERE id = ?', [serverId]);
             } catch (dbErr) {
-                console.error(`Failed to clean up database record ${serverId} after server creation failure:`, dbErr);
+                logger.error(`Failed to clean up database record ${serverId} after server creation failure:`, dbErr);
             }
             return sendError(res, E.INTERNAL_ERROR, 500, `Server deployment failed during installation: ${e.message}`);
         } finally {
@@ -208,7 +209,7 @@ router.post('/create', authenticateToken, validate(V.createServer), async (req, 
     }
 });
 
-// ─── Change server version ───────────────────────────────────────────────────
+// â”€â”€â”€ Change server version â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/:serverId/change-version', authenticateToken, checkPermission('server.properties.write'), validate(V.changeVersion), async (req, res) => {
     const { serverId } = req.params;
     const { version } = req.body;
@@ -241,18 +242,18 @@ router.post('/:serverId/change-version', authenticateToken, checkPermission('ser
             }
 
             await dbRun('UPDATE servers SET version = ? WHERE id = ?', [version, serverId]);
-            console.log(`Server ${serverId} updated to version ${version}`);
+            logger.info(`Server ${serverId} updated to version ${version}`);
             res.json({ message: `Version changed to ${version} successfully.` });
         } finally {
             processManager.releaseLock(serverId);
         }
     } catch (e) {
-        console.error(`[serverRoutes] Change version error (Server: ${serverId}, User: ${req.user.id}):`, e);
+        logger.error(`[serverRoutes] Change version error (Server: ${serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 
-// ─── Switch server software (e.g. Paper -> Fabric) ──────────────────────────
+// â”€â”€â”€ Switch server software (e.g. Paper -> Fabric) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/:serverId/switch-software', authenticateToken, checkPermission('server.properties.write'), validate(V.switchSoftware), async (req, res) => {
     const { serverId } = req.params;
     const { software, version, confirm } = req.body;
@@ -319,7 +320,7 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
             // 2. Perform Automatic Backup before switching
             try {
                 backupInfo = await createBackup(serverDir, `autoswitch-${oldType}-to-${newType}`);
-                console.log(`Automatic rollback backup created: ${backupInfo.filename}`);
+                logger.info(`Automatic rollback backup created: ${backupInfo.filename}`);
             } catch (backupErr) {
                 return sendError(res, E.BACKUP_FAILED, 500, `Automatic backup failed: ${backupErr.message}. Switch aborted.`);
             }
@@ -381,7 +382,7 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
             // 5. Update software & version in DB
             await dbRun('UPDATE servers SET software = ?, version = ? WHERE id = ?', [software, version, serverId]);
 
-            console.log(`Server ${serverId} software switched successfully to ${software} ${version}`);
+            logger.info(`Server ${serverId} software switched successfully to ${software} ${version}`);
 
             res.json({
                 message: `Software switched to ${software} ${version} successfully.`,
@@ -391,12 +392,12 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
             processManager.releaseLock(serverId);
         }
     } catch (e) {
-        console.error(`[serverRoutes] Switch software error (Server: ${serverId}, User: ${req.user.id}):`, e);
+        logger.error(`[serverRoutes] Switch software error (Server: ${serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 
-// ─── Start server ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Start server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/:serverId/start', authenticateToken, checkPermission('server.start'), async (req, res) => {
     const serverId = req.params.serverId;
     try {
@@ -423,12 +424,12 @@ router.post('/:serverId/start', authenticateToken, checkPermission('server.start
             processManager.releaseLock(serverId);
         }
     } catch (e) {
-        console.error(`[serverRoutes] Start error (Server: ${serverId}, User: ${req.user.id}):`, e);
+        logger.error(`[serverRoutes] Start error (Server: ${serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 
-// ─── Stop server (graceful: sends /stop to stdin) ────────────────────────────
+// â”€â”€â”€ Stop server (graceful: sends /stop to stdin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/:serverId/stop', authenticateToken, checkPermission('server.stop'), async (req, res) => {
     const serverId = req.params.serverId;
     try {
@@ -452,12 +453,12 @@ router.post('/:serverId/stop', authenticateToken, checkPermission('server.stop')
             processManager.releaseLock(serverId.toString());
         }
     } catch (e) {
-        console.error(`[serverRoutes] Stop error (Server: ${serverId}, User: ${req.user.id}):`, e);
+        logger.error(`[serverRoutes] Stop error (Server: ${serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
-// ─── Restart server (graceful stop then start) ───────────────────────────────
+// â”€â”€â”€ Restart server (graceful stop then start) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/:serverId/restart', authenticateToken, checkPermission('server.restart'), async (req, res) => {
     const serverId = req.params.serverId;
     try {
@@ -487,12 +488,12 @@ router.post('/:serverId/restart', authenticateToken, checkPermission('server.res
             processManager.releaseLock(serverId);
         }
     } catch (e) {
-        console.error(`[serverRoutes] Restart error (Server: ${serverId}, User: ${req.user.id}):`, e);
+        logger.error(`[serverRoutes] Restart error (Server: ${serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 
-// ─── Kill server (force terminate specific PID only) ─────────────────────────
+// â”€â”€â”€ Kill server (force terminate specific PID only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/:serverId/kill', authenticateToken, checkPermission('server.kill'), async (req, res) => {
     const serverId = req.params.serverId;
     try {
@@ -511,12 +512,12 @@ router.post('/:serverId/kill', authenticateToken, checkPermission('server.kill')
             processManager.releaseLock(serverId.toString());
         }
     } catch (e) {
-        console.error(`[serverRoutes] Kill error (Server: ${serverId}, User: ${req.user.id}):`, e);
+        logger.error(`[serverRoutes] Kill error (Server: ${serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
-// ─── Clear server console history ────────────────────────────────────────────
+// â”€â”€â”€ Clear server console history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/:serverId/clear-console', authenticateToken, checkPermission('server.console.write'), async (req, res) => {
     const serverId = req.params.serverId;
     try {
@@ -526,24 +527,24 @@ router.post('/:serverId/clear-console', authenticateToken, checkPermission('serv
         processManager.clearHistory(serverId.toString());
         res.json({ message: 'Console history cleared' });
     } catch (e) {
-        console.error(`[serverRoutes] Clear-console error (Server: ${serverId}, User: ${req.user.id}):`, e);
+        logger.error(`[serverRoutes] Clear-console error (Server: ${serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
-// ─── Get backup config ───────────────────────────────────────────────────────
+// â”€â”€â”€ Get backup config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get('/:serverId/backup-config', authenticateToken, checkPermission('server.backups.read'), async (req, res) => {
     try {
         const row = await dbGet('SELECT auto_backup, backup_interval, backup_includes FROM servers WHERE id = ?', [req.params.serverId]);
         if (!row) return sendError(res, E.SERVER_NOT_FOUND, 404);
         res.json(row);
     } catch (e) {
-        console.error(`[serverRoutes] GET backup-config error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        logger.error(`[serverRoutes] GET backup-config error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
-// ─── Update backup config ────────────────────────────────────────────────────
+// â”€â”€â”€ Update backup config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/:serverId/backup-config', authenticateToken, checkPermission('server.backups.create'), validate(V.backupConfig), (req, res) => {
     const { serverId } = req.params;
     const { enabled, interval, includes } = req.body;
@@ -552,7 +553,7 @@ router.post('/:serverId/backup-config', authenticateToken, checkPermission('serv
         [enabled ? 1 : 0, interval || 24, includes || 'all', serverId], 
         function(err) {
             if (err) {
-                console.error(`[serverRoutes] POST backup-config error (Server: ${serverId}, User: ${req.user.id}):`, err);
+                logger.error(`[serverRoutes] POST backup-config error (Server: ${serverId}, User: ${req.user.id}):`, err);
                 return sendError(res, E.INTERNAL_ERROR, 500);
             }
             if (this.changes === 0) return sendError(res, E.SERVER_NOT_FOUND, 404);
@@ -561,7 +562,7 @@ router.post('/:serverId/backup-config', authenticateToken, checkPermission('serv
     );
 });
 
-// ─── Delete server ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Delete server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.delete('/:serverId', authenticateToken, checkPermission('account.manage'), async (req, res) => {
     const { serverId } = req.params;
     try {
@@ -596,19 +597,19 @@ router.delete('/:serverId', authenticateToken, checkPermission('account.manage')
                 fs.rmSync(serverDir, { recursive: true, force: true });
             }
 
-            console.log(`Server ${serverId} (${server.name}) has been permanently deleted by user ${req.user.id}`);
+            logger.info(`Server ${serverId} (${server.name}) has been permanently deleted by user ${req.user.id}`);
             res.json({ message: 'Server deleted successfully' });
         } finally {
             processManager.releaseLock(serverId.toString());
         }
     } catch (e) {
-        console.error('Error deleting server:', e);
+        logger.error('Error deleting server:', e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 
-// ─── Import server from zip ──────────────────────────────────────────────────
+// â”€â”€â”€ Import server from zip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/import', authenticateToken, importUpload.single('archive'), async (req, res) => {
     const userId = req.user.id;
     const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
@@ -717,7 +718,7 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
             const propsPath = path.join(serverDir, 'server.properties');
             try {
                 await fsp.access(propsPath);
-                // File exists — patch port in-place
+                // File exists â€” patch port in-place
                 let content = await fsp.readFile(propsPath, 'utf8');
                 if (/^server-port=/m.test(content)) {
                     content = content.replace(/^server-port=.*/m, `server-port=${portNum}`);
@@ -729,7 +730,7 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
                 await fsp.writeFile(propsPath, `server-port=${portNum}\n`);
             }
 
-            console.log(`Server import complete: ${serverId} (${dirName})`);
+            logger.info(`Server import complete: ${serverId} (${dirName})`);
             res.json({ message: 'Server imported successfully', id: serverId, uuid, directory_name: dirName });
 
         } finally {
@@ -748,7 +749,7 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
         }
         fsp.unlink(zipPath).catch(() => {});
 
-        console.error('[serverRoutes] Import error:', e);
+        logger.error('[serverRoutes] Import error:', e);
         if (e.code === 'SQLITE_CONSTRAINT') {
             if (e.message.includes('servers.name')) return sendError(res, E.SERVER_NAME_TAKEN, 409);
             if (e.message.includes('servers.port')) return sendError(res, E.SERVER_PORT_TAKEN, 409);
@@ -758,7 +759,7 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
 });
 
 
-// ═════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 /**
  * Run the Forge installer jar in --installServer mode.
@@ -769,7 +770,7 @@ async function runForgeInstaller(installerPath, serverDir, serverId) {
     const { spawn } = require('child_process');
     const logFile = path.join(serverDir, 'install.log');
 
-    console.log(`[Forge] Running installer for server ${serverId} in ${serverDir}`);
+    logger.info(`[Forge] Running installer for server ${serverId} in ${serverDir}`);
     fs.appendFileSync(logFile, `[${new Date().toISOString()}] Starting Forge installation...\n`);
 
     try {
@@ -809,7 +810,7 @@ async function runForgeInstaller(installerPath, serverDir, serverId) {
             });
         });
 
-        console.log(`[Forge] Installer completed successfully for server ${serverId}`);
+        logger.info(`[Forge] Installer completed successfully for server ${serverId}`);
 
         // Locate the actual server jar. Modern Forge generates different files:
         // - Modern (1.17+): Creates a run.sh/run.bat that uses @libraries/net/minecraftforge/forge/... 
@@ -875,7 +876,7 @@ async function runForgeInstaller(installerPath, serverDir, serverId) {
         if (!fs.existsSync(serverJarTarget)) {
             const errMsg = 'Forge installation completed but no server jar was found. Check install.log for details.';
             fs.appendFileSync(logFile, `[${new Date().toISOString()}] ERROR: ${errMsg}\n`);
-            console.error(`[Forge] ${errMsg}`);
+            logger.error(`[Forge] ${errMsg}`);
             // List what files exist for debugging
             fs.appendFileSync(logFile, `[${new Date().toISOString()}] Files in server dir: ${files.join(', ')}\n`);
         } else {
@@ -893,7 +894,7 @@ async function runForgeInstaller(installerPath, serverDir, serverId) {
         fs.appendFileSync(logFile, `[${new Date().toISOString()}] ERROR: ${errMsg}\n`);
         if (err.stdout) fs.appendFileSync(logFile, `STDOUT: ${err.stdout}\n`);
         if (err.stderr) fs.appendFileSync(logFile, `STDERR: ${err.stderr}\n`);
-        console.error(`[Forge] ${errMsg}`);
+        logger.error(`[Forge] ${errMsg}`);
         throw new Error(errMsg);
     }
 }
@@ -917,67 +918,131 @@ function findForgeJarRecursive(dir) {
     return null;
 }
 
-// ── FTP Per-Server Routes ──────────────────────────────────────────────────────
+// â”€â”€ FTP Per-Server Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // GET FTP config for a server (requires server.ftp.access)
 router.get('/:serverId/ftp', authenticateToken, checkPermission('server.ftp.access'), async (req, res) => {
     try {
-        const sv = await dbGet('SELECT id, ftp_enabled, ftp_port, ftp_username FROM servers WHERE id = ?', [req.params.serverId]);
+        const sv = await dbGet('SELECT id, ftp_enabled, ftp_port, ftp_username, ftp_password FROM servers WHERE id = ?', [req.params.serverId]);
         if (!sv) return sendError(res, E.SERVER_NOT_FOUND, 404);
-        res.json({ enabled: !!sv.ftp_enabled, port: sv.ftp_port || null, username: sv.ftp_username || null, running: isServerFtpRunning(sv.id) });
-    } catch (e) { return sendError(res, E.INTERNAL_ERROR, 500, e.message); }
+        res.json({ 
+            enabled: !!sv.ftp_enabled, 
+            port: sv.ftp_port || null, 
+            username: sv.ftp_username || null, 
+            running: isServerFtpRunning(sv.id),
+            hasPassword: !!sv.ftp_password
+        });
+    } catch (e) { 
+        logger.error(`[serverRoutes] GET FTP config error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message); 
+    }
 });
 
-// POST FTP config (requires server.ftp.manage)
+// POST FTP config - FIXED VERSION
 router.post('/:serverId/ftp/config', authenticateToken, checkPermission('server.ftp.manage'), validate(V.ftpConfig), async (req, res) => {
     try {
         const { username, password, port } = req.body;
+        const serverId = req.params.serverId;
+
         if (!username || !port) return sendError(res, E.BAD_REQUEST, 400, 'username and port are required');
         if (port < 1024 || port > 65535) return sendError(res, E.SERVER_PORT_INVALID, 400);
 
-        const conflict = await dbGet('SELECT id FROM servers WHERE ftp_port = ? AND id != ?', [port, req.params.serverId]);
+        const conflict = await dbGet('SELECT id FROM servers WHERE ftp_port = ? AND id != ?', [port, serverId]);
         if (conflict) return sendError(res, E.FTP_PORT_TAKEN, 400);
 
-        let updateSql, updateParams;
-        if (password) {
-            const hashed = await bcrypt.hash(password, 10);
-            updateSql = 'UPDATE servers SET ftp_username=?, ftp_password=?, ftp_port=? WHERE id=?';
-            updateParams = [username, hashed, port, req.params.serverId];
+        let hashedPassword = null;
+
+        if (password && password.trim()) {
+            hashedPassword = await bcrypt.hash(password, 10);
         } else {
-            updateSql = 'UPDATE servers SET ftp_username=?, ftp_port=? WHERE id=?';
-            updateParams = [username, port, req.params.serverId];
+            const existingServer = await dbGet('SELECT ftp_password FROM servers WHERE id = ?', [serverId]);
+            hashedPassword = existingServer?.ftp_password || null;
         }
+
+        if (!hashedPassword) {
+            return sendError(res, E.BAD_REQUEST, 400, 'At least one password must be set');
+        }
+
+        const updateSql = 'UPDATE servers SET ftp_username = ?, ftp_password = ?, ftp_port = ? WHERE id = ?';
+        const updateParams = [username, hashedPassword, port, serverId];
+        
         await dbRun(updateSql, updateParams);
 
-        // Restart FTP if it was running
-        const sv = await dbGet('SELECT * FROM servers WHERE id = ?', [req.params.serverId]);
-        if (sv.ftp_enabled) {
-            await stopServerFtp(req.params.serverId);
-            await startServerFtp(req.params.serverId);
+        if (password && password.trim()) {
+            storePasswordCache(serverId, password);
         }
-        res.json({ success: true });
-    } catch (e) { return sendError(res, E.INTERNAL_ERROR, 500, e.message); }
+
+        const sv = await dbGet('SELECT * FROM servers WHERE id = ?', [serverId]);
+        if (sv && sv.ftp_enabled) {
+            try {
+                await stopServerFtp(serverId);
+                await startServerFtp(serverId);
+            } catch (e) {
+                logger.warn(`[serverRoutes] Failed to restart SFTP for server ${serverId}:`, e.message);
+            }
+        }
+
+        res.json({ success: true, message: 'FTP configuration saved' });
+    } catch (e) { 
+        logger.error(`[serverRoutes] POST FTP config error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message); 
+    }
 });
 
 // POST toggle FTP enabled/disabled
 router.post('/:serverId/ftp/toggle', authenticateToken, checkPermission('server.ftp.manage'), async (req, res) => {
     try {
-        const sv = await dbGet('SELECT * FROM servers WHERE id = ?', [req.params.serverId]);
+        const serverId = req.params.serverId;
+        const sv = await dbGet('SELECT * FROM servers WHERE id = ?', [serverId]);
         if (!sv) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
         const newEnabled = sv.ftp_enabled ? 0 : 1;
-        await dbRun('UPDATE servers SET ftp_enabled=? WHERE id=?', [newEnabled, req.params.serverId]);
+        await dbRun('UPDATE servers SET ftp_enabled = ? WHERE id = ?', [newEnabled, serverId]);
 
         if (newEnabled) {
             if (!sv.ftp_port || !sv.ftp_username || !sv.ftp_password) {
-                return sendError(res, E.FTP_CONFIG_INCOMPLETE, 400);
+                await dbRun('UPDATE servers SET ftp_enabled = 0 WHERE id = ?', [serverId]);
+                return sendError(res, E.FTP_CONFIG_INCOMPLETE, 400, 'Complete FTP configuration first');
             }
-            await startServerFtp(req.params.serverId);
+            try {
+                await startServerFtp(serverId);
+            } catch (e) {
+                await dbRun('UPDATE servers SET ftp_enabled = 0 WHERE id = ?', [serverId]);
+                logger.error(`[serverRoutes] Failed to start SFTP:`, e);
+                return sendError(res, E.INTERNAL_ERROR, 500, `Failed to start SFTP: ${e.message}`);
+            }
         } else {
-            await stopServerFtp(req.params.serverId);
+            try {
+                await stopServerFtp(serverId);
+            } catch (e) {
+                logger.error(`[serverRoutes] Failed to stop SFTP:`, e);
+            }
         }
-        res.json({ enabled: !!newEnabled, running: isServerFtpRunning(req.params.serverId) });
-    } catch (e) { return sendError(res, E.INTERNAL_ERROR, 500, e.message); }
+
+        res.json({ enabled: !!newEnabled, running: isServerFtpRunning(serverId) });
+    } catch (e) { 
+        logger.error(`[serverRoutes] POST FTP toggle error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message); 
+    }
+});
+
+// GET plaintext password - FIXED VERSION
+router.get('/:serverId/ftp/password', authenticateToken, checkPermission('server.ftp.manage'), async (req, res) => {
+    try {
+        const serverId = req.params.serverId;
+        const sv = await dbGet('SELECT id FROM servers WHERE id = ?', [serverId]);
+        if (!sv) return sendError(res, E.SERVER_NOT_FOUND, 404);
+
+        const pw = getPasswordCache(serverId);
+
+        res.json({ 
+            password: pw || null,
+            message: pw ? null : 'Password not available (enter it again to reveal)'
+        });
+    } catch (e) { 
+        logger.error(`[serverRoutes] GET FTP password error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message); 
+    }
 });
 
 // POST update advanced server settings (requires server.properties.write)
@@ -1062,10 +1127,10 @@ router.post('/:serverId/settings', authenticateToken, checkPermission('server.pr
                         content = content.replace(/^query\.port=.*/m, `query.port=${portNum}`);
                     }
                     fs.writeFileSync(propsPath, content);
-                    console.log(`[Settings] Updated server-port in server.properties to ${portNum} for server ${serverId}`);
+                    logger.info(`[Settings] Updated server-port in server.properties to ${portNum} for server ${serverId}`);
                 }
             } catch (err) {
-                console.error(`[Settings] Failed to update server.properties for server ${serverId}:`, err.message);
+                logger.error(`[Settings] Failed to update server.properties for server ${serverId}:`, err.message);
             }
         }
 
@@ -1075,17 +1140,17 @@ router.post('/:serverId/settings', authenticateToken, checkPermission('server.pr
             discordManager.getStatusForServer(serverId).then((status) => {
                 if (status && status.connected) {
                     discordManager.reprovision(serverId).catch((err) => {
-                        console.error(`[Settings] Failed to reprovision Discord in background for server ${serverId}:`, err.message);
+                        logger.error(`[Settings] Failed to reprovision Discord in background for server ${serverId}:`, err.message);
                     });
                 }
             }).catch(() => {});
         } catch (err) {
-            console.error(`[Settings] Discord manager error during settings save:`, err.message);
+            logger.error(`[Settings] Discord manager error during settings save:`, err.message);
         }
 
         res.json({ message: 'Settings saved successfully' });
     } catch (e) {
-        console.error(`[serverRoutes] Update settings error (Server: ${serverId}, User: ${req.user.id}):`, e);
+        logger.error(`[serverRoutes] Update settings error (Server: ${serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });

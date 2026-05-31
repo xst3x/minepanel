@@ -1,8 +1,13 @@
 node_modules/
-data/*.db
+data/
 .env
 cache/
 servers/
 tests/Roaming/
 certs/
-
+Plans-and-internal-stuff/
+.claude/
+*.log
+logs/
+.DS_Store
+Thumbs.db

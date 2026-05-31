@@ -1782,13 +1782,30 @@ document.getElementById('ftp-show-pass')?.addEventListener('click', () => {
     document.getElementById('ftp-show-pass').textContent = inp.type === 'password' ? 'Show' : 'Hide';
 });
 
-document.getElementById('ftp-reveal-pass')?.addEventListener('click', () => {
+document.getElementById('ftp-reveal-pass')?.addEventListener('click', async () => {
     const passEl = document.getElementById('ftp-tab-pass');
     const btn = document.getElementById('ftp-reveal-pass');
     if (!passEl || !btn) return;
     if (btn.textContent === 'Show') {
-        passEl.textContent = ftpManager._password || '(not set)';
-        btn.textContent = 'Hide';
+        if (ftpManager._password) {
+            passEl.textContent = ftpManager._password;
+            btn.textContent = 'Hide';
+        } else {
+            // Try to fetch from server cache
+            try {
+                btn.textContent = '...';
+                btn.disabled = true;
+                const data = await api.req(`/servers/${sid()}/ftp/password`);
+                ftpManager._password = data.password || null;
+                passEl.textContent = ftpManager._password || '(not available — enter password again to reveal)';
+                btn.textContent = ftpManager._password ? 'Hide' : 'Show';
+            } catch (e) {
+                passEl.textContent = '(not available)';
+                btn.textContent = 'Show';
+            } finally {
+                btn.disabled = false;
+            }
+        }
     } else {
         passEl.textContent = '••••••••';
         btn.textContent = 'Show';

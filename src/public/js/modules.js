@@ -3587,14 +3587,27 @@ const docs = {
             `),
         ])}
         ${grid([
-            card('Per-Server FTP', `
-                ${p(`Each server can run its own FTP service bound to a dedicated port. The FTP root is the server's working directory.`)}
+            card('Per-Server SFTP', `
+                ${p(`Each server runs its own <strong>SFTP daemon</strong> (SSH File Transfer Protocol, not plain FTP) built on the <strong>ssh2</strong> library. Each daemon binds to a dedicated port and restricts access to the server's working directory.`)}
+                ${h('How it works')}
+                ${table(['Detail','Value'], [
+                    ['Protocol', 'SFTP over SSH2 (not FTP/FTPS)'],
+                    ['Auth method', 'Username + password (bcrypt-verified)'],
+                    ['Root directory', `Server working directory — ${c('servers/<name>/')}`],
+                    ['Host key', `RSA 2048-bit PKCS1 PEM, persisted to ${c('data/sftp_host_key')} across restarts`],
+                    ['Password storage', 'Hashed with bcrypt in DB; plaintext cached in memory for "Show password" (cleared after 24 h or on restart)'],
+                ])}
+                ${h('API endpoints')}
                 ${table(['Endpoint','Notes'], [
                     [c('GET  /api/servers/:id/ftp'), `Returns enabled state, port, username, running status. Requires ${c('server.ftp.access')}.`],
+                    [c('GET  /api/servers/:id/ftp/password'), `Returns plaintext password from in-memory cache (only available if entered since last restart). Requires ${c('server.ftp.manage')}.`],
                     [c('POST /api/servers/:id/ftp/config'), `Set username, password, port. Requires ${c('server.ftp.manage')}.`],
-                    [c('POST /api/servers/:id/ftp/toggle'), `Start or stop the FTP server. Requires ${c('server.ftp.manage')}.`],
+                    [c('POST /api/servers/:id/ftp/toggle'), `Start or stop the SFTP server for this server. Requires ${c('server.ftp.manage')}.`],
                 ])}
-                ${note('If you change credentials while FTP is running, the service is automatically restarted to apply them.')}
+                ${h('Connecting with an SFTP client')}
+                ${p(`Use any SFTP-capable client. In <strong>FileZilla</strong>: Site Manager → Protocol: <em>SFTP – SSH File Transfer Protocol</em> → Host: panel IP → Port: configured SFTP port → Logon type: Normal → enter username & password.`)}
+                ${note('The "Show password" button fetches the plaintext from the server\'s memory cache. If the panel was restarted since you last saved the password, re-enter and save it once to repopulate the cache.', 'warning')}
+                ${note('Credentials changed while the SFTP daemon is running will automatically restart it to apply the new config.')}
             `),
             card('Database Schema (key tables)', `
                 ${table(['Table','Purpose'], [

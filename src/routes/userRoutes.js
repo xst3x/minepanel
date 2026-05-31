@@ -4,6 +4,8 @@ const { authenticateToken, hashPassword } = require('../core/auth');
 const { checkGlobalPermission, getEffectivePermissions, AVAILABLE_PERMISSIONS, hasPermission } = require('../core/permissions');
 const { E, sendError } = require('../core/errors');
 const { validate } = require('../middleware/validation');
+const logger = require('../core/utils/logger');
+const { validatePasswordStrength } = require('../core/utils/passwordValidator');
 const V = require('../middleware/validators');
 
 function preventSelfDeletion(req, res, next) {
@@ -34,7 +36,7 @@ router.get('/', authenticateToken, async (req, res) => {
         }
         res.json({ users, isCallerManager: isManager });
     } catch (e) {
-        console.error(`[userRoutes] List users error (User: ${req.user.id}):`, e);
+        logger.error(`[userRoutes] List users error (User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -45,7 +47,7 @@ router.get('/me/accent', authenticateToken, async (req, res) => {
         const row = await dbGet('SELECT value FROM settings WHERE key = ?', [key]);
         res.json({ accent: row ? row.value : null });
     } catch (e) {
-        console.error('[userRoutes] Get accent error:', e);
+        logger.error('[userRoutes] Get accent error:', e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -57,7 +59,7 @@ router.post('/me/accent', authenticateToken, validate(V.accentColor), async (req
         await dbRun('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', [key, accent]);
         res.json({ message: 'Accent saved' });
     } catch (e) {
-        console.error('[userRoutes] Save accent error:', e);
+        logger.error('[userRoutes] Save accent error:', e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -68,7 +70,7 @@ router.get('/me/custom-accents', authenticateToken, async (req, res) => {
         const rows = await dbAll('SELECT id, label, value FROM user_custom_accents WHERE user_id = ? ORDER BY created_at ASC', [req.user.id]);
         res.json({ colors: rows });
     } catch (e) {
-        console.error('[userRoutes] Get custom accents error:', e);
+        logger.error('[userRoutes] Get custom accents error:', e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -85,7 +87,7 @@ router.post('/me/custom-accents', authenticateToken, async (req, res) => {
         const result = await dbRun('INSERT INTO user_custom_accents (user_id, label, value) VALUES (?, ?, ?)', [req.user.id, label.trim(), value]);
         res.json({ id: result.lastID, label: label.trim(), value });
     } catch (e) {
-        console.error('[userRoutes] Create custom accent error:', e);
+        logger.error('[userRoutes] Create custom accent error:', e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -99,7 +101,7 @@ router.delete('/me/custom-accents/:colorId', authenticateToken, async (req, res)
         await dbRun('DELETE FROM user_custom_accents WHERE id = ?', [colorId]);
         res.json({ message: 'Color deleted' });
     } catch (e) {
-        console.error('[userRoutes] Delete custom accent error:', e);
+        logger.error('[userRoutes] Delete custom accent error:', e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -129,7 +131,7 @@ router.get('/:userId/permissions', authenticateToken, checkGlobalPermission('acc
         }
         res.json({ global: globalPerms, servers: serversPerms, rank: rankData });
     } catch (e) {
-        console.error(`[userRoutes] Get user permissions error (Target: ${userId}, Caller: ${req.user.id}):`, e);
+        logger.error(`[userRoutes] Get user permissions error (Target: ${userId}, Caller: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -151,7 +153,7 @@ router.put('/:userId/permissions', authenticateToken, checkGlobalPermission('acc
         }
         res.json({ message: 'Permissions saved' });
     } catch (e) {
-        console.error(`[userRoutes] Save user permissions error (Target: ${userId}, Caller: ${req.user.id}):`, e);
+        logger.error(`[userRoutes] Save user permissions error (Target: ${userId}, Caller: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -169,7 +171,7 @@ router.put('/:userId/rank', authenticateToken, checkGlobalPermission('account.ma
         await dbRun('UPDATE users SET rank_id = ? WHERE id = ?', [rankId, userId]);
         res.json({ message: 'Rank updated' });
     } catch (e) {
-        console.error(`[userRoutes] Update user rank error (Target: ${userId}, Caller: ${req.user.id}):`, e);
+        logger.error(`[userRoutes] Update user rank error (Target: ${userId}, Caller: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -186,7 +188,7 @@ router.post('/change-name', authenticateToken, validate(V.changeName), async (re
         res.json({ message: 'Username changed successfully' });
     } catch (e) {
         if (e.message && e.message.includes('UNIQUE')) return sendError(res, E.USER_ALREADY_EXISTS, 409);
-        console.error(`[userRoutes] Change username error (User: ${req.user.id}):`, e);
+        logger.error(`[userRoutes] Change username error (User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -195,7 +197,13 @@ router.post('/change-password', authenticateToken, validate(V.changePassword), a
     const { oldPassword, newPassword, newPasswordConfirm } = req.body;
     if (!oldPassword || !newPassword || !newPasswordConfirm) return sendError(res, E.BAD_REQUEST, 400, 'All fields are required');
     if (newPassword !== newPasswordConfirm) return sendError(res, E.BAD_REQUEST, 400, 'New passwords do not match');
-    if (newPassword.length < 8) return sendError(res, E.USER_PASSWORD_TOO_SHORT, 400);
+
+    // Validate password strength
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.valid) {
+        return sendError(res, E.BAD_REQUEST, 400, passwordValidation.error);
+    }
+
     try {
         const { comparePassword } = require('../core/auth');
         const user = await dbGet('SELECT password FROM users WHERE id = ?', [req.user.id]);
@@ -206,7 +214,7 @@ router.post('/change-password', authenticateToken, validate(V.changePassword), a
         await dbRun('UPDATE users SET password = ? WHERE id = ?', [hashed, req.user.id]);
         res.json({ message: 'Password changed successfully' });
     } catch (e) {
-        console.error(`[userRoutes] Change password error (User: ${req.user.id}):`, e);
+        logger.error(`[userRoutes] Change password error (User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -227,7 +235,7 @@ router.post('/:userId/change-name', authenticateToken, checkGlobalPermission('ac
         res.json({ message: 'Username updated successfully' });
     } catch (e) {
         if (e.message && e.message.includes('UNIQUE')) return sendError(res, E.USER_ALREADY_EXISTS, 409);
-        console.error(`[userRoutes] Change user name error (Target: ${userId}, Caller: ${req.user.id}):`, e);
+        logger.error(`[userRoutes] Change user name error (Target: ${userId}, Caller: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -237,7 +245,13 @@ router.post('/:userId/reset-password', authenticateToken, checkGlobalPermission(
     const { newPassword, confirmPassword } = req.body;
     if (!newPassword || !confirmPassword) return sendError(res, E.BAD_REQUEST, 400, 'All fields are required');
     if (newPassword !== confirmPassword) return sendError(res, E.BAD_REQUEST, 400, 'Passwords do not match');
-    if (newPassword.length < 8) return sendError(res, E.USER_PASSWORD_TOO_SHORT, 400);
+
+    // Validate password strength
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.valid) {
+        return sendError(res, E.BAD_REQUEST, 400, passwordValidation.error);
+    }
+
     try {
         const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
         if (!user) return sendError(res, E.USER_NOT_FOUND, 404);
@@ -247,7 +261,7 @@ router.post('/:userId/reset-password', authenticateToken, checkGlobalPermission(
         await dbRun('UPDATE users SET password = ? WHERE id = ?', [hashed, userId]);
         res.json({ message: 'Password reset successfully' });
     } catch (e) {
-        console.error(`[userRoutes] Reset password error (Target: ${userId}, Caller: ${req.user.id}):`, e);
+        logger.error(`[userRoutes] Reset password error (Target: ${userId}, Caller: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -264,7 +278,7 @@ router.patch('/:userId/toggle-disabled', authenticateToken, checkGlobalPermissio
         await dbRun('UPDATE users SET disabled = ? WHERE id = ?', [nextDisabled, userId]);
         res.json({ message: nextDisabled ? 'User account disabled' : 'User account enabled', disabled: nextDisabled });
     } catch (err) {
-        console.error(`[userRoutes] Toggle disabled error (Target: ${userId}, Caller: ${req.user.id}):`, err);
+        logger.error(`[userRoutes] Toggle disabled error (Target: ${userId}, Caller: ${req.user.id}):`, err);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -284,7 +298,7 @@ router.post('/generate-token', authenticateToken, checkGlobalPermission('account
         );
         res.json({ token });
     } catch (err) {
-        console.error(`[userRoutes] Generate invite token error (Caller: ${req.user.id}):`, err);
+        logger.error(`[userRoutes] Generate invite token error (Caller: ${req.user.id}):`, err);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -294,7 +308,7 @@ router.delete('/tokens/clear-all', authenticateToken, checkGlobalPermission('acc
         await dbRun('DELETE FROM account_creation_tokens');
         res.json({ message: 'All invite tokens cleared' });
     } catch (err) {
-        console.error(`[userRoutes] Clear invite tokens error (Caller: ${req.user.id}):`, err);
+        logger.error(`[userRoutes] Clear invite tokens error (Caller: ${req.user.id}):`, err);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -311,7 +325,7 @@ router.post('/:userId/delete', authenticateToken, preventSelfDeletion, checkGlob
         await dbRun('DELETE FROM users WHERE id = ?', [userId]);
         res.json({ message: 'User deleted successfully' });
     } catch (err) {
-        console.error(`[userRoutes] Delete user error (Target: ${userId}, Caller: ${req.user.id}):`, err);
+        logger.error(`[userRoutes] Delete user error (Target: ${userId}, Caller: ${req.user.id}):`, err);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -329,7 +343,7 @@ router.post('/create', authenticateToken, checkGlobalPermission('account.manage'
         await dbRun('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hashed, 'user']);
         res.json({ message: 'User created successfully' });
     } catch (e) {
-        console.error(`[userRoutes] Direct create user error (Caller: ${req.user.id}, Username: ${username}):`, e);
+        logger.error(`[userRoutes] Direct create user error (Caller: ${req.user.id}, Username: ${username}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
