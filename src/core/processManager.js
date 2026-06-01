@@ -10,6 +10,8 @@ class ProcessManager extends EventEmitter {
         this.processes = new Map(); // serverId -> ChildProcess
         this.histories = new Map(); // serverId -> string[]
         this.locks = new Set(); // serverId under lifecycle task (e.g., start, stop, restart, switch)
+        this._stopIntents = new Set(); // serverId intentionally stopped (not a crash)
+        this._crashRestartTimers = new Map(); // serverId -> timer
     }
 
     acquireLock(serverId) {
@@ -33,6 +35,14 @@ class ProcessManager extends EventEmitter {
         if (this.processes.has(serverId)) {
             throw new Error('Server is already running');
         }
+
+        // Clear any pending crash-restart timer
+        if (this._crashRestartTimers.has(serverId)) {
+            clearTimeout(this._crashRestartTimers.get(serverId));
+            this._crashRestartTimers.delete(serverId);
+        }
+        // Clear stop intent — starting fresh
+        this._stopIntents.delete(serverId);
 
         let args;
         if (customArgs) {
@@ -85,6 +95,16 @@ class ProcessManager extends EventEmitter {
             this.emit('console', serverId, msg);
             this.processes.delete(serverId);
             this.emit('status', serverId, 'offline');
+
+            // Crash detection: if exit was NOT intentional (not /stop or kill)
+            const wasIntentional = this._stopIntents.has(serverId);
+            this._stopIntents.delete(serverId);
+
+            // Non-zero exit code = crash (code 0 or null = clean exit / /stop)
+            const isCrash = !wasIntentional && code !== 0 && code !== null;
+            if (isCrash) {
+                this.emit('crash', serverId, { code, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs, javaPath });
+            }
         });
 
         child.on('error', (err) => {
@@ -108,6 +128,7 @@ class ProcessManager extends EventEmitter {
      * Does NOT force-kill. The process will terminate on its own via the 'close' event.
      */
     stop(serverId) {
+        this._stopIntents.add(serverId); // mark as intentional
         this.sendCommand(serverId, 'stop');
     }
 
@@ -187,6 +208,7 @@ class ProcessManager extends EventEmitter {
      * Never kills unrelated Java processes.
      */
     kill(serverId) {
+        this._stopIntents.add(serverId); // mark as intentional (not a crash)
         const child = this.processes.get(serverId);
         if (!child) {
             throw new Error('Server is not running');

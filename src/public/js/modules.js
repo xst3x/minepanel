@@ -1902,12 +1902,18 @@ const srvSettings = {
             if (logRetInput) logRetInput.value = server.log_retention_days !== null && server.log_retention_days !== undefined ? server.log_retention_days : '7';
             const backupRetInput = document.getElementById('adv-backup-retention');
             if (backupRetInput) backupRetInput.value = server.backup_retention_days !== null && server.backup_retention_days !== undefined ? server.backup_retention_days : '30';
+            const autostartInput = document.getElementById('adv-autostart');
+            if (autostartInput) autostartInput.checked = !!server.autostart;
+            const autostartCrashInput = document.getElementById('adv-autostart-crash');
+            if (autostartCrashInput) autostartCrashInput.checked = !!server.autostart_on_crash;
 
             // Keep local state completely synced
             if (state.currentServer) {
                 state.currentServer.java_path = server.java_path;
                 state.currentServer.log_retention_days = server.log_retention_days;
                 state.currentServer.backup_retention_days = server.backup_retention_days;
+                state.currentServer.autostart = server.autostart;
+                state.currentServer.autostart_on_crash = server.autostart_on_crash;
             }
 
         } catch (e) {
@@ -1924,6 +1930,8 @@ document.getElementById('btn-save-adv-settings')?.addEventListener('click', asyn
     const java_path = document.getElementById('adv-server-java')?.value.trim();
     const log_retention_days = parseInt(document.getElementById('adv-log-retention')?.value, 10);
     const backup_retention_days = parseInt(document.getElementById('adv-backup-retention')?.value, 10);
+    const autostart = document.getElementById('adv-autostart')?.checked || false;
+    const autostart_on_crash = document.getElementById('adv-autostart-crash')?.checked || false;
 
     if (!name) return ui.toast('Server name is required', 'error');
     if (isNaN(ram) || ram < 512 || ram > 16384) return ui.toast('RAM must be between 512 and 16384 MB', 'error');
@@ -1952,7 +1960,9 @@ document.getElementById('btn-save-adv-settings')?.addEventListener('click', asyn
                 ram_mb: ram,
                 java_path,
                 log_retention_days,
-                backup_retention_days
+                backup_retention_days,
+                autostart,
+                autostart_on_crash
             })
         });
 
@@ -1966,6 +1976,8 @@ document.getElementById('btn-save-adv-settings')?.addEventListener('click', asyn
             state.currentServer.java_path = java_path;
             state.currentServer.log_retention_days = log_retention_days;
             state.currentServer.backup_retention_days = backup_retention_days;
+            state.currentServer.autostart = autostart;
+            state.currentServer.autostart_on_crash = autostart_on_crash;
         }
 
         // Dynamically update dashboard top-bar header

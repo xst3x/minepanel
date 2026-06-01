@@ -532,6 +532,57 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Advanced Settings -->
+                            <div class="card" style="margin-top:1.5rem">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+                                    <h3 style="margin:0">Advanced Settings</h3>
+                                    <button class="btn primary" id="btn-save-adv-settings">Save Changes</button>
+                                </div>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-bottom:1.25rem">
+                                    <div class="form-group" style="margin:0">
+                                        <label>Server Name</label>
+                                        <input type="text" id="adv-server-name" placeholder="My Server" style="width:100%">
+                                    </div>
+                                    <div class="form-group" style="margin:0">
+                                        <label>RAM (MB)</label>
+                                        <input type="number" id="adv-server-ram" min="512" max="16384" placeholder="2048" style="width:100%">
+                                    </div>
+                                    <div class="form-group" style="margin:0">
+                                        <label>Port</label>
+                                        <input type="number" id="adv-server-port" min="1024" max="65535" placeholder="25565" style="width:100%">
+                                    </div>
+                                    <div class="form-group" style="margin:0">
+                                        <label>Java Path</label>
+                                        <input type="text" id="adv-server-java" placeholder="java" style="width:100%">
+                                    </div>
+                                    <div class="form-group" style="margin:0">
+                                        <label>Delete logs after (days) <span class="text-muted" style="font-weight:400;font-size:0.78rem">— 0 = keep forever</span></label>
+                                        <input type="number" id="adv-log-retention" min="0" max="3650" placeholder="7" style="width:100%">
+                                    </div>
+                                    <div class="form-group" style="margin:0">
+                                        <label>Delete backups after (days) <span class="text-muted" style="font-weight:400;font-size:0.78rem">— 0 = keep forever</span></label>
+                                        <input type="number" id="adv-backup-retention" min="0" max="3650" placeholder="30" style="width:100%">
+                                    </div>
+                                </div>
+                                <div style="display:flex;flex-direction:column;gap:0.85rem;padding-top:0.75rem;border-top:1px solid var(--border-color)">
+                                    <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:1rem">
+                                        <div>
+                                            <div style="font-weight:500;color:var(--text)">Autostart server</div>
+                                            <div class="text-muted" style="font-size:0.79rem;margin-top:0.15rem">Automatically start this server when the panel boots up.</div>
+                                        </div>
+                                        <label class="toggle-switch"><input type="checkbox" id="adv-autostart"><span class="toggle-slider"></span></label>
+                                    </label>
+                                    <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:1rem">
+                                        <div>
+                                            <div style="font-weight:500;color:var(--text)">Autostart on crash</div>
+                                            <div class="text-muted" style="font-size:0.79rem;margin-top:0.15rem">Automatically restart this server if it crashes (non-zero exit code). Does not trigger on <code style="font-size:0.77rem">/stop</code> or manual kills.</div>
+                                        </div>
+                                        <label class="toggle-switch"><input type="checkbox" id="adv-autostart-crash"><span class="toggle-slider"></span></label>
+                                    </label>
+                                </div>
+                            </div>
+
                             <div class="card" style="border: 1px solid var(--danger); background: rgba(239, 68, 68, 0.05); margin-top: 1.5rem;">
                                 <h3 style="color: var(--danger);">Delete Server</h3>
                                 <p class="text-muted" style="margin-bottom: 0.75rem;">Permanently delete this server, including all files, databases, and configurations. This action cannot be undone.</p>

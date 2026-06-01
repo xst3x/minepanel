@@ -7,6 +7,8 @@ const { promisify } = require('util');
 const { authenticateToken } = require('../core/auth');
 const { checkPermission } = require('../core/permissions');
 const { getServer, getServerDir } = require('../core/serverHelper');
+const { E, sendError } = require('../core/errors');
+const logger = require('../core/utils/logger');
 
 const router = express.Router({ mergeParams: true });
 const gunzip = promisify(zlib.gunzip);
@@ -14,7 +16,7 @@ const gunzip = promisify(zlib.gunzip);
 router.get('/', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const logsDir = path.join(getServerDir(server), 'logs');
         if (!fs.existsSync(logsDir)) return res.json([]);
         const files = await fsp.readdir(logsDir);
@@ -28,21 +30,23 @@ router.get('/', authenticateToken, checkPermission('server.files.read'), async (
         logFiles.sort((a, b) => b.date - a.date);
         res.json(logFiles);
     } catch (e) {
-        console.error(`[logRoutes] List logs error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to list logs' });
+        logger.error(`[logRoutes] List logs error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 router.get('/read', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
     const { file, page, filter } = req.query;
     const LINES_PER_PAGE = 500;
-    if (!file) return res.status(400).json({ error: 'File required' });
-    if (file.includes('..') || file.includes('/') || file.includes('\\')) return res.status(400).json({ error: 'Invalid filename' });
+    if (!file) return sendError(res, E.BAD_REQUEST, 400, 'File required');
+    if (file.includes('..') || file.includes('/') || file.includes('\\')) {
+        return sendError(res, E.FILE_INVALID_NAME, 400, 'Invalid filename');
+    }
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const logPath = path.join(getServerDir(server), 'logs', file);
-        if (!fs.existsSync(logPath)) return res.status(404).json({ error: 'Log not found' });
+        if (!fs.existsSync(logPath)) return sendError(res, E.FILE_NOT_FOUND, 404);
         const buffer = await fsp.readFile(logPath);
         let content;
         if (file.endsWith('.log.gz')) { content = (await gunzip(buffer)).toString('utf8'); }
@@ -56,8 +60,8 @@ router.get('/read', authenticateToken, checkPermission('server.files.read'), asy
         const pageLines = lines.slice(startIdx, startIdx + LINES_PER_PAGE);
         res.json({ content: pageLines.join('\n'), page: currentPage, totalPages, totalLines, filtered: !!filter });
     } catch (e) {
-        console.error(`[logRoutes] Read log file error (Server: ${req.params.serverId}, User: ${req.user.id}, File: ${file}):`, e);
-        res.status(500).json({ error: 'Failed to read log file' });
+        logger.error(`[logRoutes] Read log file error (Server: ${req.params.serverId}, User: ${req.user.id}, File: ${file}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -65,7 +69,7 @@ router.get('/tail', authenticateToken, checkPermission('server.files.read'), asy
     const lines = parseInt(req.query.lines) || 100;
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const logPath = path.join(getServerDir(server), 'logs', 'latest.log');
         if (!fs.existsSync(logPath)) return res.json({ content: '', lines: 0 });
         const content = await fsp.readFile(logPath, 'utf8');
@@ -73,8 +77,8 @@ router.get('/tail', authenticateToken, checkPermission('server.files.read'), asy
         const tailLines = allLines.slice(Math.max(0, allLines.length - lines));
         res.json({ content: tailLines.join('\n'), lines: tailLines.length, totalLines: allLines.length });
     } catch (e) {
-        console.error(`[logRoutes] Tail log error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to tail log' });
+        logger.error(`[logRoutes] Tail log error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 

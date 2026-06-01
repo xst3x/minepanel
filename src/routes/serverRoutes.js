@@ -1048,7 +1048,7 @@ router.get('/:serverId/ftp/password', authenticateToken, checkPermission('server
 // POST update advanced server settings (requires server.properties.write)
 router.post('/:serverId/settings', authenticateToken, checkPermission('server.properties.write'), validate(V.serverSettings), async (req, res) => {
     const { serverId } = req.params;
-    const { name, port, ram_mb, java_path, log_retention_days, backup_retention_days } = req.body;
+    const { name, port, ram_mb, java_path, log_retention_days, backup_retention_days, autostart, autostart_on_crash } = req.body;
 
     try {
         const server = await getServer(serverId);
@@ -1106,9 +1106,12 @@ router.post('/:serverId/settings', authenticateToken, checkPermission('server.pr
                 ram_mb = ?, 
                 java_path = ?, 
                 log_retention_days = ?, 
-                backup_retention_days = ? 
+                backup_retention_days = ?,
+                autostart = ?,
+                autostart_on_crash = ?
              WHERE id = ?`,
-            [name, portNum, ramNum, javaPathStr, logRet, backupRet, serverId]
+            [name, portNum, ramNum, javaPathStr, logRet, backupRet,
+             autostart ? 1 : 0, autostart_on_crash ? 1 : 0, serverId]
         );
 
         // 5. Update server.properties port if it was changed

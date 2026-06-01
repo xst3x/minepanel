@@ -76,11 +76,8 @@ router.get('/me/custom-accents', authenticateToken, async (req, res) => {
 });
 
 // Custom accent colors - create (max 5)
-router.post('/me/custom-accents', authenticateToken, async (req, res) => {
+router.post('/me/custom-accents', authenticateToken, validate(V.customAccentCreate), async (req, res) => {
     const { label, value } = req.body;
-    if (!label || !value) return sendError(res, E.BAD_REQUEST, 400, 'Label and value are required');
-    if (typeof label !== 'string' || label.length > 32) return sendError(res, E.BAD_REQUEST, 400, 'Invalid label');
-    if (typeof value !== 'string' || !/^hsl\(\d+,\d+%,\d+%\)$/.test(value)) return sendError(res, E.BAD_REQUEST, 400, 'Invalid color value');
     try {
         const existing = await dbAll('SELECT id FROM user_custom_accents WHERE user_id = ?', [req.user.id]);
         if (existing.length >= 5) return sendError(res, E.BAD_REQUEST, 400, 'Maximum 5 custom colors allowed');

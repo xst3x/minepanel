@@ -1,4 +1,5 @@
 const { db, dbGet, dbAll } = require('../db/database');
+const { E, sendError } = require('./errors');
 
 const AVAILABLE_PERMISSIONS = [
     { key: 'server.start', label: 'Start Server', group: 'Server Control' },
@@ -24,6 +25,7 @@ const AVAILABLE_PERMISSIONS = [
     { key: 'server.properties.read', label: 'View Server Settings', group: 'Settings & Logs' },
     { key: 'server.properties.write', label: 'Edit Server Settings', group: 'Settings & Logs' },
     { key: 'server.logs.read', label: 'View Logs', group: 'Settings & Logs' },
+    { key: 'server.stats.read', label: 'View Statistics', group: 'Statistics' },
     { key: 'server.ftp.access', label: 'FTP Access', group: 'FTP' },
     { key: 'server.ftp.manage', label: 'Manage FTP Settings', group: 'FTP' },
     { key: 'account.manage', label: 'Manage Accounts', group: 'Administration', globalOnly: true },
@@ -37,24 +39,16 @@ async function getEffectivePermissions(userId, serverId) {
 
     const permSet = new Set();
 
-    // 1. Add user's individual global permissions
     if (user.global_permissions) {
-        try {
-            JSON.parse(user.global_permissions).forEach(p => permSet.add(p));
-        } catch (e) {}
+        try { JSON.parse(user.global_permissions).forEach(p => permSet.add(p)); } catch (e) {}
     }
 
-    // 2. Add user's rank permissions (if rank is assigned)
     if (user.rank_id) {
         const rank = await dbGet('SELECT permissions, global_permissions FROM ranks WHERE id = ?', [user.rank_id]);
         if (rank) {
-            // Add rank global permissions
             if (rank.global_permissions) {
-                try {
-                    JSON.parse(rank.global_permissions).forEach(p => permSet.add(p));
-                } catch (e) {}
+                try { JSON.parse(rank.global_permissions).forEach(p => permSet.add(p)); } catch (e) {}
             }
-            // Add rank server-specific permissions
             if (rank.permissions && serverId) {
                 try {
                     const serverMap = JSON.parse(rank.permissions);
@@ -65,7 +59,6 @@ async function getEffectivePermissions(userId, serverId) {
         }
     }
 
-    // 3. Add user's individual server-specific permissions (only if serverId is provided)
     if (serverId) {
         const individualPerms = await dbAll(
             'SELECT permission FROM user_server_permissions WHERE user_id = ? AND server_id = ?',
@@ -83,7 +76,7 @@ const checkPermission = (requiredPermission) => {
         const serverId = req.params.serverId || req.body.serverId;
 
         if (!serverId) {
-            return res.status(400).json({ error: 'Server ID is required' });
+            return sendError(res, E.BAD_REQUEST, 400, 'Server ID is required');
         }
 
         try {
@@ -91,10 +84,10 @@ const checkPermission = (requiredPermission) => {
             if (perms.includes('*') || perms.includes('root') || perms.includes(requiredPermission)) {
                 return next();
             }
-            res.status(403).json({ error: 'Forbidden: Missing permission ' + requiredPermission });
+            return sendError(res, E.FORBIDDEN, 403, `Missing permission: ${requiredPermission}`);
         } catch (e) {
             console.error(`[Permissions] checkPermission error (User: ${userId}, Server: ${serverId}):`, e);
-            res.status(500).json({ error: 'Database error' });
+            return sendError(res, E.INTERNAL_ERROR, 500);
         }
     };
 };
@@ -112,13 +105,12 @@ const checkGlobalPermission = (requiredPermission) => {
             if (perms.includes('*') || perms.includes('root') || perms.includes(requiredPermission)) {
                 return next();
             }
-            res.status(403).json({ error: 'Forbidden: Missing global permission ' + requiredPermission });
+            return sendError(res, E.FORBIDDEN, 403, `Missing global permission: ${requiredPermission}`);
         } catch (e) {
             console.error(`[Permissions] checkGlobalPermission error (User: ${userId}):`, e);
-            res.status(500).json({ error: 'Database error' });
+            return sendError(res, E.INTERNAL_ERROR, 500);
         }
     };
 };
 
 module.exports = { checkPermission, hasPermission, checkGlobalPermission, getEffectivePermissions, AVAILABLE_PERMISSIONS };
-

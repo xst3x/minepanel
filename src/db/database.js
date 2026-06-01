@@ -22,6 +22,65 @@ const dbAll = (sql, params = []) => new Promise((resolve, reject) => {
     db.all(sql, params, (err, rows) => { err ? reject(err) : resolve(rows || []); });
 });
 
+// ── Integrity Check ───────────────────────────────────────────────────────────
+const checkIntegrity = () => new Promise((resolve, reject) => {
+    db.all('PRAGMA integrity_check', [], (err, rows) => {
+        if (err) return reject(err);
+        const messages = rows.map(r => r.integrity_check);
+        if (messages.length === 1 && messages[0] === 'ok') {
+            resolve({ ok: true, errors: [] });
+        } else {
+            resolve({ ok: false, errors: messages });
+        }
+    });
+});
+
+// ── Backup ────────────────────────────────────────────────────────────────────
+const backupDatabase = async () => {
+    if (process.env.NODE_ENV === 'test') return { success: true, backupPath: ':memory:' };
+
+    const backupDir = path.join(dbDir, 'backups');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(backupDir, `minepanel-${ts}.db`);
+
+    await dbRun(`VACUUM INTO ?`, [backupPath]);
+
+    const backupDb = new sqlite3.Database(backupPath, sqlite3.OPEN_READONLY);
+    const integrityOk = await new Promise((resolve, reject) => {
+        backupDb.all('PRAGMA integrity_check', [], (err, rows) => {
+            backupDb.close();
+            if (err) return reject(err);
+            const msgs = rows.map(r => r.integrity_check);
+            resolve(msgs.length === 1 && msgs[0] === 'ok');
+        });
+    });
+
+    if (!integrityOk) {
+        fs.unlinkSync(backupPath);
+        throw new Error(`Backup integrity check failed — backup discarded: ${backupPath}`);
+    }
+
+    logger.info(`[DB] Backup created and verified: ${backupPath}`);
+    return { success: true, backupPath };
+};
+
+const listBackups = () => {
+    const backupDir = path.join(dbDir, 'backups');
+    if (!fs.existsSync(backupDir)) return [];
+    return fs.readdirSync(backupDir)
+        .filter(f => f.endsWith('.db'))
+        .sort()
+        .reverse()
+        .map(f => ({
+            filename: f,
+            path: path.join(backupDir, f),
+            size: fs.statSync(path.join(backupDir, f)).size,
+        }));
+};
+
+// ── Premade Ranks ─────────────────────────────────────────────────────────────
 const PREMADE_RANKS = [
     {
         name: 'Owner',
@@ -38,7 +97,8 @@ const PREMADE_RANKS = [
             'server.players.read', 'server.players.kick', 'server.players.ban', 'server.players.op',
             'server.plugins.read', 'server.plugins.manage',
             'server.backups.read', 'server.backups.create', 'server.backups.restore', 'server.backups.delete',
-            'server.properties.read', 'server.properties.write', 'server.logs.read'
+            'server.properties.read', 'server.properties.write', 'server.logs.read',
+            'server.stats.read'
         ],
         color: '#f59e0b'
     },
@@ -51,7 +111,8 @@ const PREMADE_RANKS = [
             'server.players.read', 'server.players.kick', 'server.players.ban', 'server.players.op',
             'server.plugins.read', 'server.plugins.manage',
             'server.backups.read', 'server.backups.create', 'server.backups.restore', 'server.backups.delete',
-            'server.properties.read', 'server.properties.write', 'server.logs.read'
+            'server.properties.read', 'server.properties.write', 'server.logs.read',
+            'server.stats.read'
         ],
         color: '#3b82f6'
     },
@@ -60,7 +121,8 @@ const PREMADE_RANKS = [
         permissions: [
             'server.console.read',
             'server.files.read',
-            'server.players.read', 'server.players.kick', 'server.players.ban'
+            'server.players.read', 'server.players.kick', 'server.players.ban',
+            'server.stats.read'
         ],
         color: '#10b981'
     },
@@ -68,7 +130,8 @@ const PREMADE_RANKS = [
         name: 'Player',
         permissions: [
             'server.console.read',
-            'server.players.read'
+            'server.players.read',
+            'server.stats.read'
         ],
         color: '#8b5cf6'
     }
@@ -77,6 +140,21 @@ const PREMADE_RANKS = [
 const { runMigrations } = require('./migrationRunner');
 
 const initDb = async () => {
+    // Integrity check before migrations
+    if (process.env.NODE_ENV !== 'test') {
+        try {
+            const integrity = await checkIntegrity();
+            if (!integrity.ok) {
+                logger.error('[DB] INTEGRITY CHECK FAILED — database may be corrupt!');
+                integrity.errors.forEach(e => logger.error(`[DB]   ${e}`));
+            } else {
+                logger.info('[DB] Integrity check passed.');
+            }
+        } catch (e) {
+            logger.warn('[DB] Could not run integrity check:', e.message);
+        }
+    }
+
     await runMigrations(dbRun, dbGet);
     await seedRanks();
     await migratePermissionsData();
@@ -87,7 +165,6 @@ const seedRanks = async () => {
         try {
             const existing = await dbGet('SELECT * FROM ranks WHERE name = ?', [rank.name]);
             if (existing) {
-                // For built-in premade ranks, they grant global_permissions, server permissions are default {}
                 await dbRun(
                     'UPDATE ranks SET global_permissions = ?, permissions = ?, is_builtin = 1, color = ? WHERE id = ?',
                     [JSON.stringify(rank.permissions), '{}', rank.color, existing.id]
@@ -104,7 +181,6 @@ const seedRanks = async () => {
 
 const migratePermissionsData = async () => {
     try {
-        // 1. Migrate old JSON array ranks.permissions to global_permissions column
         const ranks = await dbAll('SELECT id, name, permissions, global_permissions FROM ranks');
         for (const r of ranks) {
             if ((!r.global_permissions || r.global_permissions === '[]') && r.permissions && r.permissions.startsWith('[')) {
@@ -116,7 +192,6 @@ const migratePermissionsData = async () => {
             }
         }
 
-        // 2. Migrate user server-specific rank assignments to a global rank_id in users table
         const users = await dbAll('SELECT id, username, rank_id FROM users');
         for (const u of users) {
             if (!u.rank_id) {
@@ -132,5 +207,4 @@ const migratePermissionsData = async () => {
     }
 };
 
-module.exports = { db, dbRun, dbGet, dbAll, initDb, PREMADE_RANKS };
-
+module.exports = { db, dbRun, dbGet, dbAll, initDb, checkIntegrity, backupDatabase, listBackups, PREMADE_RANKS };

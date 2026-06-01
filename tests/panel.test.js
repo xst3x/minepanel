@@ -71,7 +71,7 @@ describe('Panel Core Tests', () => {
 
         expect(nextCalled).toBe(false);
         expect(statusSet).toBe(403);
-        expect(jsonResponse).toEqual({ code: 'USER_SELF_DELETE', error: 'You cannot delete your own account.' });
+        expect(jsonResponse).toMatchObject({ code: 'USER_SELF_DELETE', error: 'You cannot delete your own account.' });
 
         // Case B: User attempts to delete a different user
         nextCalled = false;

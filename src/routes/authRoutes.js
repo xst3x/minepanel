@@ -1,12 +1,13 @@
 const express = require('express');
 const { db, dbGet, dbRun, dbAll } = require('../db/database');
-const { hashPassword, comparePassword, generateToken, invalidateToken } = require('../core/auth');
+const { hashPassword, comparePassword, generateToken, invalidateToken, authenticateToken } = require('../core/auth');
 const { E, sendError } = require('../core/errors');
 const { validate } = require('../middleware/validation');
 const V = require('../middleware/validators');
 const rateLimit = require('express-rate-limit');
 const { validatePasswordStrength } = require('../core/utils/passwordValidator');
 const logger = require('../core/utils/logger');
+const audit = require('../core/utils/auditLog');
 const fs = require('fs');
 const path = require('path');
 
@@ -38,6 +39,8 @@ const loginLimiter = rateLimit({
 
 const router = express.Router();
 
+// ── Settings ──────────────────────────────────────────────────────────────────
+
 router.get('/settings', async (req, res) => {
     try {
         const settings = getSettings();
@@ -49,16 +52,43 @@ router.get('/settings', async (req, res) => {
     }
 });
 
+// ── Login ─────────────────────────────────────────────────────────────────────
+
 router.post('/login', loginLimiter, validate(V.login), async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, totpCode } = req.body;
     if (!username || !password) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 400);
     try {
         const user = await dbGet('SELECT * FROM users WHERE LOWER(username) = LOWER(?)', [username]);
-        if (!user) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401);
+        if (!user) {
+            await audit.log(req, 'LOGIN_FAILED', { username });
+            return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401);
+        }
         const match = await comparePassword(password, user.password);
-        if (!match) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401);
-        if (user.disabled) return sendError(res, E.AUTH_ACCOUNT_DISABLED, 403);
+        if (!match) {
+            await audit.log(req, 'LOGIN_FAILED', { username, userId: user.id });
+            return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401);
+        }
+        if (user.disabled) {
+            await audit.log(req, 'LOGIN_FAILED', { username, userId: user.id, detail: 'account_disabled' });
+            return sendError(res, E.AUTH_ACCOUNT_DISABLED, 403);
+        }
+
+        // ── 2FA check ────────────────────────────────────────────────────────
+        if (user.totp_enabled && user.totp_secret) {
+            if (!totpCode) {
+                // Tell frontend that 2FA is required (don't issue token yet)
+                return res.status(200).json({ requires2FA: true });
+            }
+            const { authenticator } = require('otplib');
+            const isValid = authenticator.verify({ token: String(totpCode), secret: user.totp_secret });
+            if (!isValid) {
+                await audit.log(req, 'LOGIN_2FA_FAILED', { userId: user.id, username: user.username });
+                return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401);
+            }
+        }
+
         const token = generateToken(user);
+        await audit.log(req, 'LOGIN_SUCCESS', { userId: user.id, username: user.username });
         res.json({ token, userId: user.id, username: user.username, role: user.role });
     } catch (err) {
         logger.error('[authRoutes] Login error:', err);
@@ -66,13 +96,14 @@ router.post('/login', loginLimiter, validate(V.login), async (req, res) => {
     }
 });
 
+// ── Register ──────────────────────────────────────────────────────────────────
+
 router.post('/register', validate(V.register), async (req, res) => {
     const { username, password, confirmPassword, token } = req.body;
     if (!username || !password || !confirmPassword) {
         return sendError(res, E.BAD_REQUEST, 400, 'Username, password, and confirm password are required');
     }
 
-    // Validate password strength
     const passwordValidation = validatePasswordStrength(password);
     if (!passwordValidation.valid) {
         return sendError(res, E.BAD_REQUEST, 400, passwordValidation.error);
@@ -108,7 +139,6 @@ router.post('/register', validate(V.register), async (req, res) => {
                 if (rankObj && rankObj.name) userRank = rankObj.name;
             }
         } else {
-            // Token not required — still allow optional token use
             if (token) {
                 dbToken = await dbGet('SELECT * FROM account_creation_tokens WHERE token = ?', [token]);
                 if (dbToken && !dbToken.used && new Date(dbToken.expires_at).getTime() >= Date.now()) {
@@ -120,18 +150,14 @@ router.post('/register', validate(V.register), async (req, res) => {
                         if (rankObj && rankObj.name) userRank = rankObj.name;
                     }
                 } else {
-                    dbToken = null; // invalid/used token — ignore silently
+                    dbToken = null;
                 }
             }
-            // If no valid token used, apply default rank from settings
             if (!dbToken) {
                 const defaultRankId = settings.defaultRankId || null;
                 if (defaultRankId) {
                     const rankObj = await dbGet('SELECT id, name FROM ranks WHERE id = ?', [defaultRankId]);
-                    if (rankObj) {
-                        rankId = rankObj.id;
-                        userRank = rankObj.name;
-                    }
+                    if (rankObj) { rankId = rankObj.id; userRank = rankObj.name; }
                 }
             }
         }
@@ -162,21 +188,104 @@ router.post('/register', validate(V.register), async (req, res) => {
         }
 
         res.json({ message: 'Account created successfully' });
+        await audit.log(req, 'REGISTER_SUCCESS', { userId: newUserId, username });
     } catch (err) {
-        console.error('[authRoutes] Register error:', err);
+        logger.error('[authRoutes] Register error:', err);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
-router.post('/logout', (req, res) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+// ── Logout ────────────────────────────────────────────────────────────────────
 
-    if (token) {
-        invalidateToken(token);
+router.post('/logout', authenticateToken, async (req, res) => {
+    try {
+        await invalidateToken(req.user.id);
+        await audit.log(req, 'LOGOUT', { userId: req.user.id }).catch(() => {});
+        res.json({ success: true, message: 'Logged out successfully' });
+    } catch (err) {
+        logger.error('[authRoutes] Logout error:', err);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
+});
 
-    res.json({ success: true, message: 'Logged out successfully' });
+// ── 2FA Setup ─────────────────────────────────────────────────────────────────
+
+// GET /api/auth/2fa/setup — generate secret + QR code (user must be logged in)
+router.get('/2fa/setup', authenticateToken, async (req, res) => {
+    try {
+        const { authenticator } = require('otplib');
+        const QRCode = require('qrcode');
+
+        const user = await dbGet('SELECT username, totp_enabled FROM users WHERE id = ?', [req.user.id]);
+        if (user.totp_enabled) {
+            return sendError(res, E.BAD_REQUEST, 400, '2FA is already enabled');
+        }
+
+        const secret = authenticator.generateSecret();
+        const otpauth = authenticator.keyuri(user.username, 'MinePanel', secret);
+        const qrDataUrl = await QRCode.toDataURL(otpauth);
+
+        // Store secret temporarily (unverified) — only activate after user verifies
+        await dbRun('UPDATE users SET totp_secret = ? WHERE id = ?', [secret, req.user.id]);
+
+        res.json({ secret, qrCode: qrDataUrl });
+    } catch (err) {
+        logger.error('[authRoutes] 2FA setup error:', err);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// POST /api/auth/2fa/verify — verify code and enable 2FA
+router.post('/2fa/verify', authenticateToken, async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code) return sendError(res, E.BAD_REQUEST, 400, 'Code is required');
+
+        const { authenticator } = require('otplib');
+        const user = await dbGet('SELECT totp_secret, totp_enabled FROM users WHERE id = ?', [req.user.id]);
+
+        if (!user.totp_secret) {
+            return sendError(res, E.BAD_REQUEST, 400, 'Run 2FA setup first');
+        }
+        if (user.totp_enabled) {
+            return sendError(res, E.BAD_REQUEST, 400, '2FA is already enabled');
+        }
+
+        const isValid = authenticator.verify({ token: String(code), secret: user.totp_secret });
+        if (!isValid) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 400, 'Invalid code');
+
+        await dbRun('UPDATE users SET totp_enabled = 1 WHERE id = ?', [req.user.id]);
+        await audit.log(req, '2FA_ENABLED', { userId: req.user.id });
+
+        res.json({ success: true, message: '2FA enabled successfully' });
+    } catch (err) {
+        logger.error('[authRoutes] 2FA verify error:', err);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// POST /api/auth/2fa/disable — disable 2FA (requires password confirmation)
+router.post('/2fa/disable', authenticateToken, async (req, res) => {
+    try {
+        const { password } = req.body;
+        if (!password) return sendError(res, E.BAD_REQUEST, 400, 'Password is required');
+
+        const user = await dbGet('SELECT password, totp_enabled FROM users WHERE id = ?', [req.user.id]);
+        if (!user.totp_enabled) {
+            return sendError(res, E.BAD_REQUEST, 400, '2FA is not enabled');
+        }
+
+        const match = await comparePassword(password, user.password);
+        if (!match) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401);
+
+        await dbRun('UPDATE users SET totp_enabled = 0, totp_secret = NULL WHERE id = ?', [req.user.id]);
+        await audit.log(req, '2FA_DISABLED', { userId: req.user.id });
+
+        res.json({ success: true, message: '2FA disabled' });
+    } catch (err) {
+        logger.error('[authRoutes] 2FA disable error:', err);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
 });
 
 module.exports = router;

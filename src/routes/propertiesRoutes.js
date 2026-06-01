@@ -6,6 +6,8 @@ const multer = require('multer');
 const { authenticateToken } = require('../core/auth');
 const { checkPermission } = require('../core/permissions');
 const { getServer, getServerDir } = require('../core/serverHelper');
+const { E, sendError } = require('../core/errors');
+const logger = require('../core/utils/logger');
 
 const router = express.Router({ mergeParams: true });
 
@@ -22,7 +24,7 @@ const iconUpload = multer({
 router.get('/', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const propsPath = path.join(getServerDir(server), 'server.properties');
         try {
             await fsp.access(propsPath);
@@ -40,15 +42,15 @@ router.get('/', authenticateToken, checkPermission('server.files.read'), async (
         });
         res.json(properties);
     } catch (e) {
-        console.error(`[propertiesRoutes] Read properties error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to read server.properties' });
+        logger.error(`[propertiesRoutes] Read properties error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 router.post('/', authenticateToken, checkPermission('server.files.write'), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const propsPath = path.join(getServerDir(server), 'server.properties');
         const newProps = req.body;
         let content = '';
@@ -79,8 +81,8 @@ router.post('/', authenticateToken, checkPermission('server.files.write'), async
         await fsp.writeFile(propsPath, updatedLines.join('\n'));
         res.json({ message: 'Properties saved successfully' });
     } catch (e) {
-        console.error(`[propertiesRoutes] Save properties error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to save server.properties' });
+        logger.error(`[propertiesRoutes] Save properties error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -88,7 +90,7 @@ router.post('/', authenticateToken, checkPermission('server.files.write'), async
 router.get('/icon', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const iconPath = path.join(getServerDir(server), 'server-icon.png');
         try {
             await fsp.access(iconPath);
@@ -96,26 +98,26 @@ router.get('/icon', authenticateToken, checkPermission('server.files.read'), asy
             res.setHeader('Cache-Control', 'no-cache');
             return res.sendFile(iconPath);
         } catch {
-            return res.status(404).json({ error: 'No server icon set' });
+            return sendError(res, E.FILE_NOT_FOUND, 404, 'No server icon set');
         }
     } catch (e) {
-        console.error(`[propertiesRoutes] Icon read error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to read server icon' });
+        logger.error(`[propertiesRoutes] Icon read error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
 // POST /icon — save uploaded PNG as server-icon.png (browser already resized to 64x64)
 router.post('/icon', authenticateToken, checkPermission('server.files.write'), iconUpload.single('icon'), async (req, res) => {
     try {
-        if (!req.file) return res.status(400).json({ error: 'No icon file uploaded' });
+        if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No icon file uploaded');
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const iconPath = path.join(getServerDir(server), 'server-icon.png');
         await fsp.writeFile(iconPath, req.file.buffer);
         res.json({ message: 'Server icon updated successfully' });
     } catch (e) {
-        console.error(`[propertiesRoutes] Icon upload error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to upload server icon' });
+        logger.error(`[propertiesRoutes] Icon upload error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 
@@ -123,17 +125,17 @@ router.post('/icon', authenticateToken, checkPermission('server.files.write'), i
 router.delete('/icon', authenticateToken, checkPermission('server.files.delete'), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const iconPath = path.join(getServerDir(server), 'server-icon.png');
         try {
             await fsp.unlink(iconPath);
         } catch {
-            return res.status(404).json({ error: 'No icon to remove' });
+            return sendError(res, E.FILE_NOT_FOUND, 404, 'No icon to remove');
         }
         res.json({ message: 'Server icon removed' });
     } catch (e) {
-        console.error(`[propertiesRoutes] Icon delete error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
-        res.status(500).json({ error: 'Failed to remove server icon' });
+        logger.error(`[propertiesRoutes] Icon delete error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
 

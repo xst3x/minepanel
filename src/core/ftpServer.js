@@ -15,6 +15,7 @@ const bcrypt   = require('bcryptjs');
 const os       = require('os');
 const { dbGet, dbRun } = require('../db/database');
 const { getServerDir } = require('./serverHelper');
+const logger = require('./utils/logger');
 
 // ── Password cache (pentru show password feature) ──────────────────────────────
 const passwordCache = new Map(); // serverId → plaintext password
@@ -25,7 +26,7 @@ function storePasswordCache(serverId, password) {
     // Auto-clear dupa 24 ore (siguritate)
     setTimeout(() => {
         passwordCache.delete(key);
-        console.log(`[SFTP] Password cache cleared for server ${serverId}`);
+        logger.info(`[SFTP] Password cache cleared for server ${serverId}`);
     }, 24 * 60 * 60 * 1000);
 }
 
@@ -347,13 +348,13 @@ async function startServerFtp(serverId) {
         });
 
         srv.on('error', (err) => {
-            console.error(`[SFTP] Server ${serverId} error:`, err.message);
+            logger.error(`[SFTP] Server ${serverId} error:`, err.message);
             reject(err);
         });
 
         srv.listen(port, '0.0.0.0', () => {
             runningServers.set(key, { server: srv, port });
-            console.log(`[SFTP] Server ${serverId} listening on port ${port}`);
+            logger.info(`[SFTP] Server ${serverId} listening on port ${port}`);
             resolve();
         });
     });
@@ -365,7 +366,7 @@ async function stopServerFtp(serverId) {
     const { server } = runningServers.get(key);
     await new Promise((res) => server.close(res));
     runningServers.delete(key);
-    console.log(`[SFTP] Server ${serverId} stopped`);
+    logger.info(`[SFTP] Server ${serverId} stopped`);
 }
 
 function isServerFtpRunning(serverId) {
@@ -374,7 +375,7 @@ function isServerFtpRunning(serverId) {
 
 // Legacy stubs (kept so index.js doesn't break)
 async function initFtpServer() {
-    console.log('[SFTP] Global SFTP disabled — use per-server SFTP instead');
+    logger.info('[SFTP] Global SFTP disabled — use per-server SFTP instead');
 }
 function stopFtpServer() {}
 function isFtpRunning() { return false; }

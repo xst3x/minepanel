@@ -39,6 +39,15 @@ const getSafePath = (serverDir, targetPath) => {
     return requestedPath;
 };
 
+// Extensions blocked for security reasons (executables, scripts, etc.)
+const BLOCKED_EXTENSIONS = new Set([
+    '.exe', '.bat', '.cmd', '.com', '.msi', '.ps1', '.ps2', '.psm1',
+    '.sh', '.bash', '.zsh', '.fish', '.csh',
+    '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh', '.scr',
+    '.pif', '.reg', '.hta', '.cpl', '.dll', '.sys', '.drv',
+    '.app', '.bin', '.run', '.elf',
+]);
+
 const upload = multer({
     storage: multer.diskStorage({
         destination: async (req, file, cb) => {
@@ -53,6 +62,10 @@ const upload = multer({
             const safeName = path.basename(file.originalname).replace(/[^\w.\-]/g, '_');
             if (!safeName || safeName === '.' || safeName === '..') {
                 return cb(new Error('Invalid filename'));
+            }
+            const ext = path.extname(safeName).toLowerCase();
+            if (BLOCKED_EXTENSIONS.has(ext)) {
+                return cb(Object.assign(new Error(`File extension '${ext}' is blocked for security reasons`), { code: 'BLOCKED_EXTENSION' }));
             }
             cb(null, safeName);
         }
@@ -256,9 +269,23 @@ router.get('/dl/:token', async (req, res) => {
 });
 
 // Upload
-router.post('/upload', authenticateToken, checkPermission('server.files.write'), upload.single('file'), (req, res) => {
-    if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No file uploaded');
-    res.json({ message: 'File uploaded', filename: req.file.originalname });
+router.post('/upload', authenticateToken, checkPermission('server.files.write'), (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (err) {
+            if (err.code === 'BLOCKED_EXTENSION' || (err.message && err.message.includes('blocked for security reasons'))) {
+                return sendError(res, E.FILE_INVALID_NAME, 400, err.message);
+            }
+            if (err.message === 'Invalid filename') {
+                return sendError(res, E.FILE_INVALID_NAME, 400, 'Invalid filename');
+            }
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return sendError(res, E.FILE_TOO_LARGE, 400);
+            }
+            return sendError(res, E.INTERNAL_ERROR, 500, err.message);
+        }
+        if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No file uploaded');
+        res.json({ message: 'File uploaded', filename: req.file.originalname });
+    });
 });
 
 module.exports = router;

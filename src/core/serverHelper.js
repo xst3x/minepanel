@@ -2,6 +2,7 @@ const { dbRun, dbGet, dbAll } = require('../db/database');
 const path = require('path');
 const fs = require('fs');
 const { ZipArchive: _ZipArchive } = require('archiver');
+const WebhookManager = require('./webhookManager');
 // archiver v8 replaced archiver('zip', opts) factory with new ZipArchive(opts)
 function archiver(_fmt, opts) { return new _ZipArchive(opts); }
 
@@ -44,7 +45,9 @@ function getServerDir(server) {
 }
 
 function createBackup(serverDir, label = 'backup', includes = 'all') {
-    return new Promise((resolve, reject) => {
+  const startTime = Date.now();
+  const serverId = path.basename(serverDir); // fallback id
+      return new Promise((resolve, reject) => {
         const backupsDir = path.join(serverDir, 'backups');
         if (!fs.existsSync(backupsDir)) {
             fs.mkdirSync(backupsDir, { recursive: true });
@@ -67,8 +70,13 @@ function createBackup(serverDir, label = 'backup', includes = 'all') {
         const output = fs.createWriteStream(backupFile);
         const archive = archiver('zip', { zlib: { level: 6 } });
 
-        output.on('close', () => {
-            resolve({ filename: `${label}-${timestamp}.zip`, size: archive.pointer() });
+        output.on('close', async () => {
+            const result = { filename: `${label}-${timestamp}.zip`, size: archive.pointer() };
+            // send webhook with duration
+            try {
+                await WebhookManager.trigger('backup_completed', { serverId, durationMs: Date.now() - startTime, ...result });
+            } catch (_) {}
+            resolve(result);
         });
         archive.on('error', err => {
             reject(err);

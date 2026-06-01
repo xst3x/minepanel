@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { fetchAllVersions } = require('./versionFetcher');
+const logger = require('./utils/logger');
 
 const CACHE_FILE = path.resolve(__dirname, '../../cache/versions.json');
 
@@ -31,17 +32,17 @@ function loadCache() {
                 const isDefaultList = data.vanilla.length === DEFAULTS.vanilla.length && data.vanilla[0] === DEFAULTS.vanilla[0];
                 if (isDefaultList) {
                     lastFetchTime = 0;
-                    console.log('[VersionManager] Loaded default versions list. Will fetch updates.');
+                    logger.info('[VersionManager] Loaded default versions list. Will fetch updates.');
                 } else {
                     const stats = fs.statSync(CACHE_FILE);
                     lastFetchTime = stats.mtimeMs;
-                    console.log('[VersionManager] Loaded versions cache from disk.');
+                    logger.info('[VersionManager] Loaded versions cache from disk.');
                 }
                 return;
             }
         }
     } catch (e) {
-        console.error('[VersionManager] Failed to read version cache:', e.message);
+        logger.error('[VersionManager] Failed to read version cache:', e.message);
     }
     // If no cache, write defaults to disk but set lastFetchTime to 0 so it forces a fetch!
     saveCache(DEFAULTS, true);
@@ -56,7 +57,7 @@ function saveCache(data, isDefault = false) {
         fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2), 'utf8');
         lastFetchTime = isDefault ? 0 : Date.now();
     } catch (e) {
-        console.error('[VersionManager] Failed to save version cache to disk:', e.message);
+        logger.error('[VersionManager] Failed to save version cache to disk:', e.message);
     }
 }
 
@@ -66,27 +67,27 @@ async function updateVersions(force = false) {
     
     // Check if we need to fetch
     if (!force && (now - lastFetchTime < oneHourMs) && lastFetchTime > 0) {
-        console.log('[VersionManager] Version list is up to date (less than 1 hour old).');
+        logger.info('[VersionManager] Version list is up to date (less than 1 hour old).');
         return;
     }
 
     try {
-        console.log('[VersionManager] Fetching fresh versions...');
+        logger.info('[VersionManager] Fetching fresh versions...');
         const newVersions = await fetchAllVersions();
         
         // Merge with defaults/current if any API failed and returned empty
         for (const key of Object.keys(DEFAULTS)) {
             if (!newVersions[key] || newVersions[key].length === 0) {
                 newVersions[key] = cachedVersions[key] || DEFAULTS[key];
-                console.warn(`[VersionManager] API for ${key} returned empty, using cached/default versions.`);
+                logger.warn(`[VersionManager] API for ${key} returned empty, using cached/default versions.`);
             }
         }
 
         cachedVersions = newVersions;
         saveCache(cachedVersions);
-        console.log('[VersionManager] Successfully updated version list cache.');
+        logger.info('[VersionManager] Successfully updated version list cache.');
     } catch (e) {
-        console.error('[VersionManager] Failed to update versions:', e.message);
+        logger.error('[VersionManager] Failed to update versions:', e.message);
     }
 }
 
@@ -97,11 +98,11 @@ function getVersions() {
 function init() {
     loadCache();
     // Run async update on startup
-    updateVersions().catch(err => console.error('[VersionManager] Startup version update failed:', err.message));
+    updateVersions().catch(err => logger.error('[VersionManager] Startup version update failed:', err.message));
     
     // Schedule update every 1 hour
     setInterval(() => {
-        updateVersions().catch(err => console.error('[VersionManager] Scheduled version update failed:', err.message));
+        updateVersions().catch(err => logger.error('[VersionManager] Scheduled version update failed:', err.message));
     }, 1 * 60 * 60 * 1000);
 }
 

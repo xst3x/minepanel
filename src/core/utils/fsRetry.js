@@ -1,5 +1,6 @@
 const fs = require('fs');
 const fsp = fs.promises;
+const logger = require('./logger');
 
 /**
  * Retry an async operation with configurable attempts and delay.
@@ -16,7 +17,7 @@ async function retryOperation(operation, { retries = 10, delay = 500, label = 'f
             if (!retryable || attempt === retries) {
                 throw err;
             }
-            console.warn(`[fsRetry] ${label} failed (attempt ${attempt}/${retries}, code: ${err.code}), retrying in ${delay}ms...`);
+            logger.warn(`[fsRetry] ${label} failed (attempt ${attempt}/${retries}, code: ${err.code}), retrying in ${delay}ms...`);
             await new Promise(r => setTimeout(r, delay));
         }
     }
