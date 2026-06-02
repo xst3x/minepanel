@@ -9,6 +9,9 @@ let state = {
     servers: []
 };
 
+// Pending 2FA login data (username + password held while awaiting TOTP code)
+window._pendingLoginData = null;
+
 // Back Navigation Stack
 let navStack = [];
 
@@ -881,6 +884,7 @@ const accentColor = {
         root.style.setProperty('--green',         d.base);
         root.setAttribute('data-accent', hslValue);
         this._current = hslValue;
+        try { localStorage.setItem('mp_accent', hslValue); } catch(e) {}
         document.querySelectorAll('.accent-circle').forEach(el => {
             el.classList.toggle('active', el.dataset.accent === hslValue);
         });
@@ -1309,6 +1313,20 @@ document.getElementById('login-form').addEventListener('submit', async e => {
     const u = uField.value, p = pField.value;
     try {
         const d = await api.req('/auth/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
+
+        // 2FA required — show TOTP step
+        if (d.requires2FA) {
+            window._pendingLoginData = { username: u, password: p };
+            uField.value = ''; pField.value = '';
+            // Show totp-form, hide others
+            ['login-form', 'register-form', 'reset-password-form', 'totp-form'].forEach(f => {
+                const el = document.getElementById(f);
+                if (el) el.style.display = f === 'totp-form' ? '' : 'none';
+            });
+            document.getElementById('totp-code')?.focus();
+            return;
+        }
+
         state.token = d.token; state.user = d.username; state.role = d.role || 'user'; state.userId = d.userId;
         localStorage.setItem('mp_token', d.token); localStorage.setItem('mp_user', d.username); localStorage.setItem('mp_role', d.role || 'user'); localStorage.setItem('mp_userid', d.userId);
         uField.value = ''; pField.value = '';

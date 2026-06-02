@@ -1608,20 +1608,34 @@ const plugins = {
                     <span>${this.escapeHtml(p.project_type || '')}</span>
                 </div>
                 ${installed ? `<div class="plugin-installed-note">Installed: ${this.escapeHtml(installed.modrinth?.versionNumber || installed.name)}</div>` : ''}
-                <button class="btn ${installed ? 'success' : 'primary'} small full-width" data-pid="${this.escapeHtml(p.project_id)}" ${installed ? 'disabled' : ''}>${installed ? 'Installed' : 'Install latest compatible'}</button>
+                <button class="btn ${installed ? 'danger' : 'primary'} small full-width" data-pid="${this.escapeHtml(p.project_id)}" data-installed="${installed ? 'true' : 'false'}" data-filename="${installed ? this.escapeHtml(installed.name) : ''}">${installed ? 'Uninstall' : 'Install latest compatible'}</button>
             `;
             el.onclick = () => this.openProject(p.project_id);
             el.onkeydown = e => { if (e.key === 'Enter') this.openProject(p.project_id); };
             el.querySelector('[data-pid]').onclick = async (event) => {
                 event.stopPropagation();
-                if (installed) return;
-                try {
-                    ui.toast('Installing...', 'info');
-                    const r = await api.req(`/servers/${sid()}/plugins/install`, { method: 'POST', body: JSON.stringify({ projectId: p.project_id }) });
-                    ui.toast(r.message, 'success');
-                    await plugins.loadInstalled();
-                    plugins.refreshCurrentBrowserPage();
-                } catch (e) { ui.toast(e.message, 'error'); }
+                const btn = event.currentTarget;
+                if (btn.dataset.installed === 'true') {
+                    // Uninstall flow
+                    const filename = btn.dataset.filename;
+                    const ok = await ui.confirm(`Uninstall ${this.escapeHtml(p.title)}?`, 'Remove Plugin', 'Uninstall', 'Cancel');
+                    if (!ok) return;
+                    try {
+                        await api.req(`/servers/${sid()}/plugins/uninstall`, { method: 'POST', body: JSON.stringify({ filename }) });
+                        ui.toast(`${p.title} uninstalled`, 'success');
+                        await plugins.loadInstalled();
+                        plugins.refreshCurrentBrowserPage();
+                    } catch (e) { ui.toast(e.message, 'error'); }
+                } else {
+                    // Install flow
+                    try {
+                        ui.toast('Installing...', 'info');
+                        const r = await api.req(`/servers/${sid()}/plugins/install`, { method: 'POST', body: JSON.stringify({ projectId: p.project_id }) });
+                        ui.toast(r.message, 'success');
+                        await plugins.loadInstalled();
+                        plugins.refreshCurrentBrowserPage();
+                    } catch (e) { ui.toast(e.message, 'error'); }
+                }
             };
             g.appendChild(el);
         });

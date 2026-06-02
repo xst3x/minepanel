@@ -345,4 +345,33 @@ router.post('/create', authenticateToken, checkGlobalPermission('account.manage'
     }
 });
 
+// ── Change own password ───────────────────────────────────────────────────────
+
+router.post('/me/password', authenticateToken, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+        return sendError(res, E.BAD_REQUEST, 400, 'currentPassword and newPassword are required');
+    }
+
+    const pwCheck = validatePasswordStrength(newPassword);
+    if (!pwCheck.valid) return sendError(res, E.BAD_REQUEST, 400, pwCheck.error);
+
+    try {
+        const { comparePassword } = require('../core/auth');
+        const user = await dbGet('SELECT password FROM users WHERE id = ?', [req.user.id]);
+        if (!user) return sendError(res, E.USER_NOT_FOUND, 404);
+
+        const match = await comparePassword(currentPassword, user.password);
+        if (!match) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401, 'Current password is incorrect');
+
+        const hashed = await hashPassword(newPassword);
+        const now = Math.floor(Date.now() / 1000);
+        await dbRun('UPDATE users SET password = ?, valid_tokens_from = ? WHERE id = ?', [hashed, now, req.user.id]);
+        res.json({ success: true, message: 'Password updated. Please log in again.' });
+    } catch (err) {
+        logger.error(`[userRoutes] Change password error (User: ${req.user.id}):`, err);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
 module.exports = router;

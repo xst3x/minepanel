@@ -6,14 +6,36 @@
     <title>MinePanel — Server Management</title>
     <meta name="description" content="Minecraft server management panel.">
     <script>
-        (function(){var t=localStorage.getItem('mp_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();
+        (function(){
+            var t=localStorage.getItem('mp_theme');
+            if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);
+            try {
+                var a=localStorage.getItem('mp_accent');
+                if(a){
+                    var r=document.documentElement;
+                    // Parse HSL: hsl(H,S%,L%) or hsla(...)
+                    var mh=a.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+                    if(mh){
+                        var h=+mh[1],s=+mh[2],l=+mh[3];
+                        var lh=Math.min(100,l+8);
+                        r.style.setProperty('--accent','hsl('+h+','+s+'%,'+l+'%)');
+                        r.style.setProperty('--accent-hover','hsl('+h+','+s+'%,'+lh+'%)');
+                        r.style.setProperty('--accent-glow','hsla('+h+','+s+'%,'+l+'%,0.15)');
+                        r.style.setProperty('--accent-subtle','hsla('+h+','+s+'%,'+l+'%,0.08)');
+                        r.style.setProperty('--green','hsl('+h+','+s+'%,'+l+'%)');
+                    }
+                }
+            } catch(e){}
+        })();
     </script>
     <link rel="stylesheet" href="/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+
 </head>
 <body>
+    <canvas id="content-bg-canvas"></canvas>
     <div id="app">
         <!-- Auth View -->
         <div id="auth-view" class="view active">
@@ -28,7 +50,7 @@
                         <svg viewBox="0 0 24 24" width="24" height="24" stroke="var(--accent)" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /><path d="M2 7v10" /><path d="M12 12v10" /><path d="M22 7v10" /></svg>
                         <h1>MinePanel</h1>
                     </div>
-                    <p class="subtitle">Secure Server Management</p>
+                    <p class="subtitle">Enter your credentials to login to minepanel</p>
                     
                     <!-- Login Form -->
                     <form id="login-form">
@@ -41,7 +63,8 @@
                             <input type="password" id="password" required placeholder="Enter your password">
                         </div>
                         <button type="submit" id="login-submit-btn" class="btn primary full-width" style="margin-bottom:0.75rem">Login</button>
-                        <button type="button" id="btn-go-to-register" class="btn outline full-width">Create Account</button>
+                        <button type="button" id="btn-go-to-register" class="btn outline full-width" style="margin-bottom:0.75rem">Create Account</button>
+                        <div style="text-align:center;font-size:0.8rem;"><a href="#" id="link-forgot-password" style="color:var(--text-muted);">Forgot password?</a></div>
                     </form>
 
                     <!-- Register Form -->
@@ -64,6 +87,52 @@
                         </div>
                         <button type="submit" id="register-submit-btn" class="btn primary full-width" style="margin-bottom:1rem">Create Account</button>
                         <div style="text-align:center"><a href="#" id="link-back-to-login">Back to Login</a></div>
+                    </form>
+
+                    <!-- Reset Password with 2FA Form -->
+                    <form id="reset-password-form" style="display:none">
+                        <div style="margin-bottom:1.25rem;">
+                            <h3 style="margin:0 0 0.25rem;font-size:1rem;">Reset Password with 2FA</h3>
+                            <p style="margin:0;font-size:0.8rem;color:var(--text-secondary);">Use your authenticator app or a backup code to set a new password.</p>
+                        </div>
+                        <div class="input-group">
+                            <label for="reset-username">Username</label>
+                            <input type="text" id="reset-username" required autocomplete="off" placeholder="Your username">
+                        </div>
+                        <div class="input-group">
+                            <label for="reset-totp">Authenticator Code <span style="color:var(--text-muted);font-weight:400;">or use backup code below</span></label>
+                            <input type="text" id="reset-totp" placeholder="6-digit code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="letter-spacing:0.2em;text-align:center;">
+                        </div>
+                        <div style="text-align:center;font-size:0.78rem;color:var(--text-muted);margin:-0.25rem 0 0.75rem;">— or —</div>
+                        <div class="input-group">
+                            <label for="reset-backup-code">Backup Code</label>
+                            <input type="text" id="reset-backup-code" placeholder="XXXXX-XXXXX" maxlength="11" style="letter-spacing:0.1em;text-align:center;text-transform:uppercase;">
+                        </div>
+                        <div class="input-group">
+                            <label for="reset-new-password">New Password</label>
+                            <input type="password" id="reset-new-password" required placeholder="New password">
+                        </div>
+                        <div class="input-group">
+                            <label for="reset-confirm-password">Confirm New Password</label>
+                            <input type="password" id="reset-confirm-password" required placeholder="Confirm new password">
+                        </div>
+                        <button type="submit" id="reset-submit-btn" class="btn primary full-width" style="margin-bottom:0.75rem">Reset Password</button>
+                        <div style="text-align:center"><a href="#" id="link-reset-back-to-login">Back to Login</a></div>
+                    </form>
+
+                    <!-- 2FA Login Step -->
+                    <form id="totp-form" style="display:none">
+                        <div style="margin-bottom:1.25rem;text-align:center;">
+                            <div style="font-size:2rem;margin-bottom:0.5rem;">🔐</div>
+                            <h3 style="margin:0 0 0.25rem;font-size:1rem;">Two-Factor Authentication</h3>
+                            <p style="margin:0;font-size:0.82rem;color:var(--text-secondary);">Enter the 6-digit code from your authenticator app.</p>
+                        </div>
+                        <div class="input-group">
+                            <label for="totp-code">Authenticator Code</label>
+                            <input type="text" id="totp-code" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="letter-spacing:0.3em;font-size:1.4rem;text-align:center;">
+                        </div>
+                        <button type="submit" id="totp-submit-btn" class="btn primary full-width" style="margin-bottom:0.75rem">Verify</button>
+                        <div style="text-align:center"><a href="#" id="link-totp-back-to-login">Back to Login</a></div>
                     </form>
                 </div>
             </div>
@@ -151,6 +220,9 @@
                             <span id="sidebar-username">Admin</span>
                         </div>
                         <div class="sidebar-actions">
+                            <button class="icon-btn" id="btn-my-account" title="My Account">
+                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            </button>
                             <button class="icon-btn" id="theme-toggle-btn" title="Toggle theme">
                                 <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                                 <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -183,7 +255,58 @@
                     <div class="servers-grid" id="servers-grid"></div>
                 </div>
 
-                <!-- Server Dashboard -->
+                <!-- My Account / 2FA View -->
+                <div id="view-my-account" class="content-view">
+                    <div class="page-header">
+                        <h2>My Account</h2>
+                    </div>
+                    <div style="max-width:560px;display:flex;flex-direction:column;gap:1.25rem;">
+
+                        <!-- Change Password -->
+                        <div class="card" style="padding:1.5rem;">
+                            <h3 style="margin:0 0 1rem;font-size:1rem;font-weight:600;">Change Password</h3>
+                            <div class="input-group">
+                                <label>Current Password</label>
+                                <input type="password" id="acc-cur-pass" placeholder="Enter current password">
+                            </div>
+                            <div class="input-group">
+                                <label>New Password</label>
+                                <input type="password" id="acc-new-pass" placeholder="New password">
+                            </div>
+                            <div class="input-group">
+                                <label>Confirm New Password</label>
+                                <input type="password" id="acc-confirm-pass" placeholder="Confirm new password">
+                            </div>
+                            <button class="btn primary" id="btn-change-password">Update Password</button>
+                        </div>
+
+                        <!-- 2FA Section -->
+                        <div class="card" style="padding:1.5rem;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+                                <div>
+                                    <h3 style="margin:0 0 0.25rem;font-size:1rem;font-weight:600;">Two-Factor Authentication</h3>
+                                    <p class="text-muted" style="margin:0;font-size:0.82rem;">Protect your account with an authenticator app (Google Authenticator, Authy, etc.)</p>
+                                </div>
+                                <span id="2fa-status-badge" class="status-badge" style="flex-shrink:0;">DISABLED</span>
+                            </div>
+
+                            <div id="2fa-disabled-actions">
+                                <button class="btn primary" id="btn-enable-2fa">Enable 2FA</button>
+                            </div>
+
+                            <div id="2fa-enabled-actions" style="display:none;flex-direction:column;gap:0.75rem;">
+                                <p style="margin:0;font-size:0.85rem;color:var(--text-secondary);">2FA is active on your account. You can view backup codes or disable 2FA below.</p>
+                                <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+                                    <button class="btn outline" id="btn-view-backup-codes">View Backup Codes</button>
+                                    <button class="btn danger" id="btn-disable-2fa">Disable 2FA</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Server List -->
                 <div id="view-server-dashboard" class="content-view">
                     <button class="back-btn" id="btn-back-to-list">
                         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -223,7 +346,7 @@
                         </button>
                         <button class="sub-nav-item" data-tab="plugins">
                             <svg class="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-4h3a2 2 0 0 0 2-2v-3h4v-3h-4V7a2 2 0 0 0-2-2h-3V1H8v4H5a2 2 0 0 0-2 2v3H1v3h3v3a2 2 0 0 0 2 2h3v4z"/></svg>
-                            Plugins / Mods
+                            Content
                         </button>
                         <button class="sub-nav-item" data-tab="players">
                             <svg class="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -370,7 +493,7 @@
                                     <div class="installed-plugins-list" id="installed-plugins-list"></div>
                                 </div>
                                 <div class="card">
-                                    <h3>Discover Modrinth</h3>
+                                    <h3>Discover on Modrinth</h3>
                                     <div id="plugins-browser-view">
                                         <div class="sub-nav" id="plugins-discovery-tabs" style="margin-bottom:1rem;border-bottom:1px solid var(--border-color);display:flex;gap:0.5rem">
                                             <button class="sub-nav-item active" data-discovery="popular">Popular</button>
@@ -1081,7 +1204,7 @@
     <!-- Create Server Modal -->
     <div class="modal-overlay" id="modal-create-server">
         <div class="modal">
-            <div class="modal-header"><h3>Deploy New Server</h3><button class="close-btn" id="modal-create-server-close">&times;</button></div>
+            <div class="modal-header"><h3>Create new server</h3><button class="close-btn" id="modal-create-server-close">&times;</button></div>
             <div class="modal-body">
                 <div class="form-group"><label>Server Name</label><input type="text" id="cs-name" placeholder="My Server"></div>
                 <div class="form-group"><label>Software Engine</label>
@@ -1403,6 +1526,115 @@
         </div>
     </div>
 
+    <!-- ── 2FA Setup Modal ──────────────────────────────────────────────────── -->
+    <div class="modal-overlay" id="modal-2fa-setup">
+        <div class="modal" style="max-width:480px;">
+            <div class="modal-header">
+                <h3>Set Up Two-Factor Authentication</h3>
+                <button class="close-btn" id="modal-2fa-setup-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: QR Code -->
+                <div id="2fa-step-qr">
+                    <p style="margin-bottom:1rem;font-size:0.875rem;color:var(--text-secondary)">
+                        Scan the QR code below with your authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code to confirm.
+                    </p>
+                    <div style="text-align:center;margin-bottom:1rem;">
+                        <img id="2fa-qr-img" src="" alt="QR Code" style="width:200px;height:200px;border-radius:var(--radius);border:3px solid var(--border);">
+                    </div>
+                    <details style="margin-bottom:1rem;">
+                        <summary style="cursor:pointer;font-size:0.8rem;color:var(--text-secondary);">Can't scan? Enter manually</summary>
+                        <div style="margin-top:0.5rem;padding:0.75rem;background:var(--bg-input);border-radius:var(--radius);font-family:var(--font-mono);font-size:0.8rem;word-break:break-all;color:var(--accent);border:1px solid var(--border);" id="2fa-secret-display"></div>
+                    </details>
+                    <div class="input-group" style="margin-bottom:0;">
+                        <label>Verification Code</label>
+                        <input type="text" id="2fa-setup-code" placeholder="Enter 6-digit code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="letter-spacing:0.25em;font-size:1.2rem;text-align:center;">
+                    </div>
+                </div>
+                <!-- Step 2: Backup Codes -->
+                <div id="2fa-step-backup" style="display:none;">
+                    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding:0.75rem;background:var(--warning-bg,rgba(234,179,8,0.1));border:1px solid var(--warning,#ca8a04);border-radius:var(--radius);">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="var(--warning,#ca8a04)" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <span style="font-size:0.85rem;color:var(--warning,#ca8a04);font-weight:600;">Save these backup codes! Each can only be used once.</span>
+                    </div>
+                    <p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.75rem;">If you lose access to your authenticator app, use one of these codes to log in or reset your password. Store them somewhere safe.</p>
+                    <div id="2fa-backup-codes-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;margin-bottom:1rem;font-family:var(--font-mono);font-size:0.85rem;"></div>
+                    <button class="btn outline full-width" id="btn-copy-backup-codes" style="margin-bottom:0;">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="1.75" style="margin-right:0.4rem;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        Copy All Codes
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer" id="2fa-setup-footer-verify">
+                <button class="btn outline" id="modal-2fa-setup-cancel">Cancel</button>
+                <button class="btn primary" id="btn-2fa-confirm">Verify &amp; Enable</button>
+            </div>
+            <div class="modal-footer" id="2fa-setup-footer-done" style="display:none;">
+                <button class="btn primary full-width" id="btn-2fa-setup-done">Done — 2FA is Active</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Disable 2FA Modal ───────────────────────────────────────────────── -->
+    <div class="modal-overlay" id="modal-2fa-disable">
+        <div class="modal" style="max-width:400px;">
+            <div class="modal-header">
+                <h3>Disable Two-Factor Authentication</h3>
+                <button class="close-btn" id="modal-2fa-disable-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:1rem;font-size:0.875rem;color:var(--text-secondary);">Enter your current password to disable 2FA.</p>
+                <div class="input-group" style="margin-bottom:0;">
+                    <label>Password</label>
+                    <input type="password" id="2fa-disable-password" placeholder="Your current password">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn outline" id="modal-2fa-disable-cancel">Cancel</button>
+                <button class="btn danger" id="btn-2fa-disable-confirm">Disable 2FA</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── View / Regenerate Backup Codes Modal ───────────────────────────── -->
+    <div class="modal-overlay" id="modal-2fa-backup-view">
+        <div class="modal" style="max-width:440px;">
+            <div class="modal-header">
+                <h3>Backup Codes</h3>
+                <button class="close-btn" id="modal-2fa-backup-view-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Ask for TOTP to regenerate -->
+                <div id="backup-regen-step">
+                    <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1rem;">Enter your current authenticator code to generate a new set of backup codes. This will invalidate all existing codes.</p>
+                    <div class="input-group" style="margin-bottom:0;">
+                        <label>Authenticator Code</label>
+                        <input type="text" id="backup-regen-code" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="letter-spacing:0.25em;font-size:1.1rem;text-align:center;">
+                    </div>
+                </div>
+                <!-- New codes display -->
+                <div id="backup-regen-result" style="display:none;">
+                    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;padding:0.75rem;background:var(--warning-bg,rgba(234,179,8,0.1));border:1px solid var(--warning,#ca8a04);border-radius:var(--radius);">
+                        <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--warning,#ca8a04)" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <span style="font-size:0.82rem;color:var(--warning,#ca8a04);font-weight:600;">Old codes are now invalid. Save these new codes!</span>
+                    </div>
+                    <div id="backup-regen-codes-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;margin-bottom:1rem;font-family:var(--font-mono);font-size:0.85rem;"></div>
+                    <button class="btn outline full-width" id="btn-copy-regen-codes">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="1.75" style="margin-right:0.4rem;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        Copy All Codes
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer" id="backup-regen-footer">
+                <button class="btn outline" id="modal-2fa-backup-view-cancel">Cancel</button>
+                <button class="btn primary" id="btn-backup-regen-confirm">Generate New Codes</button>
+            </div>
+            <div class="modal-footer" id="backup-regen-done-footer" style="display:none;">
+                <button class="btn primary full-width" id="btn-backup-regen-done">Done</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/yaml/yaml.min.js"></script>
@@ -1423,5 +1655,219 @@
     <script src="/js/players-tab/offhandSlot.js"></script>
     <script src="/js/players-tab/enderChest.js"></script>
     <script src="/js/modules.js"></script>
+    <script src="/js/account2fa.js"></script>
+    <script>
+    (function(){
+        const canvas = document.getElementById('content-bg-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function getAccentHsl(){
+            const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+            const m = raw.match(/hsl\(\s*([\d.]+)[,\s]+([\d.]+)%[,\s]+([\d.]+)%/);
+            if(m) return [+m[1],+m[2],+m[3]];
+            const d=document.createElement('div');
+            d.style.color=raw; document.body.appendChild(d);
+            const c=getComputedStyle(d).color; document.body.removeChild(d);
+            const r=c.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if(r){
+                let rv=+r[1]/255,g=+r[2]/255,b=+r[3]/255;
+                const mx=Math.max(rv,g,b),mn=Math.min(rv,g,b),l=(mx+mn)/2;
+                if(mx===mn) return [0,0,l*100];
+                const d2=mx-mn,s=l>0.5?d2/(2-mx-mn):d2/(mx+mn);
+                let h;
+                if(mx===rv) h=((g-b)/d2+(g<b?6:0))/6;
+                else if(mx===g) h=((b-rv)/d2+2)/6;
+                else h=((rv-g)/d2+4)/6;
+                return [h*360,s*100,l*100];
+            }
+            return [149,100,47];
+        }
+
+        const shapes=[];
+        function makeShapes(){
+            shapes.length=0;
+            const [H,S,L]=getAccentHsl();
+            const N=Math.floor((canvas.width*canvas.height)/28000)+8;
+            for(let i=0;i<N;i++){
+                shapes.push({
+                    type: ['tri','hex','quad'][Math.floor(Math.random()*3)],
+                    x: Math.random()*canvas.width,
+                    y: Math.random()*canvas.height,
+                    size: 25+Math.random()*85,
+                    h: H+(Math.random()-0.5)*55,
+                    s: Math.min(100,S+(Math.random()-0.5)*20),
+                    l: Math.max(15,Math.min(80,L+(Math.random()-0.5)*30)),
+                    a: 0.25+Math.random()*0.25,
+                    rot: Math.random()*Math.PI*2,
+                    vx: (Math.random()-0.5)*0.35,
+                    vy: (Math.random()-0.5)*0.35,
+                    vr: (Math.random()-0.5)*0.004,
+                });
+            }
+        }
+
+        function poly(x,y,r,sides,rot,h,s,l,a){
+            ctx.save(); ctx.translate(x,y); ctx.rotate(rot);
+            ctx.beginPath();
+            for(let i=0;i<sides;i++){
+                const ang=(i/sides)*Math.PI*2;
+                i===0?ctx.moveTo(Math.cos(ang)*r,Math.sin(ang)*r):ctx.lineTo(Math.cos(ang)*r,Math.sin(ang)*r);
+            }
+            ctx.closePath();
+            ctx.fillStyle=`hsla(${h},${s}%,${l}%,${a})`;
+            ctx.strokeStyle=`hsla(${h},${s}%,${l+18}%,${a*1.5})`;
+            ctx.lineWidth=1;
+            ctx.fill(); ctx.stroke();
+            ctx.restore();
+        }
+
+        makeShapes();
+
+        function draw(){
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            const [H,S,L]=getAccentHsl();
+            const isDark=document.documentElement.getAttribute('data-theme')!=='light';
+
+            for(const s of shapes){
+                s.x+=s.vx; s.y+=s.vy; s.rot+=s.vr;
+                if(s.x<-120) s.x=canvas.width+120;
+                if(s.x>canvas.width+120) s.x=-120;
+                if(s.y<-120) s.y=canvas.height+120;
+                if(s.y>canvas.height+120) s.y=-120;
+                const sides=s.type==='tri'?3:s.type==='hex'?6:4;
+                poly(s.x,s.y,s.size,sides,s.rot,s.h,s.s,s.l,s.a);
+            }
+
+            for(let i=0;i<shapes.length;i++){
+                for(let j=i+1;j<shapes.length;j++){
+                    const a=shapes[i],b=shapes[j];
+                    const d=Math.hypot(a.x-b.x,a.y-b.y);
+                    if(d<140){
+                        ctx.beginPath();
+                        ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+                        ctx.strokeStyle=`hsla(${H},${S}%,${L+20}%,${(1-d/140)*0.07})`;
+                        ctx.lineWidth=0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(draw);
+        }
+        draw();
+
+        new MutationObserver(makeShapes).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','style']});
+        document.addEventListener('accentChanged', makeShapes);
+    })();
+    </script>
+</body>
+</html>
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function parseAccent() {
+            const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+            const tmp = document.createElement('div');
+            tmp.style.color = raw;
+            document.body.appendChild(tmp);
+            const computed = getComputedStyle(tmp).color;
+            document.body.removeChild(tmp);
+            const m = computed.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (m) return { r: +m[1], g: +m[2], b: +m[3] };
+            return { r: 0, g: 240, b: 118 };
+        }
+
+        const NUM = 8;
+        let blobs = [];
+
+        function makeBlobs() {
+            const { r, g, b } = parseAccent();
+            blobs = [];
+            for (let i = 0; i < NUM; i++) {
+                const hueShift = (i / NUM) * 60 - 30;
+                const [h, s, l] = rgbToHsl(r, g, b);
+                blobs.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    r: 200 + Math.random() * 300,
+                    h: h + hueShift,
+                    s: Math.min(100, s + Math.random() * 15 - 7),
+                    l: l,
+                    baseAlpha: 0.06 + Math.random() * 0.07,
+                    vx: (Math.random() - 0.5) * 0.4,
+                    vy: (Math.random() - 0.5) * 0.4,
+                    phase: Math.random() * Math.PI * 2,
+                    speed: 0.0003 + Math.random() * 0.0005,
+                });
+            }
+        }
+
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max === min) { h = s = 0; }
+            else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            return [h * 360, s * 100, l * 100];
+        }
+
+        makeBlobs();
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+
+            for (const b of blobs) {
+                b.phase += b.speed;
+                b.x += b.vx + Math.sin(b.phase * 1.3) * 0.45;
+                b.y += b.vy + Math.cos(b.phase * 0.9) * 0.35;
+
+                if (b.x < -b.r) b.x = canvas.width + b.r;
+                if (b.x > canvas.width + b.r) b.x = -b.r;
+                if (b.y < -b.r) b.y = canvas.height + b.r;
+                if (b.y > canvas.height + b.r) b.y = -b.r;
+
+                const pulse = 1 + Math.sin(b.phase * 2.3) * 0.1;
+                const radius = b.r * pulse;
+                const alpha = isDark ? b.baseAlpha : b.baseAlpha * 0.6;
+                const lightness = isDark ? Math.min(65, b.l + 15) : Math.max(20, b.l - 10);
+
+                const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, radius);
+                grad.addColorStop(0,   `hsla(${b.h}, ${b.s}%, ${lightness}%, ${alpha})`);
+                grad.addColorStop(0.45, `hsla(${b.h + 10}, ${b.s}%, ${lightness - 4}%, ${alpha * 0.55})`);
+                grad.addColorStop(1,   `hsla(${b.h}, ${b.s}%, ${lightness}%, 0)`);
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            requestAnimationFrame(draw);
+        }
+        draw();
+
+        new MutationObserver(makeBlobs).observe(document.documentElement, {
+            attributes: true, attributeFilter: ['data-theme', 'style']
+        });
+        document.addEventListener('accentChanged', makeBlobs);
+    })();
+    </script>
 </body>
 </html>

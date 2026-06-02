@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap');
 
 :root {
     /* Cyber-Emerald & Deep Slate Theme */
@@ -36,8 +36,8 @@
     --danger: var(--red);
     --warning: var(--yellow);
     
-    --font-ui: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    --font-ui: 'Sora', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Fira Code', 'Cascadia Code', monospace;
     --radius: 8px;
     --radius-lg: 14px;
     --radius-sm: 4px;
@@ -161,17 +161,6 @@ input, select, textarea {
 }
 /* ── End global overflow & text safety ──────────────────────────────────────── */
 
-body { 
-    font-family: var(--font-ui); 
-    background: var(--bg-base); 
-    color: var(--text-primary); 
-    line-height: 1.5; 
-    font-size: 13.5px; 
-    overflow: hidden; 
-    height: 100vh;
-    transition: background-color 0.3s ease, color 0.3s ease;
-}
-
 a { 
     color: var(--accent); 
     text-decoration: none; 
@@ -186,6 +175,7 @@ a:hover {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
+    background: transparent;
 }
 
 .view { 
@@ -204,7 +194,7 @@ a:hover {
     display: flex; 
     justify-content: center; 
     align-items: center; 
-    background: var(--bg-base);
+    background: transparent;
     position: relative;
     z-index: 1;
 }
@@ -232,6 +222,7 @@ a:hover {
     max-width: 390px; 
     box-shadow: var(--shadow-lg);
     z-index: 2;
+    animation: scaleIn 0.35s cubic-bezier(0.34, 1.3, 0.64, 1) both;
 }
 .auth-brand { 
     display: flex; 
@@ -669,13 +660,53 @@ html[data-theme="dark"] .sidebar-item.sidebar-create:hover {
 }
 
 /* Content Area Layout */
+
+#content-bg-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+body {
+    font-family: var(--font-ui);
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    line-height: 1.5;
+    font-size: 13.5px;
+    overflow: hidden;
+    height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+#app {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: transparent;
+    position: relative;
+    z-index: 1;
+}
+
+#main-view.active {
+    background: transparent;
+}
+
 .content-area {
     flex: 1;
     overflow-y: auto;
-    background: var(--bg-base);
+    background: transparent;
     padding: 2.25rem;
     position: relative;
-    transition: background-color 0.3s ease;
+    transition: none;
+}
+
+.content-area > * {
+    position: relative;
+    z-index: 1;
 }
 
 .content-view {
@@ -693,6 +724,25 @@ html[data-theme="dark"] .sidebar-item.sidebar-create:hover {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Animation Keyframes ─────────────────────────────────────────────────────── */
+@keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-18px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.93); }
+    to   { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+/* ── End Animation Keyframes ─────────────────────────────────────────────────── */
 
 /* Header & Back Navigation */
 .page-header {
@@ -887,13 +937,16 @@ html[data-theme="dark"] .sidebar-item.sidebar-create:hover {
 .sub-nav {
     display: flex;
     flex-wrap: nowrap;
-    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     margin-bottom: 1.5rem;
     overflow-x: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
-    padding: 0 1rem;
+    padding: 5px 6px;
     gap: 2px;
+    box-shadow: var(--shadow-sm);
 }
 .sub-nav::-webkit-scrollbar {
     height: 3px;
@@ -909,11 +962,11 @@ html[data-theme="dark"] .sidebar-item.sidebar-create:hover {
     background: none;
     border: none;
     color: var(--text-secondary);
-    padding: 9px 14px;
+    padding: 7px 14px;
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
-    border-bottom: 2px solid transparent;
+    border-radius: var(--radius);
     white-space: nowrap;
     font-family: var(--font-ui);
     transition: var(--transition);
@@ -924,10 +977,12 @@ html[data-theme="dark"] .sidebar-item.sidebar-create:hover {
 }
 .sub-nav-item:hover {
     color: var(--text-primary);
+    background: var(--bg-elevated);
 }
 .sub-nav-item.active {
     color: var(--accent);
-    border-bottom-color: var(--accent);
+    background: var(--accent-subtle);
+    border: 1px solid var(--accent-glow);
 }
 
 /* Tab panes */
@@ -4231,3 +4286,267 @@ html[data-theme="light"] .CodeMirror-activeline-background {
     }
 }
 /* ── End Users Table Column Alignment Fix ────────────────────────────────── */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   ANIMATIONS — MinePanel UI Enhancement Layer
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Keyframes ───────────────────────────────────────────────────── */
+@keyframes mp-slideInLeft {
+    from { opacity: 0; transform: translateX(-14px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes mp-slideInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes mp-scaleIn {
+    from { opacity: 0; transform: scale(0.94); }
+    to   { opacity: 1; transform: scale(1); }
+}
+@keyframes mp-fadeSlideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes mp-shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position: 600px 0; }
+}
+
+/* ── Auth Box entrance ───────────────────────────────────────────── */
+.auth-box {
+    animation: mp-scaleIn 0.36s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+.auth-brand {
+    animation: mp-slideInUp 0.4s 0.05s ease both;
+}
+.auth-box .subtitle {
+    animation: mp-slideInUp 0.4s 0.1s ease both;
+}
+.auth-box .input-group:nth-child(1) {
+    animation: mp-slideInUp 0.35s 0.14s ease both;
+}
+.auth-box .input-group:nth-child(2) {
+    animation: mp-slideInUp 0.35s 0.19s ease both;
+}
+.auth-box .input-group:nth-child(3) {
+    animation: mp-slideInUp 0.35s 0.24s ease both;
+}
+.auth-box .btn {
+    animation: mp-slideInUp 0.35s 0.26s ease both;
+}
+
+/* ── Sidebar items stagger ───────────────────────────────────────── */
+.sidebar-item:nth-child(1)  { animation: mp-slideInLeft 0.28s 0.04s ease both; }
+.sidebar-item:nth-child(2)  { animation: mp-slideInLeft 0.28s 0.08s ease both; }
+.sidebar-item:nth-child(3)  { animation: mp-slideInLeft 0.28s 0.12s ease both; }
+.sidebar-item:nth-child(4)  { animation: mp-slideInLeft 0.28s 0.16s ease both; }
+.sidebar-item:nth-child(5)  { animation: mp-slideInLeft 0.28s 0.20s ease both; }
+.sidebar-item:nth-child(6)  { animation: mp-slideInLeft 0.28s 0.24s ease both; }
+.sidebar-item:nth-child(7)  { animation: mp-slideInLeft 0.28s 0.28s ease both; }
+.sidebar-item:nth-child(8)  { animation: mp-slideInLeft 0.28s 0.32s ease both; }
+.sidebar-item:nth-child(9)  { animation: mp-slideInLeft 0.28s 0.36s ease both; }
+.sidebar-item:nth-child(10) { animation: mp-slideInLeft 0.28s 0.40s ease both; }
+
+/* Hover micro-lift on sidebar items */
+.sidebar-item:not(.sidebar-create):hover {
+    transform: translateX(2px);
+}
+
+/* ── Server cards stagger ────────────────────────────────────────── */
+.server-card:nth-child(1) { animation: mp-slideInUp 0.3s 0.05s ease both; }
+.server-card:nth-child(2) { animation: mp-slideInUp 0.3s 0.10s ease both; }
+.server-card:nth-child(3) { animation: mp-slideInUp 0.3s 0.15s ease both; }
+.server-card:nth-child(4) { animation: mp-slideInUp 0.3s 0.20s ease both; }
+.server-card:nth-child(5) { animation: mp-slideInUp 0.3s 0.25s ease both; }
+.server-card:nth-child(6) { animation: mp-slideInUp 0.3s 0.30s ease both; }
+.server-card:nth-child(7) { animation: mp-slideInUp 0.3s 0.35s ease both; }
+.server-card:nth-child(8) { animation: mp-slideInUp 0.3s 0.40s ease both; }
+.server-card:nth-child(9) { animation: mp-slideInUp 0.3s 0.45s ease both; }
+
+/* ── Overview stat cards ─────────────────────────────────────────── */
+.ov-stat-card:nth-child(1) { animation: mp-slideInUp 0.32s 0.05s ease both; }
+.ov-stat-card:nth-child(2) { animation: mp-slideInUp 0.32s 0.10s ease both; }
+.ov-stat-card:nth-child(3) { animation: mp-slideInUp 0.32s 0.15s ease both; }
+.ov-stat-card:nth-child(4) { animation: mp-slideInUp 0.32s 0.20s ease both; }
+
+.ov-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-hover);
+}
+
+/* ── Cards ───────────────────────────────────────────────────────── */
+.card {
+    transition: box-shadow 0.22s ease, border-color 0.22s ease, transform 0.22s ease;
+}
+.card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* Server header card entrance */
+.server-header-card {
+    animation: mp-fadeSlideDown 0.3s ease both;
+}
+
+/* Sub-nav entrance */
+.sub-nav {
+    animation: mp-fadeSlideDown 0.28s 0.05s ease both;
+}
+
+/* ── Plugin cards stagger ────────────────────────────────────────── */
+.plugin-card:nth-child(1)  { animation: mp-slideInUp 0.28s 0.04s ease both; }
+.plugin-card:nth-child(2)  { animation: mp-slideInUp 0.28s 0.08s ease both; }
+.plugin-card:nth-child(3)  { animation: mp-slideInUp 0.28s 0.12s ease both; }
+.plugin-card:nth-child(4)  { animation: mp-slideInUp 0.28s 0.16s ease both; }
+.plugin-card:nth-child(5)  { animation: mp-slideInUp 0.28s 0.20s ease both; }
+.plugin-card:nth-child(6)  { animation: mp-slideInUp 0.28s 0.24s ease both; }
+.plugin-card:nth-child(7)  { animation: mp-slideInUp 0.28s 0.28s ease both; }
+.plugin-card:nth-child(8)  { animation: mp-slideInUp 0.28s 0.32s ease both; }
+.plugin-card:nth-child(9)  { animation: mp-slideInUp 0.28s 0.36s ease both; }
+.plugin-card:nth-child(10) { animation: mp-slideInUp 0.28s 0.40s ease both; }
+.plugin-card:nth-child(11) { animation: mp-slideInUp 0.28s 0.44s ease both; }
+.plugin-card:nth-child(12) { animation: mp-slideInUp 0.28s 0.48s ease both; }
+
+/* ── Rank cards ──────────────────────────────────────────────────── */
+.rank-card:nth-child(1) { animation: mp-slideInUp 0.3s 0.04s ease both; }
+.rank-card:nth-child(2) { animation: mp-slideInUp 0.3s 0.09s ease both; }
+.rank-card:nth-child(3) { animation: mp-slideInUp 0.3s 0.14s ease both; }
+.rank-card:nth-child(4) { animation: mp-slideInUp 0.3s 0.19s ease both; }
+.rank-card:nth-child(5) { animation: mp-slideInUp 0.3s 0.24s ease both; }
+.rank-card:nth-child(6) { animation: mp-slideInUp 0.3s 0.29s ease both; }
+
+/* ── List items stagger ──────────────────────────────────────────── */
+.list-item {
+    animation: mp-slideInUp 0.22s ease both;
+    transition: background var(--transition), transform 0.15s ease;
+}
+.list-item:hover {
+    transform: translateX(1px);
+}
+
+/* ── FM items ────────────────────────────────────────────────────── */
+.fm-item {
+    transition: background var(--transition), transform 0.15s ease;
+}
+.fm-item:hover {
+    transform: translateX(2px);
+}
+
+/* ── Modal entrance override (spring feel) ───────────────────────── */
+.modal {
+    animation: mp-scaleIn 0.28s cubic-bezier(0.34, 1.25, 0.64, 1) forwards;
+}
+
+/* ── Toast entrance ──────────────────────────────────────────────── */
+/* Already handled by existing toastIn/toastOut — just adding slide */
+.toast {
+    animation: toastIn 0.25s cubic-bezier(0.4, 0, 0.2, 1), toastOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) 3.75s forwards;
+}
+
+/* ── Accent swatch hover spring ──────────────────────────────────── */
+.accent-circle {
+    transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* ── Installed plugin items ──────────────────────────────────────── */
+.installed-plugin-item {
+    transition: background var(--transition), border-color var(--transition), transform 0.15s ease;
+}
+.installed-plugin-item:hover {
+    border-color: var(--border-hover);
+    transform: translateX(2px);
+}
+
+/* ── Backup list rows ────────────────────────────────────────────── */
+.ov-backup-row {
+    transition: border-color var(--transition), background var(--transition), transform 0.15s ease;
+}
+.ov-backup-row:hover {
+    transform: translateX(2px);
+}
+
+/* ── Prop items ──────────────────────────────────────────────────── */
+.prop-item {
+    transition: background var(--transition), border-color var(--transition);
+}
+.prop-item:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-elevated);
+}
+
+/* ── Perm items ──────────────────────────────────────────────────── */
+.perm-item {
+    transition: background var(--transition), border-color var(--transition);
+}
+.perm-item:hover {
+    border-color: var(--border-hover);
+}
+
+/* ── Sidebar brand logo pulse on hover ───────────────────────────── */
+.sidebar-brand svg {
+    transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.sidebar-brand:hover svg {
+    transform: rotate(-8deg) scale(1.12);
+}
+
+/* ── Icon button spring ──────────────────────────────────────────── */
+.icon-btn {
+    transition: var(--transition), transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.icon-btn:hover {
+    transform: scale(1.12);
+}
+
+/* ── Matrix checkbox spring ──────────────────────────────────────── */
+.matrix-checkbox-square {
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.matrix-checkbox-wrapper:hover .matrix-checkbox-square {
+    transform: scale(1.1);
+}
+
+/* ── Prevent animations for users who prefer reduced motion ──────── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   END ANIMATIONS
+   ══════════════════════════════════════════════════════════════════ */
+
+
+/* ── "Installed" button fix ──────────────────────────────────────────────────
+   .btn.success trebuie să arate ca statusul "online" (verde fix #22c55e),
+   nu să urmeze accent color. Textul alb pe dark, negru pe light.
+   ──────────────────────────────────────────────────────────────────────────── */
+.btn.success {
+    background: #22c55e !important;
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 3px 12px rgba(34, 197, 94, 0.3) !important;
+}
+.btn.success:hover {
+    background: #16a34a !important;
+    box-shadow: 0 5px 18px rgba(34, 197, 94, 0.4) !important;
+    color: #ffffff !important;
+}
+html[data-theme="dark"] .btn.success {
+    color: #ffffff !important;
+}
+html[data-theme="light"] .btn.success {
+    color: #000000 !important;
+}
+
+/* ── "Installed: x.x.x" note banner — verde fix, nu accent ──────────────── */
+.plugin-installed-note {
+    border-color: rgba(34, 197, 94, 0.35) !important;
+    background: rgba(34, 197, 94, 0.08) !important;
+    color: #22c55e !important;
+}

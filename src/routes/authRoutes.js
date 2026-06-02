@@ -225,7 +225,6 @@ router.get('/2fa/setup', authenticateToken, async (req, res) => {
         const otpauth = authenticator.keyuri(user.username, 'MinePanel', secret);
         const qrDataUrl = await QRCode.toDataURL(otpauth);
 
-        // Store secret temporarily (unverified) — only activate after user verifies
         await dbRun('UPDATE users SET totp_secret = ? WHERE id = ?', [secret, req.user.id]);
 
         res.json({ secret, qrCode: qrDataUrl });
@@ -235,29 +234,33 @@ router.get('/2fa/setup', authenticateToken, async (req, res) => {
     }
 });
 
-// POST /api/auth/2fa/verify — verify code and enable 2FA
+// POST /api/auth/2fa/verify — verify code, enable 2FA, return backup codes
 router.post('/2fa/verify', authenticateToken, async (req, res) => {
     try {
         const { code } = req.body;
         if (!code) return sendError(res, E.BAD_REQUEST, 400, 'Code is required');
 
         const { authenticator } = require('otplib');
+        const crypto = require('crypto');
         const user = await dbGet('SELECT totp_secret, totp_enabled FROM users WHERE id = ?', [req.user.id]);
 
-        if (!user.totp_secret) {
-            return sendError(res, E.BAD_REQUEST, 400, 'Run 2FA setup first');
-        }
-        if (user.totp_enabled) {
-            return sendError(res, E.BAD_REQUEST, 400, '2FA is already enabled');
-        }
+        if (!user.totp_secret) return sendError(res, E.BAD_REQUEST, 400, 'Run 2FA setup first');
+        if (user.totp_enabled) return sendError(res, E.BAD_REQUEST, 400, '2FA is already enabled');
 
         const isValid = authenticator.verify({ token: String(code), secret: user.totp_secret });
         if (!isValid) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 400, 'Invalid code');
 
-        await dbRun('UPDATE users SET totp_enabled = 1 WHERE id = ?', [req.user.id]);
+        // Generate 8 backup codes (XXXXX-XXXXX format)
+        const backupCodes = Array.from({ length: 8 }, () => {
+            const raw = crypto.randomBytes(5).toString('hex').toUpperCase();
+            return raw.slice(0, 5) + '-' + raw.slice(5);
+        });
+
+        await dbRun('UPDATE users SET totp_enabled = 1, totp_backup_codes = ? WHERE id = ?',
+            [JSON.stringify(backupCodes), req.user.id]);
         await audit.log(req, '2FA_ENABLED', { userId: req.user.id });
 
-        res.json({ success: true, message: '2FA enabled successfully' });
+        res.json({ success: true, message: '2FA enabled successfully', backupCodes });
     } catch (err) {
         logger.error('[authRoutes] 2FA verify error:', err);
         return sendError(res, E.INTERNAL_ERROR, 500);
@@ -278,12 +281,101 @@ router.post('/2fa/disable', authenticateToken, async (req, res) => {
         const match = await comparePassword(password, user.password);
         if (!match) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401);
 
-        await dbRun('UPDATE users SET totp_enabled = 0, totp_secret = NULL WHERE id = ?', [req.user.id]);
+        await dbRun('UPDATE users SET totp_enabled = 0, totp_secret = NULL, totp_backup_codes = NULL WHERE id = ?', [req.user.id]);
         await audit.log(req, '2FA_DISABLED', { userId: req.user.id });
 
         res.json({ success: true, message: '2FA disabled' });
     } catch (err) {
         logger.error('[authRoutes] 2FA disable error:', err);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ── 2FA Status ─────────────────────────────────────────────────────────────────
+
+router.get('/2fa/status', authenticateToken, async (req, res) => {
+    try {
+        const user = await dbGet('SELECT totp_enabled FROM users WHERE id = ?', [req.user.id]);
+        res.json({ enabled: !!user?.totp_enabled });
+    } catch (err) {
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ── Regenerate backup codes (requires current TOTP) ───────────────────────────
+
+router.post('/2fa/regenerate-backup-codes', authenticateToken, async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code) return sendError(res, E.BAD_REQUEST, 400, 'Current TOTP code is required');
+
+        const { authenticator } = require('otplib');
+        const crypto = require('crypto');
+        const user = await dbGet('SELECT totp_secret, totp_enabled FROM users WHERE id = ?', [req.user.id]);
+
+        if (!user.totp_enabled) return sendError(res, E.BAD_REQUEST, 400, '2FA is not enabled');
+
+        const isValid = authenticator.verify({ token: String(code), secret: user.totp_secret });
+        if (!isValid) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401, 'Invalid TOTP code');
+
+        const backupCodes = Array.from({ length: 8 }, () => {
+            const raw = crypto.randomBytes(5).toString('hex').toUpperCase();
+            return raw.slice(0, 5) + '-' + raw.slice(5);
+        });
+        await dbRun('UPDATE users SET totp_backup_codes = ? WHERE id = ?', [JSON.stringify(backupCodes), req.user.id]);
+        await audit.log(req, '2FA_BACKUP_CODES_REGENERATED', { userId: req.user.id });
+
+        res.json({ success: true, backupCodes });
+    } catch (err) {
+        logger.error('[authRoutes] regenerate backup codes error:', err);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ── Password reset using TOTP (no old password needed) ────────────────────────
+
+router.post('/password-reset-with-totp', async (req, res) => {
+    try {
+        const { username, totpCode, newPassword, backupCode } = req.body;
+        if (!username) return sendError(res, E.BAD_REQUEST, 400, 'Username is required');
+        if (!newPassword) return sendError(res, E.BAD_REQUEST, 400, 'New password is required');
+
+        const { validatePasswordStrength } = require('../core/utils/passwordValidator');
+        const pwCheck = validatePasswordStrength(newPassword);
+        if (!pwCheck.valid) return sendError(res, E.BAD_REQUEST, 400, pwCheck.error);
+
+        const user = await dbGet(
+            'SELECT id, username, totp_enabled, totp_secret, totp_backup_codes FROM users WHERE LOWER(username) = LOWER(?)',
+            [username]
+        );
+        if (!user) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401, 'Invalid credentials');
+        if (!user.totp_enabled || !user.totp_secret) {
+            return sendError(res, E.BAD_REQUEST, 400, '2FA is not enabled on this account');
+        }
+
+        if (backupCode) {
+            const codes = JSON.parse(user.totp_backup_codes || '[]');
+            const normalised = backupCode.trim().toUpperCase();
+            const idx = codes.indexOf(normalised);
+            if (idx === -1) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401, 'Invalid backup code');
+            codes.splice(idx, 1);
+            await dbRun('UPDATE users SET totp_backup_codes = ? WHERE id = ?', [JSON.stringify(codes), user.id]);
+        } else if (totpCode) {
+            const { authenticator } = require('otplib');
+            const verified = authenticator.verify({ token: String(totpCode), secret: user.totp_secret });
+            if (!verified) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401, 'Invalid authenticator code');
+        } else {
+            return sendError(res, E.BAD_REQUEST, 400, 'TOTP code or backup code is required');
+        }
+
+        const hashed = await hashPassword(newPassword);
+        const now = Math.floor(Date.now() / 1000);
+        await dbRun('UPDATE users SET password = ?, valid_tokens_from = ? WHERE id = ?', [hashed, now, user.id]);
+        await audit.log(req, 'PASSWORD_RESET_WITH_2FA', { userId: user.id, username: user.username });
+
+        res.json({ success: true, message: 'Password reset successfully. Please log in with your new password.' });
+    } catch (err) {
+        logger.error('[authRoutes] password-reset-with-totp error:', err);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
