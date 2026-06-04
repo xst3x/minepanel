@@ -7,6 +7,29 @@ const { validate } = require('../middleware/validation');
 const logger = require('../core/utils/logger');
 const { validatePasswordStrength } = require('../core/utils/passwordValidator');
 const V = require('../middleware/validators');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// ── Avatar upload config ──────────────────────────────────────────────────────
+const AVATARS_DIR = path.resolve(__dirname, '../../data/avatars');
+if (!fs.existsSync(AVATARS_DIR)) fs.mkdirSync(AVATARS_DIR, { recursive: true });
+
+const avatarStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, AVATARS_DIR),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+        cb(null, `avatar_${req.user.id}${ext}`);
+    },
+});
+const avatarUpload = multer({
+    storage: avatarStorage,
+    limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB max
+    fileFilter: (req, file, cb) => {
+        if (/^image\/(jpeg|png|gif|webp)$/.test(file.mimetype)) cb(null, true);
+        else cb(new Error('Only image files are allowed (jpg, png, gif, webp)'));
+    },
+});
 
 function preventSelfDeletion(req, res, next) {
     if (req.user && Number(req.user.id) === Number(req.params.userId)) {
@@ -341,6 +364,78 @@ router.post('/create', authenticateToken, checkGlobalPermission('account.manage'
         res.json({ message: 'User created successfully' });
     } catch (e) {
         logger.error(`[userRoutes] Direct create user error (Caller: ${req.user.id}, Username: ${username}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ── Get own profile (username + avatar) ──────────────────────────────────────
+
+router.get('/me', authenticateToken, async (req, res) => {
+    try {
+        const user = await dbGet('SELECT id, username, role, avatar_url FROM users WHERE id = ?', [req.user.id]);
+        if (!user) return sendError(res, E.USER_NOT_FOUND, 404);
+        res.json({ id: user.id, username: user.username, role: user.role, avatarUrl: user.avatar_url || null });
+    } catch (err) {
+        logger.error(`[userRoutes] GET /me error (User: ${req.user.id}):`, err);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ── Upload / update own avatar ────────────────────────────────────────────────
+
+router.post('/me/avatar', authenticateToken, (req, res, next) => {
+    avatarUpload.single('avatar')(req, res, (err) => {
+        if (err) return sendError(res, E.BAD_REQUEST, 400, err.message);
+        next();
+    });
+}, async (req, res) => {
+    if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No image file provided');
+    try {
+        const avatarUrl = `/avatars/${req.file.filename}`;
+        await dbRun('UPDATE users SET avatar_url = ? WHERE id = ?', [avatarUrl, req.user.id]);
+        res.json({ success: true, avatarUrl });
+    } catch (err) {
+        logger.error(`[userRoutes] Avatar upload error (User: ${req.user.id}):`, err);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ── Delete own avatar ─────────────────────────────────────────────────────────
+
+router.delete('/me/avatar', authenticateToken, async (req, res) => {
+    try {
+        const user = await dbGet('SELECT avatar_url FROM users WHERE id = ?', [req.user.id]);
+        if (user?.avatar_url) {
+            const filePath = path.join(AVATARS_DIR, path.basename(user.avatar_url));
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        }
+        await dbRun('UPDATE users SET avatar_url = NULL WHERE id = ?', [req.user.id]);
+        res.json({ success: true });
+    } catch (err) {
+        logger.error(`[userRoutes] Delete avatar error (User: ${req.user.id}):`, err);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ── Change own username (from account page) ───────────────────────────────────
+
+router.post('/me/username', authenticateToken, async (req, res) => {
+    const { newUsername } = req.body;
+    if (!newUsername || typeof newUsername !== 'string') {
+        return sendError(res, E.BAD_REQUEST, 400, 'newUsername is required');
+    }
+    const trimmed = newUsername.trim();
+    if (trimmed.length < 3) return sendError(res, E.USER_USERNAME_TOO_SHORT, 400);
+    if (trimmed.length > 32) return sendError(res, E.USER_USERNAME_TOO_LONG, 400);
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+        return sendError(res, E.BAD_REQUEST, 400, 'Username may only contain letters, numbers, underscores, and hyphens');
+    }
+    try {
+        await dbRun('UPDATE users SET username = ? WHERE id = ?', [trimmed, req.user.id]);
+        res.json({ success: true, username: trimmed });
+    } catch (err) {
+        if (err.message && err.message.includes('UNIQUE')) return sendError(res, E.USER_ALREADY_EXISTS, 409);
+        logger.error(`[userRoutes] Change own username error (User: ${req.user.id}):`, err);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });

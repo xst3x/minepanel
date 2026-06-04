@@ -262,6 +262,38 @@
                     </div>
                     <div style="max-width:560px;display:flex;flex-direction:column;gap:1.25rem;">
 
+                        <!-- Profile Picture + Username -->
+                        <div class="card" style="padding:1.5rem;">
+                            <h3 style="margin:0 0 1.25rem;font-size:1rem;font-weight:600;">Profile</h3>
+                            <!-- Avatar -->
+                            <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.5rem;">
+                                <div style="position:relative;flex-shrink:0;">
+                                    <div id="acc-avatar-wrap" style="width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--bg-input);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;">
+                                        <img id="acc-avatar-img" src="" alt="Avatar" style="width:100%;height:100%;object-fit:cover;display:none;">
+                                        <svg id="acc-avatar-placeholder" viewBox="0 0 24 24" width="32" height="32" stroke="var(--text-muted)" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    </div>
+                                </div>
+                                <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                                        <label class="btn outline small" style="cursor:pointer;padding:0.3rem 0.75rem;font-size:0.8rem;">
+                                            Upload Photo
+                                            <input type="file" id="acc-avatar-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
+                                        </label>
+                                        <button class="btn danger small" id="btn-remove-avatar" style="padding:0.3rem 0.75rem;font-size:0.8rem;display:none;">Remove</button>
+                                    </div>
+                                    <p style="margin:0;font-size:0.75rem;color:var(--text-muted);">JPG, PNG, GIF or WebP. Max 2 MB.</p>
+                                </div>
+                            </div>
+                            <!-- Username -->
+                            <div style="display:flex;gap:0.75rem;align-items:flex-end;">
+                                <div class="input-group" style="flex:1;margin:0;">
+                                    <label>Username</label>
+                                    <input type="text" id="acc-username-input" placeholder="Username" maxlength="32" autocomplete="off">
+                                </div>
+                                <button class="btn primary" id="btn-save-username" style="white-space:nowrap;height:38px;">Save</button>
+                            </div>
+                        </div>
+
                         <!-- Change Password -->
                         <div class="card" style="padding:1.5rem;">
                             <h3 style="margin:0 0 1rem;font-size:1rem;font-weight:600;">Change Password</h3>
@@ -280,25 +312,48 @@
                             <button class="btn primary" id="btn-change-password">Update Password</button>
                         </div>
 
-                        <!-- 2FA Section -->
+                        <!-- Authenticator / 2FA Section -->
                         <div class="card" style="padding:1.5rem;">
-                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-                                <div>
-                                    <h3 style="margin:0 0 0.25rem;font-size:1rem;font-weight:600;">Two-Factor Authentication</h3>
-                                    <p class="text-muted" style="margin:0;font-size:0.82rem;">Protect your account with an authenticator app (Google Authenticator, Authy, etc.)</p>
+                            <h3 style="margin:0 0 0.25rem;font-size:1rem;font-weight:600;">Authenticator App</h3>
+                            <p class="text-muted" style="margin:0 0 1.25rem;font-size:0.82rem;">Link an authenticator app (Google Authenticator, Authy, etc.) to your account. Once configured, you can use it for login protection and account recovery.</p>
+
+                            <!-- Not configured state -->
+                            <div id="auth-app-unconfigured">
+                                <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1rem;">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--text-muted)" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                                    <span style="font-size:0.85rem;color:var(--text-secondary);">No authenticator app linked to this account.</span>
                                 </div>
-                                <span id="2fa-status-badge" class="status-badge" style="flex-shrink:0;">DISABLED</span>
+                                <button class="btn primary" id="btn-setup-authenticator">Set Up Authenticator</button>
                             </div>
 
-                            <div id="2fa-disabled-actions">
-                                <button class="btn primary" id="btn-enable-2fa">Enable 2FA</button>
-                            </div>
+                            <!-- Configured state -->
+                            <div id="auth-app-configured" style="display:none;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;padding:0.85rem;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1.25rem;">
+                                    <div style="display:flex;align-items:center;gap:0.6rem;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="var(--green,#22c55e)" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                        <span style="font-size:0.85rem;font-weight:500;color:var(--text);">Authenticator configured</span>
+                                    </div>
+                                    <button class="btn outline small" id="btn-reconfigure-authenticator" style="font-size:0.78rem;">Reconfigure</button>
+                                </div>
 
-                            <div id="2fa-enabled-actions" style="display:none;flex-direction:column;gap:0.75rem;">
-                                <p style="margin:0;font-size:0.85rem;color:var(--text-secondary);">2FA is active on your account. You can view backup codes or disable 2FA below.</p>
-                                <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
-                                    <button class="btn outline" id="btn-view-backup-codes">View Backup Codes</button>
-                                    <button class="btn danger" id="btn-disable-2fa">Disable 2FA</button>
+                                <!-- 2FA login toggle -->
+                                <div style="display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1rem;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1rem;">
+                                    <div>
+                                        <div style="font-weight:500;font-size:0.9rem;color:var(--text);">Require 2FA at login</div>
+                                        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.2rem;">When on, you must enter a code from your app every time you log in.</div>
+                                    </div>
+                                    <label class="toggle-switch" style="flex-shrink:0;margin-left:1rem;">
+                                        <input type="checkbox" id="toggle-2fa-login">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+
+                                <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
+                                    <button class="btn outline small" id="btn-view-backup-codes">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="1.75" style="margin-right:0.35rem;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                        Backup Codes
+                                    </button>
+                                    <button class="btn danger small" id="btn-disable-2fa" style="margin-left:auto;">Remove Authenticator</button>
                                 </div>
                             </div>
                         </div>
@@ -1570,20 +1625,20 @@
                 <button class="btn primary" id="btn-2fa-confirm">Verify &amp; Enable</button>
             </div>
             <div class="modal-footer" id="2fa-setup-footer-done" style="display:none;">
-                <button class="btn primary full-width" id="btn-2fa-setup-done">Done — 2FA is Active</button>
+                <button class="btn primary full-width" id="btn-2fa-setup-done">Done</button>
             </div>
         </div>
     </div>
 
-    <!-- ── Disable 2FA Modal ───────────────────────────────────────────────── -->
+    <!-- ── Remove Authenticator Modal ────────────────────────────────────── -->
     <div class="modal-overlay" id="modal-2fa-disable">
         <div class="modal" style="max-width:400px;">
             <div class="modal-header">
-                <h3>Disable Two-Factor Authentication</h3>
+                <h3>Remove Authenticator App</h3>
                 <button class="close-btn" id="modal-2fa-disable-close">&times;</button>
             </div>
             <div class="modal-body">
-                <p style="margin-bottom:1rem;font-size:0.875rem;color:var(--text-secondary);">Enter your current password to disable 2FA.</p>
+                <p style="margin-bottom:1rem;font-size:0.875rem;color:var(--text-secondary);">This will unlink your authenticator app and disable 2FA login protection. Enter your password to confirm.</p>
                 <div class="input-group" style="margin-bottom:0;">
                     <label>Password</label>
                     <input type="password" id="2fa-disable-password" placeholder="Your current password">
@@ -1591,7 +1646,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn outline" id="modal-2fa-disable-cancel">Cancel</button>
-                <button class="btn danger" id="btn-2fa-disable-confirm">Disable 2FA</button>
+                <button class="btn danger" id="btn-2fa-disable-confirm">Remove Authenticator</button>
             </div>
         </div>
     </div>

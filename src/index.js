@@ -237,6 +237,9 @@ app.get('/health', (req, res) => {
 // Serve static assets from root directory
 app.use('/assets', express.static(path.join(__dirname, '../assets')));
 
+// Serve user avatars
+app.use('/avatars', express.static(path.join(__dirname, '../data/avatars')));
+
 // ── Metrics endpoint ──────────────────────────────────────────────────────────
 app.get('/metrics', (req, res) => {
     if (process.env.METRICS_AUTH === 'true') {

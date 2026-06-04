@@ -1402,8 +1402,14 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
 function doLogout() {
     if (metricsInterval) { clearInterval(metricsInterval); metricsInterval = null; }
     state.token = null; state.user = null; state.role = null; state.userId = null; state.currentServer = null;
+    window._pendingLoginData = null;
     localStorage.removeItem('mp_token'); localStorage.removeItem('mp_user'); localStorage.removeItem('mp_role'); localStorage.removeItem('mp_userid');
     if (state.ws) state.ws.close();
+    // Reset auth forms to login form
+    ['login-form', 'register-form', 'reset-password-form', 'totp-form'].forEach(f => {
+        const el = document.getElementById(f);
+        if (el) el.style.display = f === 'login-form' ? '' : 'none';
+    });
     ui.showView('auth-view');
     document.getElementById('auth-view').classList.add('active');
     document.getElementById('main-view').classList.remove('active');
@@ -1835,6 +1841,81 @@ document.getElementById('qa-console')?.addEventListener('click', () => document.
 document.getElementById('qa-files')?.addEventListener('click', () => document.querySelector('[data-tab="files"]').click());
 document.getElementById('qa-backup')?.addEventListener('click', () => { document.querySelector('[data-tab="backups"]').click(); setTimeout(() => backups.create(), 300); });
 document.getElementById('qa-properties')?.addEventListener('click', () => document.querySelector('[data-tab="properties"]').click());
+
+// ── Reset Password (2FA) ──────────────────────────────────────────────────────
+// Helper: switch between auth forms
+function showAuthForm(formId) {
+    ['login-form', 'register-form', 'reset-password-form', 'totp-form'].forEach(f => {
+        const el = document.getElementById(f);
+        if (el) el.style.display = f === formId ? '' : 'none';
+    });
+}
+
+// "Forgot password?" link
+document.getElementById('link-forgot-password')?.addEventListener('click', e => {
+    e.preventDefault();
+    // Pre-fill username if already typed
+    const u = document.getElementById('username')?.value?.trim();
+    if (u) document.getElementById('reset-username').value = u;
+    showAuthForm('reset-password-form');
+    document.getElementById('reset-username')?.focus();
+});
+
+// "Back to Login" link inside reset form
+document.getElementById('link-reset-back-to-login')?.addEventListener('click', e => {
+    e.preventDefault();
+    showAuthForm('login-form');
+});
+
+// Reset Password form submit
+document.getElementById('reset-password-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const username      = document.getElementById('reset-username')?.value?.trim();
+    const totpCode      = document.getElementById('reset-totp')?.value?.trim();
+    const backupCode    = document.getElementById('reset-backup-code')?.value?.trim().toUpperCase();
+    const newPassword   = document.getElementById('reset-new-password')?.value;
+    const confirmPw     = document.getElementById('reset-confirm-password')?.value;
+
+    // Client-side validation with clear messages
+    if (!username)                return ui.toast('Please enter your username', 'error');
+    if (!totpCode && !backupCode) return ui.toast('Enter your authenticator code or a backup code', 'error');
+    if (!newPassword)             return ui.toast('Please enter a new password', 'error');
+    if (!confirmPw)               return ui.toast('Please confirm your new password', 'error');
+    if (newPassword !== confirmPw) return ui.toast("Passwords don't match", 'error');
+    if (newPassword.length < 8)   return ui.toast('Password must be at least 8 characters', 'error');
+
+    const btn = document.getElementById('reset-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Resetting…';
+
+    try {
+        const body = { username, newPassword };
+        if (backupCode) body.backupCode = backupCode;
+        else            body.totpCode   = totpCode;
+
+        const res = await api.req('/auth/password-reset-with-totp', {
+            method: 'POST',
+            body: JSON.stringify(body)
+        });
+
+        ui.toast(res.message || 'Password reset successfully! Please log in.', 'success');
+
+        // Clear form and go back to login
+        document.getElementById('reset-username').value         = '';
+        document.getElementById('reset-totp').value             = '';
+        document.getElementById('reset-backup-code').value      = '';
+        document.getElementById('reset-new-password').value     = '';
+        document.getElementById('reset-confirm-password').value = '';
+        showAuthForm('login-form');
+    } catch (err) {
+        ui.toast(err.message || 'Reset failed. Please try again.', 'error');
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Reset Password';
+    }
+});
+// ── END Reset Password ────────────────────────────────────────────────────────
 
 if (state.token) initDashboard(); else document.getElementById('auth-view').classList.add('active');
 
