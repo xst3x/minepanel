@@ -1,5 +1,5 @@
 const express = require('express');
-const { db, dbGet, dbRun, dbAll } = require('../db/database');
+const { User, Rank, Server, AccountCreationToken, UserServerPermission, UserServerRank } = require('../db/database');
 const { hashPassword, comparePassword, generateToken, invalidateToken, authenticateToken } = require('../core/auth');
 const { E, sendError } = require('../core/errors');
 const { validate } = require('../middleware/validation');
@@ -10,6 +10,7 @@ const logger = require('../core/utils/logger');
 const audit = require('../core/utils/auditLog');
 const fs = require('fs');
 const path = require('path');
+const { Op } = require('sequelize');
 
 let _settingsCache = null;
 let _settingsCacheTime = 0;
@@ -37,6 +38,15 @@ const loginLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+const passwordResetLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: { error: 'Too many password reset attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: false,
+});
+
 const router = express.Router();
 
 // ── Settings ──────────────────────────────────────────────────────────────────
@@ -58,7 +68,9 @@ router.post('/login', loginLimiter, validate(V.login), async (req, res) => {
     const { username, password, totpCode } = req.body;
     if (!username || !password) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 400);
     try {
-        const user = await dbGet('SELECT * FROM users WHERE LOWER(username) = LOWER(?)', [username]);
+        const user = await User.findOne({
+            where: { username: { [Op.eq]: username } }
+        });
         if (!user) {
             await audit.log(req, 'LOGIN_FAILED', { username });
             return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401);
@@ -126,7 +138,7 @@ router.post('/register', validate(V.register), async (req, res) => {
 
         if (requireInviteToken) {
             if (!token) return sendError(res, E.AUTH_INVITE_TOKEN_REQUIRED, 400);
-            dbToken = await dbGet('SELECT * FROM account_creation_tokens WHERE token = ?', [token]);
+            dbToken = await AccountCreationToken.findOne({ where: { token } });
             if (!dbToken) return sendError(res, E.AUTH_INVITE_TOKEN_INVALID, 400);
             if (dbToken.used) return sendError(res, E.AUTH_INVITE_TOKEN_USED, 400);
             if (new Date(dbToken.expires_at).getTime() < Date.now()) return sendError(res, E.AUTH_INVITE_TOKEN_EXPIRED, 400);
@@ -135,18 +147,18 @@ router.post('/register', validate(V.register), async (req, res) => {
             ranks = JSON.parse(dbToken.ranks || '[]');
             if (ranks.length > 0) {
                 rankId = Number(ranks[0]);
-                const rankObj = await dbGet('SELECT name FROM ranks WHERE id = ?', [rankId]);
+                const rankObj = await Rank.findByPk(rankId, { attributes: ['name'] });
                 if (rankObj && rankObj.name) userRank = rankObj.name;
             }
         } else {
             if (token) {
-                dbToken = await dbGet('SELECT * FROM account_creation_tokens WHERE token = ?', [token]);
+                dbToken = await AccountCreationToken.findOne({ where: { token } });
                 if (dbToken && !dbToken.used && new Date(dbToken.expires_at).getTime() >= Date.now()) {
                     permissions = JSON.parse(dbToken.permissions || '[]');
                     ranks = JSON.parse(dbToken.ranks || '[]');
                     if (ranks.length > 0) {
                         rankId = Number(ranks[0]);
-                        const rankObj = await dbGet('SELECT name FROM ranks WHERE id = ?', [rankId]);
+                        const rankObj = await Rank.findByPk(rankId, { attributes: ['name'] });
                         if (rankObj && rankObj.name) userRank = rankObj.name;
                     }
                 } else {
@@ -156,34 +168,44 @@ router.post('/register', validate(V.register), async (req, res) => {
             if (!dbToken) {
                 const defaultRankId = settings.defaultRankId || null;
                 if (defaultRankId) {
-                    const rankObj = await dbGet('SELECT id, name FROM ranks WHERE id = ?', [defaultRankId]);
+                    const rankObj = await Rank.findByPk(defaultRankId, { attributes: ['id', 'name'] });
                     if (rankObj) { rankId = rankObj.id; userRank = rankObj.name; }
                 }
             }
         }
 
-        const existingUser = await dbGet('SELECT * FROM users WHERE LOWER(username) = LOWER(?)', [username]);
-        if (existingUser) return sendError(res, E.USER_ALREADY_EXISTS, 409);
-
+        const existingUser = await User.findOne({
+            where: { username: { [Op.eq]: username } }
+        });
+        // Always hash the password even if the user exists, to prevent timing-based
+        // username enumeration (i.e., skipping bcrypt would make the 'exists' path faster).
         const hashed = await hashPassword(password);
-        const result = await dbRun(
-            'INSERT INTO users (username, password, role, rank_id) VALUES (?, ?, ?, ?)',
-            [username, hashed, userRank, rankId]
-        );
-        const newUserId = result.lastID;
+        if (existingUser) {
+            // Respond identically to a successful registration — do not reveal that
+            // the username is taken. The user will discover the conflict on first login.
+            return res.json({ message: 'Account created successfully' });
+        }
+        const newUser = await User.create({
+            username, password: hashed, role: userRank, rank_id: rankId
+        });
+        const newUserId = newUser.id;
 
         if (requireInviteToken && dbToken) {
-            await dbRun('UPDATE account_creation_tokens SET used = 1 WHERE id = ?', [dbToken.id]);
-            await dbRun('DELETE FROM account_creation_tokens WHERE id = ?', [dbToken.id]);
+            await dbToken.update({ used: 1 });
+            await dbToken.destroy();
         }
 
-        const servers = await dbAll('SELECT id FROM servers');
+        const servers = await Server.findAll({ attributes: ['id'] });
         for (const sv of servers) {
             for (const perm of permissions) {
-                await dbRun('INSERT OR IGNORE INTO user_server_permissions (user_id, server_id, permission) VALUES (?, ?, ?)', [newUserId, sv.id, perm]);
+                await UserServerPermission.findOrCreate({
+                    where: { user_id: newUserId, server_id: sv.id, permission: perm }
+                });
             }
             for (const rId of ranks) {
-                await dbRun('INSERT OR IGNORE INTO user_server_ranks (user_id, server_id, rank_id) VALUES (?, ?, ?)', [newUserId, sv.id, rId]);
+                await UserServerRank.findOrCreate({
+                    where: { user_id: newUserId, server_id: sv.id, rank_id: rId }
+                });
             }
         }
 
@@ -218,7 +240,9 @@ router.get('/2fa/setup', authenticateToken, async (req, res) => {
         const { generateSecret, generateURI } = require('otplib');
         const QRCode = require('qrcode');
 
-        const user = await dbGet('SELECT username, totp_enabled FROM users WHERE id = ?', [req.user.id]);
+        const user = await User.findByPk(req.user.id, {
+            attributes: ['username', 'totp_enabled']
+        });
         // Allow re-setup even if totp_enabled — user may want to reconfigure their app
 
         const secret = generateSecret();
@@ -226,7 +250,10 @@ router.get('/2fa/setup', authenticateToken, async (req, res) => {
         const qrDataUrl = await QRCode.toDataURL(otpauth);
 
         // Save secret but do NOT enable 2FA yet — user must verify the code first
-        await dbRun('UPDATE users SET totp_secret = ?, totp_verified = 0 WHERE id = ?', [secret, req.user.id]);
+        await User.update(
+            { totp_secret: secret, totp_verified: 0 },
+            { where: { id: req.user.id } }
+        );
 
         res.json({ secret, qrCode: qrDataUrl });
     } catch (err) {
@@ -243,7 +270,9 @@ router.post('/2fa/verify', authenticateToken, async (req, res) => {
 
         const { verifySync } = require('otplib');
         const crypto = require('crypto');
-        const user = await dbGet('SELECT totp_secret, totp_verified FROM users WHERE id = ?', [req.user.id]);
+        const user = await User.findByPk(req.user.id, {
+            attributes: ['totp_secret', 'totp_verified']
+        });
 
         if (!user.totp_secret) return sendError(res, E.BAD_REQUEST, 400, 'Run 2FA setup first');
 
@@ -257,8 +286,10 @@ router.post('/2fa/verify', authenticateToken, async (req, res) => {
         });
 
         // Mark as verified/configured — 2FA login enforcement stays at current totp_enabled value
-        await dbRun('UPDATE users SET totp_verified = 1, totp_backup_codes = ? WHERE id = ?',
-            [JSON.stringify(backupCodes), req.user.id]);
+        await User.update(
+            { totp_verified: 1, totp_backup_codes: JSON.stringify(backupCodes) },
+            { where: { id: req.user.id } }
+        );
         await audit.log(req, '2FA_CONFIGURED', { userId: req.user.id });
 
         res.json({ success: true, message: 'Authenticator configured successfully', backupCodes });
@@ -274,7 +305,9 @@ router.post('/2fa/disable', authenticateToken, async (req, res) => {
         const { password } = req.body;
         if (!password) return sendError(res, E.BAD_REQUEST, 400, 'Password is required');
 
-        const user = await dbGet('SELECT password, totp_verified FROM users WHERE id = ?', [req.user.id]);
+        const user = await User.findByPk(req.user.id, {
+            attributes: ['password', 'totp_verified']
+        });
         if (!user.totp_verified) {
             return sendError(res, E.BAD_REQUEST, 400, 'No authenticator is configured');
         }
@@ -282,7 +315,10 @@ router.post('/2fa/disable', authenticateToken, async (req, res) => {
         const match = await comparePassword(password, user.password);
         if (!match) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401);
 
-        await dbRun('UPDATE users SET totp_enabled = 0, totp_verified = 0, totp_secret = NULL, totp_backup_codes = NULL WHERE id = ?', [req.user.id]);
+        await User.update(
+            { totp_enabled: 0, totp_verified: 0, totp_secret: null, totp_backup_codes: null },
+            { where: { id: req.user.id } }
+        );
         await audit.log(req, '2FA_REMOVED', { userId: req.user.id });
 
         res.json({ success: true, message: 'Authenticator removed' });
@@ -296,7 +332,9 @@ router.post('/2fa/disable', authenticateToken, async (req, res) => {
 
 router.get('/2fa/status', authenticateToken, async (req, res) => {
     try {
-        const user = await dbGet('SELECT totp_enabled, totp_verified FROM users WHERE id = ?', [req.user.id]);
+        const user = await User.findByPk(req.user.id, {
+            attributes: ['totp_enabled', 'totp_verified']
+        });
         res.json({
             enabled: !!user?.totp_enabled,       // 2FA enforced at login
             configured: !!user?.totp_verified,   // authenticator app is set up
@@ -313,12 +351,17 @@ router.post('/2fa/toggle', authenticateToken, async (req, res) => {
         const { enable } = req.body; // boolean
         if (typeof enable !== 'boolean') return sendError(res, E.BAD_REQUEST, 400, '"enable" must be a boolean');
 
-        const user = await dbGet('SELECT totp_verified, totp_enabled FROM users WHERE id = ?', [req.user.id]);
+        const user = await User.findByPk(req.user.id, {
+            attributes: ['totp_verified', 'totp_enabled']
+        });
         if (enable && !user.totp_verified) {
             return sendError(res, E.BAD_REQUEST, 400, 'Set up your authenticator app first before enabling 2FA');
         }
 
-        await dbRun('UPDATE users SET totp_enabled = ? WHERE id = ?', [enable ? 1 : 0, req.user.id]);
+        await User.update(
+            { totp_enabled: enable ? 1 : 0 },
+            { where: { id: req.user.id } }
+        );
         await audit.log(req, enable ? '2FA_ENABLED' : '2FA_DISABLED', { userId: req.user.id });
 
         res.json({ success: true, enabled: enable });
@@ -337,7 +380,9 @@ router.post('/2fa/regenerate-backup-codes', authenticateToken, async (req, res) 
 
         const { verifySync } = require('otplib');
         const crypto = require('crypto');
-        const user = await dbGet('SELECT totp_secret, totp_enabled FROM users WHERE id = ?', [req.user.id]);
+        const user = await User.findByPk(req.user.id, {
+            attributes: ['totp_secret', 'totp_enabled']
+        });
 
         if (!user.totp_enabled) return sendError(res, E.BAD_REQUEST, 400, '2FA is not enabled');
 
@@ -348,7 +393,10 @@ router.post('/2fa/regenerate-backup-codes', authenticateToken, async (req, res) 
             const raw = crypto.randomBytes(5).toString('hex').toUpperCase();
             return raw.slice(0, 5) + '-' + raw.slice(5);
         });
-        await dbRun('UPDATE users SET totp_backup_codes = ? WHERE id = ?', [JSON.stringify(backupCodes), req.user.id]);
+        await User.update(
+            { totp_backup_codes: JSON.stringify(backupCodes) },
+            { where: { id: req.user.id } }
+        );
         await audit.log(req, '2FA_BACKUP_CODES_REGENERATED', { userId: req.user.id });
 
         res.json({ success: true, backupCodes });
@@ -360,7 +408,7 @@ router.post('/2fa/regenerate-backup-codes', authenticateToken, async (req, res) 
 
 // ── Password reset using TOTP (no old password needed) ────────────────────────
 
-router.post('/password-reset-with-totp', async (req, res) => {
+router.post('/password-reset-with-totp', passwordResetLimiter, async (req, res) => {
     try {
         const { username, newPassword } = req.body;
         const totpCode   = (req.body.totpCode   || '').trim();
@@ -372,10 +420,10 @@ router.post('/password-reset-with-totp', async (req, res) => {
         const pwCheck = validatePasswordStrength(newPassword);
         if (!pwCheck.valid) return sendError(res, E.BAD_REQUEST, 400, pwCheck.error);
 
-        const user = await dbGet(
-            'SELECT id, username, totp_enabled, totp_secret, totp_backup_codes FROM users WHERE LOWER(username) = LOWER(?)',
-            [username]
-        );
+        const user = await User.findOne({
+            where: { username: { [Op.eq]: username } },
+            attributes: ['id', 'username', 'totp_enabled', 'totp_secret', 'totp_backup_codes']
+        });
         if (!user) return sendError(res, E.BAD_REQUEST, 404, 'Account not found');
         if (!user.totp_enabled || !user.totp_secret) {
             return sendError(res, E.BAD_REQUEST, 400, '2FA is not enabled on this account. Password reset via 2FA is unavailable.');
@@ -386,7 +434,10 @@ router.post('/password-reset-with-totp', async (req, res) => {
             const idx = codes.indexOf(backupCode);
             if (idx === -1) return sendError(res, E.AUTH_INVALID_CREDENTIALS, 401, 'Invalid backup code');
             codes.splice(idx, 1);
-            await dbRun('UPDATE users SET totp_backup_codes = ? WHERE id = ?', [JSON.stringify(codes), user.id]);
+            await User.update(
+                { totp_backup_codes: JSON.stringify(codes) },
+                { where: { id: user.id } }
+            );
         } else if (totpCode) {
             const { verifySync } = require('otplib');
             const verified = verifySync({ strategy: 'totp', secret: user.totp_secret, token: String(totpCode), epochTolerance: 1 });
@@ -397,7 +448,10 @@ router.post('/password-reset-with-totp', async (req, res) => {
 
         const hashed = await hashPassword(newPassword);
         const now = Math.floor(Date.now() / 1000);
-        await dbRun('UPDATE users SET password = ?, valid_tokens_from = ? WHERE id = ?', [hashed, now, user.id]);
+        await User.update(
+            { password: hashed, valid_tokens_from: now },
+            { where: { id: user.id } }
+        );
         await audit.log(req, 'PASSWORD_RESET_WITH_2FA', { userId: user.id, username: user.username });
 
         res.json({ success: true, message: 'Password reset successfully. Please log in with your new password.' });

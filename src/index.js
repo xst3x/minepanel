@@ -1,4 +1,5 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+require('./core/utils/envHelper').sanitizeSecrets();
 
 // --- Launcher Process Logic (must be the absolute first thing) ---
 if (process.env.MINEPANEL_SERVER !== 'true' && process.env.NODE_ENV !== 'test') {
@@ -181,7 +182,11 @@ app.use(cors({
 app.use((req, res, next) => {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    // Only send HSTS on actual HTTPS connections — sending it on HTTP can cause
+    // browsers to refuse plain-HTTP access even if HTTPS is not available.
+    if (CONFIG.HTTPS_ENABLED) {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' ws: wss: https:; frame-ancestors 'none'");
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
@@ -242,7 +247,9 @@ app.use('/avatars', express.static(path.join(__dirname, '../data/avatars')));
 
 // ── Metrics endpoint ──────────────────────────────────────────────────────────
 app.get('/metrics', (req, res) => {
-    if (process.env.METRICS_AUTH === 'true') {
+    // Authentication is ON by default. Disable by setting METRICS_AUTH=false in .env.
+    const metricsAuthDisabled = process.env.METRICS_AUTH === 'false';
+    if (!metricsAuthDisabled) {
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'Unauthorized' });

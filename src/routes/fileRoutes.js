@@ -20,15 +20,17 @@ const router = express.Router({ mergeParams: true });
 const _dlTokens = new Map();
 
 // Purge expired tokens every 2 minutes
-setInterval(() => {
-    const now = Date.now();
-    for (const [token, entry] of _dlTokens) {
-        if (entry.expires < now) {
-            if (entry.deleteAfter) fsp.unlink(entry.file).catch(() => {});
-            _dlTokens.delete(token);
+if (process.env.NODE_ENV !== 'test') {
+    setInterval(() => {
+        const now = Date.now();
+        for (const [token, entry] of _dlTokens) {
+            if (entry.expires < now) {
+                if (entry.deleteAfter) fsp.unlink(entry.file).catch(() => {});
+                _dlTokens.delete(token);
+            }
         }
-    }
-}, 2 * 60 * 1000);
+    }, 2 * 60 * 1000);
+}
 
 const getSafePath = (serverDir, targetPath) => {
     const cleaned = (targetPath || '').replace(/^[/\\]+/, '');

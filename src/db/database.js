@@ -2,14 +2,50 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const logger = require('../core/utils/logger');
+const sequelize = require('./sequelize');
+const User = require('./models/User');
+const Server = require('./models/Server');
+const ServerStats = require('./models/ServerStats');
+const Rank = require('./models/Rank');
+const UserServerPermission = require('./models/UserServerPermission');
+const UserServerRank = require('./models/UserServerRank');
+const Setting = require('./models/Setting');
+const AccountCreationToken = require('./models/AccountCreationToken');
+const DiscordBot = require('./models/DiscordBot');
+const DiscordBotServer = require('./models/DiscordBotServer');
+const DiscordIntegration = require('./models/DiscordIntegration');
+const UserCustomAccent = require('./models/UserCustomAccent');
+const Webhook = require('./models/Webhook');
+const AuditLog = require('./models/AuditLog');
+
+// Setup Associations
+User.hasMany(Server, { foreignKey: 'owner_id', as: 'servers' });
+Server.belongsTo(User, { foreignKey: 'owner_id', as: 'owner' });
+
+User.belongsTo(Rank, { foreignKey: 'rank_id', as: 'rank' });
+Rank.hasMany(User, { foreignKey: 'rank_id', as: 'users' });
+
+Server.hasMany(ServerStats, { foreignKey: 'server_id', as: 'stats', onDelete: 'CASCADE' });
+ServerStats.belongsTo(Server, { foreignKey: 'server_id', as: 'server' });
+
+User.hasMany(UserCustomAccent, { foreignKey: 'user_id', as: 'customAccents', onDelete: 'CASCADE' });
+UserCustomAccent.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+DiscordBot.belongsToMany(Server, { through: DiscordBotServer, foreignKey: 'bot_id', otherKey: 'server_id', as: 'servers' });
+Server.belongsToMany(DiscordBot, { through: DiscordBotServer, foreignKey: 'server_id', otherKey: 'bot_id', as: 'discordBots' });
 
 const dbDir = path.join(__dirname, '../../data');
 if (process.env.NODE_ENV !== 'test' && !fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
 }
 
-const dbPath = process.env.NODE_ENV === 'test' ? ':memory:' : path.join(dbDir, 'minepanel.db');
-const db = new sqlite3.Database(dbPath);
+if (process.env.NODE_ENV === 'test' && !process.env.MINEPANEL_TEST_DB) {
+    process.env.MINEPANEL_TEST_DB = `file:memdb-${process.pid}-${Math.random().toString(36).substring(7)}?mode=memory&cache=shared`;
+}
+const dbPath = process.env.NODE_ENV === 'test' ? process.env.MINEPANEL_TEST_DB : path.join(dbDir, 'minepanel.db');
+const db = process.env.NODE_ENV === 'test'
+    ? new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE | sqlite3.OPEN_URI)
+    : new sqlite3.Database(dbPath);
 
 // Promise wrappers
 const dbRun = (sql, params = []) => new Promise((resolve, reject) => {
@@ -155,6 +191,9 @@ const initDb = async () => {
         }
     }
 
+    // Sync Sequelize schema first (this creates the tables if they don't exist, which is critical for tests using :memory:)
+    await sequelize.sync();
+
     await runMigrations(dbRun, dbGet);
     await seedRanks();
     await migratePermissionsData();
@@ -207,4 +246,8 @@ const migratePermissionsData = async () => {
     }
 };
 
-module.exports = { db, dbRun, dbGet, dbAll, initDb, checkIntegrity, backupDatabase, listBackups, PREMADE_RANKS };
+module.exports = { 
+    db, dbRun, dbGet, dbAll, initDb, checkIntegrity, backupDatabase, listBackups, PREMADE_RANKS,
+    sequelize, User, Server, ServerStats, Rank, UserServerPermission, UserServerRank, Setting, 
+    AccountCreationToken, DiscordBot, DiscordBotServer, DiscordIntegration, UserCustomAccent, Webhook, AuditLog
+};

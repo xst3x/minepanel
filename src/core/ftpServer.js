@@ -23,11 +23,12 @@ const passwordCache = new Map(); // serverId → plaintext password
 function storePasswordCache(serverId, password) {
     const key = String(serverId);
     passwordCache.set(key, password);
-    // Auto-clear dupa 24 ore (siguritate)
+    // Auto-clear after 1 hour. Keeping plaintext in memory longer than needed
+    // increases exposure if a crash dump or heap inspection occurs.
     setTimeout(() => {
         passwordCache.delete(key);
         logger.info(`[SFTP] Password cache cleared for server ${serverId}`);
-    }, 24 * 60 * 60 * 1000);
+    }, 60 * 60 * 1000); // 1 hour
 }
 
 function getPasswordCache(serverId) {
@@ -67,16 +68,22 @@ function getHostKey() {
 }
 
 // ── SFTP session handler ──────────────────────────────────────────────────────
+// ── SFTP session handler ──────────────────────────────────────────────────────
 function createSftpSession(root) {
     // We use the built-in SFTPStream from ssh2
     return (accept) => {
         const sftp = accept();
 
-        // Normalise a client path to an absolute FS path
+        // Normalise a client path to an absolute FS path and prevent path traversal
         const resolvePath = (clientPath) => {
             // clientPath comes in as POSIX (forward slashes)
             const rel = clientPath.startsWith('/') ? clientPath.slice(1) : clientPath;
-            return path.join(root, rel);
+            const resolved = path.resolve(root, rel);
+            const relative = path.relative(root, resolved);
+            if (relative.startsWith('..') || path.isAbsolute(relative)) {
+                throw new Error('Access denied: path outside server directory');
+            }
+            return resolved;
         };
 
         const handles = new Map(); // handle (Buffer) → { fd?, dirHandle? }
@@ -91,7 +98,13 @@ function createSftpSession(root) {
 
         // ── OPEN ──────────────────────────────────────────────────────────────
         sftp.on('OPEN', (reqId, filename, flags, attrs) => {
-            const fpath = resolvePath(filename);
+            let fpath;
+            try {
+                fpath = resolvePath(filename);
+            } catch (err) {
+                return sftp.status(reqId, ssh2.utils.sftp.STATUS_CODE.PERMISSION_DENIED);
+            }
+
             // Convert SFTP flags to fs flags
             let fsFlags = 'r';
             const O = ssh2.utils.sftp.OPEN_MODE;
@@ -150,7 +163,13 @@ function createSftpSession(root) {
 
         // ── OPENDIR ───────────────────────────────────────────────────────────
         sftp.on('OPENDIR', (reqId, dirPath) => {
-            const dpath = resolvePath(dirPath);
+            let dpath;
+            try {
+                dpath = resolvePath(dirPath);
+            } catch (err) {
+                return sftp.status(reqId, ssh2.utils.sftp.STATUS_CODE.PERMISSION_DENIED);
+            }
+
             fs.readdir(dpath, (err, list) => {
                 if (err) return sftp.status(reqId, statusCode(err));
                 sftp.handle(reqId, newHandle({ dir: dpath, list, idx: 0 }));
@@ -193,8 +212,24 @@ function createSftpSession(root) {
                 sftp.attrs(reqId, statToAttrs(st));
             });
         };
-        sftp.on('LSTAT', (reqId, p) => doStat(reqId, resolvePath(p), true));
-        sftp.on('STAT',  (reqId, p) => doStat(reqId, resolvePath(p), false));
+        sftp.on('LSTAT', (reqId, p) => {
+            let fspath;
+            try {
+                fspath = resolvePath(p);
+            } catch (err) {
+                return sftp.status(reqId, ssh2.utils.sftp.STATUS_CODE.PERMISSION_DENIED);
+            }
+            doStat(reqId, fspath, true);
+        });
+        sftp.on('STAT',  (reqId, p) => {
+            let fspath;
+            try {
+                fspath = resolvePath(p);
+            } catch (err) {
+                return sftp.status(reqId, ssh2.utils.sftp.STATUS_CODE.PERMISSION_DENIED);
+            }
+            doStat(reqId, fspath, false);
+        });
         sftp.on('FSTAT', (reqId, handle) => {
             const hId = handle.readUInt32BE(0);
             const obj = handles.get(hId);
@@ -213,7 +248,13 @@ function createSftpSession(root) {
 
         // ── MKDIR ─────────────────────────────────────────────────────────────
         sftp.on('MKDIR', (reqId, dirPath, attrs) => {
-            const dpath = resolvePath(dirPath);
+            let dpath;
+            try {
+                dpath = resolvePath(dirPath);
+            } catch (err) {
+                return sftp.status(reqId, ssh2.utils.sftp.STATUS_CODE.PERMISSION_DENIED);
+            }
+
             fs.mkdir(dpath, { recursive: false }, (err) => {
                 sftp.status(reqId, err ? statusCode(err) : ssh2.utils.sftp.STATUS_CODE.OK);
             });
@@ -221,7 +262,13 @@ function createSftpSession(root) {
 
         // ── RMDIR ─────────────────────────────────────────────────────────────
         sftp.on('RMDIR', (reqId, dirPath) => {
-            const dpath = resolvePath(dirPath);
+            let dpath;
+            try {
+                dpath = resolvePath(dirPath);
+            } catch (err) {
+                return sftp.status(reqId, ssh2.utils.sftp.STATUS_CODE.PERMISSION_DENIED);
+            }
+
             fs.rmdir(dpath, (err) => {
                 sftp.status(reqId, err ? statusCode(err) : ssh2.utils.sftp.STATUS_CODE.OK);
             });
@@ -229,7 +276,13 @@ function createSftpSession(root) {
 
         // ── REMOVE (unlink) ───────────────────────────────────────────────────
         sftp.on('REMOVE', (reqId, filePath) => {
-            const fpath = resolvePath(filePath);
+            let fpath;
+            try {
+                fpath = resolvePath(filePath);
+            } catch (err) {
+                return sftp.status(reqId, ssh2.utils.sftp.STATUS_CODE.PERMISSION_DENIED);
+            }
+
             fs.unlink(fpath, (err) => {
                 sftp.status(reqId, err ? statusCode(err) : ssh2.utils.sftp.STATUS_CODE.OK);
             });
@@ -237,21 +290,42 @@ function createSftpSession(root) {
 
         // ── RENAME ────────────────────────────────────────────────────────────
         sftp.on('RENAME', (reqId, oldPath, newPath) => {
-            fs.rename(resolvePath(oldPath), resolvePath(newPath), (err) => {
+            let oldFpath, newFpath;
+            try {
+                oldFpath = resolvePath(oldPath);
+                newFpath = resolvePath(newPath);
+            } catch (err) {
+                return sftp.status(reqId, ssh2.utils.sftp.STATUS_CODE.PERMISSION_DENIED);
+            }
+
+            fs.rename(oldFpath, newFpath, (err) => {
                 sftp.status(reqId, err ? statusCode(err) : ssh2.utils.sftp.STATUS_CODE.OK);
             });
         });
 
         // ── REALPATH ──────────────────────────────────────────────────────────
         sftp.on('REALPATH', (reqId, reqPath) => {
-            const resolved = resolvePath(reqPath);
+            let resolved;
+            try {
+                resolved = resolvePath(reqPath);
+            } catch (err) {
+                return sftp.status(reqId, ssh2.utils.sftp.STATUS_CODE.PERMISSION_DENIED);
+            }
+
             const clientPath = '/' + path.relative(root, resolved).replace(/\\/g, '/');
             sftp.name(reqId, [{ filename: clientPath, longname: clientPath, attrs: {} }]);
         });
 
         // ── READLINK ──────────────────────────────────────────────────────────
         sftp.on('READLINK', (reqId, linkPath) => {
-            fs.readlink(resolvePath(linkPath), (err, target) => {
+            let resolved;
+            try {
+                resolved = resolvePath(linkPath);
+            } catch (err) {
+                return sftp.status(reqId, ssh2.utils.sftp.STATUS_CODE.PERMISSION_DENIED);
+            }
+
+            fs.readlink(resolved, (err, target) => {
                 if (err) return sftp.status(reqId, statusCode(err));
                 sftp.name(reqId, [{ filename: target, longname: target, attrs: {} }]);
             });
@@ -259,7 +333,15 @@ function createSftpSession(root) {
 
         // ── SYMLINK ───────────────────────────────────────────────────────────
         sftp.on('SYMLINK', (reqId, linkPath, targetPath) => {
-            fs.symlink(resolvePath(targetPath), resolvePath(linkPath), (err) => {
+            let linkFpath, targetFpath;
+            try {
+                linkFpath = resolvePath(linkPath);
+                targetFpath = resolvePath(targetPath);
+            } catch (err) {
+                return sftp.status(reqId, ssh2.utils.sftp.STATUS_CODE.PERMISSION_DENIED);
+            }
+
+            fs.symlink(targetFpath, linkFpath, (err) => {
                 sftp.status(reqId, err ? statusCode(err) : ssh2.utils.sftp.STATUS_CODE.OK);
             });
         });

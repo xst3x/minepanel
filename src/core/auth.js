@@ -1,13 +1,24 @@
 const argon2 = require('argon2');
 const jwt = require('jsonwebtoken');
-const { dbGet, dbRun } = require('../db/database');
 const { E, sendError } = require('./errors');
 
 const SECRET_KEY = process.env.JWT_SECRET;
+const defaultJwt = 'minepanel_super_secret_jwt_key_schimba_asta_in_productie_2024';
 if (!SECRET_KEY) {
     console.error('FATAL ERROR: process.env.JWT_SECRET is not set. Please create a .env file with a strong JWT_SECRET.');
     process.exit(1);
 }
+if (process.env.NODE_ENV !== 'test' && (SECRET_KEY === defaultJwt || SECRET_KEY.length < 32)) {
+    console.error('FATAL ERROR: process.env.JWT_SECRET is insecure (either set to default or too short). It must be at least 32 characters long.');
+    process.exit(1);
+}
+
+// Lazy-load User model to avoid circular dependency with database.js
+let _User = null;
+const getUser = () => {
+    if (!_User) _User = require('../db/database').User;
+    return _User;
+};
 
 // ── Password hashing (Argon2id) ───────────────────────────────────────────────
 
@@ -41,8 +52,9 @@ const generateToken = (user) => {
 // If server restarts, DB persists — no tokens sneak back in.
 
 const invalidateToken = async (userId) => {
+    const User = getUser();
     const now = Math.floor(Date.now() / 1000);
-    await dbRun('UPDATE users SET valid_tokens_from = ? WHERE id = ?', [now, userId]);
+    await User.update({ valid_tokens_from: now }, { where: { id: userId } });
 };
 
 const authenticateToken = (req, res, next) => {
@@ -58,10 +70,10 @@ const authenticateToken = (req, res, next) => {
         }
 
         try {
-            const dbUser = await dbGet(
-                'SELECT disabled, valid_tokens_from, totp_enabled FROM users WHERE id = ?',
-                [decoded.id]
-            );
+            const User = getUser();
+            const dbUser = await User.findByPk(decoded.id, {
+                attributes: ['disabled', 'valid_tokens_from', 'totp_enabled']
+            });
 
             if (!dbUser) return sendError(res, E.AUTH_TOKEN_INVALID, 401);
             if (dbUser.disabled === 1) return sendError(res, E.AUTH_ACCOUNT_DISABLED, 403);

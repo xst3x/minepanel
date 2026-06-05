@@ -306,6 +306,12 @@ router.post('/:uuid/command', authenticateToken, checkPermission('server.players
     const allowedActions = ['kick', 'ban', 'pardon', 'op', 'deop', 'gamemode', 'xp', 'give', 'effect', 'clear', 'wipe', 'teleport', 'heal', 'kill'];
     if (!allowedActions.includes(action)) return sendError(res, E.PLAYER_ACTION_INVALID, 400);
 
+    // Sanitize inputs to prevent newline-based command injection.
+    // Minecraft processes stdin line-by-line, so embedded newlines would execute extra commands.
+    const sanitizeArg = (s) => String(s || '').replace(/[\r\n\0]/g, '').trim();
+    const safeUsername = sanitizeArg(username);
+    const safeValue    = sanitizeArg(value);
+
     if (action === 'wipe') {
         try {
             if (processManager.getStatus(serverId.toString()) === 'online') {
@@ -326,19 +332,19 @@ router.post('/:uuid/command', authenticateToken, checkPermission('server.players
 
     let command;
     switch (action) {
-        case 'kick': command = `kick ${username} ${value || 'Kicked by panel'}`; break;
-        case 'ban': command = `ban ${username} ${value || 'Banned by panel'}`; break;
-        case 'pardon': command = `pardon ${username}`; break;
-        case 'op': command = `op ${username}`; break;
-        case 'deop': command = `deop ${username}`; break;
-        case 'gamemode': if (!value) return sendError(res, E.BAD_REQUEST, 400, 'Gamemode value required'); command = `gamemode ${value} ${username}`; break;
-        case 'xp': if (!value) return sendError(res, E.BAD_REQUEST, 400, 'XP value required'); command = `xp add ${username} ${value}`; break;
-        case 'give': if (!value) return sendError(res, E.BAD_REQUEST, 400, 'Item/Give value required'); command = `give ${username} ${value}`; break;
-        case 'effect': if (!value) return sendError(res, E.BAD_REQUEST, 400, 'Effect value required'); command = `effect give ${username} ${value}`; break;
-        case 'clear': command = `clear ${username}`; break;
-        case 'teleport': if (!value) return sendError(res, E.BAD_REQUEST, 400, 'Teleport destination required'); command = `tp ${username} ${value}`; break;
-        case 'heal': command = `effect give ${username} minecraft:instant_health 1 255`; break;
-        case 'kill': command = `kill ${username}`; break;
+        case 'kick': command = `kick ${safeUsername} ${safeValue || 'Kicked by panel'}`; break;
+        case 'ban': command = `ban ${safeUsername} ${safeValue || 'Banned by panel'}`; break;
+        case 'pardon': command = `pardon ${safeUsername}`; break;
+        case 'op': command = `op ${safeUsername}`; break;
+        case 'deop': command = `deop ${safeUsername}`; break;
+        case 'gamemode': if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Gamemode value required'); command = `gamemode ${safeValue} ${safeUsername}`; break;
+        case 'xp': if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'XP value required'); command = `xp add ${safeUsername} ${safeValue}`; break;
+        case 'give': if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Item/Give value required'); command = `give ${safeUsername} ${safeValue}`; break;
+        case 'effect': if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Effect value required'); command = `effect give ${safeUsername} ${safeValue}`; break;
+        case 'clear': command = `clear ${safeUsername}`; break;
+        case 'teleport': if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Teleport destination required'); command = `tp ${safeUsername} ${safeValue}`; break;
+        case 'heal': command = `effect give ${safeUsername} minecraft:instant_health 1 255`; break;
+        case 'kill': command = `kill ${safeUsername}`; break;
     }
 
     try {

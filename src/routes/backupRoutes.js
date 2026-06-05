@@ -103,13 +103,35 @@ router.post('/:filename/restore', authenticateToken, checkPermission('server.bac
 
         const unzipper = require('unzipper');
 
+        // Safe extraction: validate every entry path to prevent zip-slip attacks.
+        // A malicious zip could contain entries like "../../etc/passwd" that escape serverDir.
+        const resolvedRoot = path.resolve(serverDir);
         await new Promise((resolvePromise, rejectPromise) => {
             let done = false;
             const handleSuccess = () => { if (!done) { done = true; resolvePromise(); } };
-            const handleError = (err) => { if (!done) { done = true; rejectPromise(err); } };
+            const handleError  = (err) => { if (!done) { done = true; rejectPromise(err); } };
 
             fs.createReadStream(backupPath)
-                .pipe(unzipper.Extract({ path: serverDir }))
+                .pipe(unzipper.Parse())
+                .on('entry', (entry) => {
+                    const entryPath = path.resolve(resolvedRoot, entry.path);
+                    if (!entryPath.startsWith(resolvedRoot + path.sep) && entryPath !== resolvedRoot) {
+                        logger.warn(`[backupRoutes] Zip-slip attempt blocked: ${entry.path}`);
+                        entry.autodrain();
+                        return;
+                    }
+                    if (entry.type === 'Directory') {
+                        fsp.mkdir(entryPath, { recursive: true }).catch(() => {});
+                        entry.autodrain();
+                    } else {
+                        fsp.mkdir(path.dirname(entryPath), { recursive: true })
+                            .then(() => {
+                                entry.pipe(fs.createWriteStream(entryPath))
+                                    .on('error', handleError);
+                            })
+                            .catch(handleError);
+                    }
+                })
                 .on('close', handleSuccess)
                 .on('finish', handleSuccess)
                 .on('error', handleError);
@@ -212,6 +234,8 @@ const runRetentionCleanups = () => {
     });
 };
 
-setInterval(runScheduledBackups, 3600000);
+if (process.env.NODE_ENV !== 'test') {
+    setInterval(runScheduledBackups, 3600000);
+}
 
 module.exports = router;

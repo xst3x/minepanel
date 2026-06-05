@@ -44,28 +44,30 @@ const saveSettings = async (data) => {
 let lastCpuUsage = { user: 0, system: 0, idle: 0 };
 let cachedCpuPercent = 0;
 
-setInterval(() => {
-    const cpus = os.cpus();
-    if (!cpus || cpus.length === 0) return;
+if (process.env.NODE_ENV !== 'test') {
+    setInterval(() => {
+        const cpus = os.cpus();
+        if (!cpus || cpus.length === 0) return;
 
-    let user = 0, system = 0, idle = 0;
-    cpus.forEach(c => {
-        user += c.times.user;
-        system += c.times.sys;
-        idle += c.times.idle;
-    });
+        let user = 0, system = 0, idle = 0;
+        cpus.forEach(c => {
+            user += c.times.user;
+            system += c.times.sys;
+            idle += c.times.idle;
+        });
 
-    const total = user + system + idle;
-    const lastTotal = lastCpuUsage.user + lastCpuUsage.system + lastCpuUsage.idle;
+        const total = user + system + idle;
+        const lastTotal = lastCpuUsage.user + lastCpuUsage.system + lastCpuUsage.idle;
 
-    if (lastTotal > 0) {
-        const diffTotal = total - lastTotal;
-        const diffIdle = idle - lastCpuUsage.idle;
-        if (diffTotal > 0) cachedCpuPercent = 100 * (1 - diffIdle / diffTotal);
-    }
+        if (lastTotal > 0) {
+            const diffTotal = total - lastTotal;
+            const diffIdle = idle - lastCpuUsage.idle;
+            if (diffTotal > 0) cachedCpuPercent = 100 * (1 - diffIdle / diffTotal);
+        }
 
-    lastCpuUsage = { user, system, idle };
-}, 2000);
+        lastCpuUsage = { user, system, idle };
+    }, 2000);
+}
 
 const { exec } = require('child_process');
 
@@ -196,6 +198,120 @@ router.get('/versions', authenticateToken, async (req, res) => {
 // Lightweight health check (unauthenticated)
 router.get('/health', (req, res) => {
     res.json({ status: 'ok', booted: true });
+});
+
+/**
+ * Detect all Java installations on the host system.
+ * Returns an array of { path, version } objects sorted by version descending.
+ */
+router.get('/detect-java', authenticateToken, async (req, res) => {
+    const { execFile } = require('child_process');
+    const isWin = os.platform() === 'win32';
+
+    // Candidate paths to probe
+    const candidates = new Set();
+
+    // 1. 'java' on PATH
+    candidates.add('java');
+
+    if (isWin) {
+        // 2. Common Windows JDK locations
+        const roots = [
+            'C:\\Program Files\\Java',
+            'C:\\Program Files\\Eclipse Adoptium',
+            'C:\\Program Files\\Microsoft',
+            'C:\\Program Files\\BellSoft',
+            'C:\\Program Files\\Amazon Corretto',
+            'C:\\Program Files\\Azul Systems\\Zulu',
+        ];
+        for (const root of roots) {
+            try {
+                if (!fs.existsSync(root)) continue;
+                for (const dir of fs.readdirSync(root)) {
+                    const javaExe = path.join(root, dir, 'bin', 'java.exe');
+                    if (fs.existsSync(javaExe)) candidates.add(javaExe);
+                }
+            } catch (_) {}
+        }
+        // 3. Registry via WMIC (best-effort)
+        try {
+            const { execSync } = require('child_process');
+            const out = execSync(
+                'wmic product where "Name like \'%Java%\' or Name like \'%JDK%\' or Name like \'%JRE%\'" get InstallLocation /value',
+                { timeout: 4000, stdio: ['pipe','pipe','pipe'] }
+            ).toString();
+            for (const line of out.split('\n')) {
+                const m = line.match(/InstallLocation=(.+)/);
+                if (m) {
+                    const loc = m[1].trim();
+                    const javaExe = path.join(loc, 'bin', 'java.exe');
+                    if (fs.existsSync(javaExe)) candidates.add(javaExe);
+                }
+            }
+        } catch (_) {}
+    } else {
+        // Linux / macOS
+        const linuxRoots = [
+            '/usr/lib/jvm',
+            '/usr/java',
+            '/opt/java',
+            '/opt/jdk',
+            '/usr/local/lib/jvm',
+        ];
+        for (const root of linuxRoots) {
+            try {
+                if (!fs.existsSync(root)) continue;
+                for (const dir of fs.readdirSync(root)) {
+                    const javaExe = path.join(root, dir, 'bin', 'java');
+                    if (fs.existsSync(javaExe)) candidates.add(javaExe);
+                }
+            } catch (_) {}
+        }
+        // macOS /Library/Java
+        try {
+            const macRoot = '/Library/Java/JavaVirtualMachines';
+            if (fs.existsSync(macRoot)) {
+                for (const dir of fs.readdirSync(macRoot)) {
+                    const javaExe = path.join(macRoot, dir, 'Contents', 'Home', 'bin', 'java');
+                    if (fs.existsSync(javaExe)) candidates.add(javaExe);
+                }
+            }
+        } catch (_) {}
+        // JAVA_HOME
+        if (process.env.JAVA_HOME) {
+            const javaExe = path.join(process.env.JAVA_HOME, 'bin', 'java');
+            candidates.add(javaExe);
+        }
+    }
+
+    // Probe each candidate: run `java -version` and parse the output
+    const probeJava = (javaPath) => new Promise((resolve) => {
+        execFile(javaPath, ['-version'], { timeout: 5000 }, (err, stdout, stderr) => {
+            // java -version writes to stderr
+            const output = (stderr || stdout || '').trim();
+            // Parse: 'openjdk version "21.0.3"' or 'java version "1.8.0_xxx"'
+            const m = output.match(/version "([^"]+)"/);
+            if (!m) return resolve(null);
+            const versionStr = m[1];
+            // Normalise: "1.8.0_xxx" → 8, "21.0.3" → 21, "25-ea" → 25
+            let major;
+            if (versionStr.startsWith('1.')) {
+                major = parseInt(versionStr.split('.')[1], 10);
+            } else {
+                major = parseInt(versionStr.split(/[.\-]/)[0], 10);
+            }
+            if (isNaN(major)) return resolve(null);
+            resolve({ path: javaPath, version: major, versionString: versionStr, fullOutput: output.split('\n')[0] });
+        });
+    });
+
+    const results = (await Promise.all([...candidates].map(probeJava)))
+        .filter(Boolean)
+        // Deduplicate by resolved version+path
+        .filter((v, i, arr) => arr.findIndex(x => x.path === v.path) === i)
+        .sort((a, b) => b.version - a.version);
+
+    res.json({ javas: results });
 });
 
 function checkPortFree(port) {

@@ -45,7 +45,37 @@ const router = express.Router();
 function getStartInfo(server) {
     const serverDir = getServerDir(server);
     const jarFile = path.join(serverDir, 'server.jar');
-    
+
+    // JVM flags incompatible with older JVMs (require JDK 24+ Lilliput project).
+    // Strip these wherever they appear — run.bat inline, user_jvm_args.txt, or
+    // any @libraries/.../*.txt arg-file that Forge generates.
+    const STRIP_FLAGS = [
+        '-XX:+UseCompactObjectHeaders',
+        '-XX:-UseCompactObjectHeaders',
+    ];
+
+    function filterJvmArgs(args) {
+        return args.filter(arg => !STRIP_FLAGS.includes(arg.trim()));
+    }
+
+    // Read and filter a Forge @arg-file (e.g. win_args.txt / unix_args.txt).
+    // Returns the expanded tokens with incompatible flags removed, or the
+    // original @token if the file cannot be read.
+    function expandArgFile(token, baseDir) {
+        // token looks like "@libraries/net/minecraftforge/forge/.../win_args.txt"
+        const relPath = token.startsWith('@') ? token.slice(1) : token;
+        const fullPath = path.join(baseDir, relPath);
+        try {
+            if (!fs.existsSync(fullPath)) return [token]; // keep token as-is
+            const content = fs.readFileSync(fullPath, 'utf8');
+            // Forge arg-files are a single line of space-separated arguments
+            const tokens = content.trim().split(/\s+/).filter(t => t.length > 0);
+            return filterJvmArgs(tokens);
+        } catch (_) {
+            return [token]; // fallback: keep original token
+        }
+    }
+
     let customArgs = null;
     try {
         if (server.software === 'forge') {
@@ -56,12 +86,43 @@ function getStartInfo(server) {
                 const lines = content.split('\n');
                 for (const line of lines) {
                     if (line.trim().startsWith('java ')) {
-                        // Extract arguments between "java" and "%*" or '"$@"'
                         let argsStr = line.trim().substring(5);
                         argsStr = argsStr.replace(/%\*/g, '').replace(/"\$@"/g, '').replace(/\$@/g, '').trim();
                         if (argsStr.includes('@user_jvm_args.txt') || argsStr.includes('libraries/')) {
-                            // Split by space but preserve paths if they had spaces (usually they don't in forge)
-                            customArgs = argsStr.split(/\s+/).filter(a => a.length > 0);
+                            let parsedArgs = argsStr.split(/\s+/).filter(a => a.length > 0);
+
+                            // Expand @user_jvm_args.txt token
+                            const userJvmArgsFile = path.join(serverDir, 'user_jvm_args.txt');
+                            const userJvmIdx = parsedArgs.indexOf('@user_jvm_args.txt');
+                            if (userJvmIdx !== -1) {
+                                let userJvmFlags = [];
+                                if (fs.existsSync(userJvmArgsFile)) {
+                                    const userJvmContent = fs.readFileSync(userJvmArgsFile, 'utf8');
+                                    userJvmFlags = userJvmContent
+                                        .split('\n')
+                                        .map(l => l.trim())
+                                        .filter(l => l.length > 0 && !l.startsWith('#'));
+                                    userJvmFlags = filterJvmArgs(userJvmFlags);
+                                }
+                                parsedArgs.splice(userJvmIdx, 1, ...userJvmFlags);
+                            }
+
+                            // Expand any remaining @libraries/... arg-file tokens and filter
+                            // incompatible flags that live inside them (e.g. win_args.txt / unix_args.txt)
+                            const expandedArgs = [];
+                            for (const arg of parsedArgs) {
+                                if (arg.startsWith('@') && arg.includes('libraries/')) {
+                                    // Expand the file and strip bad flags from its contents
+                                    expandedArgs.push(...expandArgFile(arg, serverDir));
+                                } else {
+                                    // Still filter any bare flags that may appear inline
+                                    if (!STRIP_FLAGS.includes(arg.trim())) {
+                                        expandedArgs.push(arg);
+                                    }
+                                }
+                            }
+
+                            customArgs = expandedArgs;
                             break;
                         }
                     }
