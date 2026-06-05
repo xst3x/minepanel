@@ -1,0 +1,9 @@
+{
+  "name": "Vanilla",
+  "serverProperties": {
+    "motd": "MinePanel Vanilla Server",
+    "max-players": 20,
+    "enable-command-block": false
+  },
+  "dockerCompose": "services:\n  minecraft:\n    image: itzg/minecraft-server:java17\n    environment:\n      EULA: \"TRUE\"\n    ports:\n      - \"25565:25565\""
+}

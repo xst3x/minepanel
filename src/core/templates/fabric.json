@@ -1,0 +1,9 @@
+{
+  "name": "Fabric",
+  "serverProperties": {
+    "motd": "MinePanel Fabric Server",
+    "max-players": 30,
+    "enable-command-block": false
+  },
+  "dockerCompose": "services:\n  minecraft:\n    image: itzg/minecraft-server:fabric\n    environment:\n      EULA: \"TRUE\"\n    ports:\n      - \"25565:25565\""
+}

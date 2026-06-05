@@ -1,0 +1,10 @@
+{
+  "name": "Paper",
+  "serverProperties": {
+    "motd": "MinePanel Paper Server",
+    "max-players": 30,
+    "enable-command-block": false,
+    "online-mode": true
+  },
+  "dockerCompose": "services:\n  minecraft:\n    image: itzg/minecraft-server:paper\n    environment:\n      EULA: \"TRUE\"\n    ports:\n      - \"25565:25565\""
+}

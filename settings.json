@@ -1,0 +1,12 @@
+{
+  "loginCooldown": 30,
+  "maxAttempts": 5,
+  "rateLimit": 100,
+  "ftpPort": 2121,
+  "ftpEnabled": true,
+  "defaultRam": 2048,
+  "defaultPort": 25565,
+  "maxRam": 16384,
+  "requireInviteTokenToCreateAccount": true,
+  "defaultRankId": 5
+}
