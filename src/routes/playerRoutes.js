@@ -1,10 +1,11 @@
 const express = require('express');
 const fs = require('fs');
 const fsp = require('fs').promises;
+const zlib = require('zlib');
 const Joi = require('joi');
 const { validate } = require('../middleware/validation');
 const path = require('path');
-const nbt = require('prismarine-nbt');
+const crypto = require('crypto');
 const { authenticateToken } = require('../core/auth');
 const { checkPermission } = require('../core/permissions');
 const processManager = require('../core/processManager');
@@ -12,21 +13,9 @@ const { getServer, getServerDir } = require('../core/serverHelper');
 const { E, sendError } = require('../core/errors');
 const logger = require('../core/utils/logger');
 
-const parseNbt = nbt.parse;
 const router = express.Router({ mergeParams: true });
 
-const { buildAssetsIndex } = require('../core/assetsResolver');
-
-let assetsIndex = {};
-try {
-    assetsIndex = buildAssetsIndex();
-} catch (e) {
-    logger.error('[AssetsIndex] Failed to initialize assets index:', e);
-}
-
-router.get('/assets-index', authenticateToken, (req, res) => {
-    res.json(assetsIndex);
-});
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const loadUsercache = (serverDir) => {
     const cachePath = path.join(serverDir, 'usercache.json');
@@ -57,6 +46,90 @@ function getOnlinePlayerNames(serverId) {
     return Array.from(onlineSet);
 }
 
+// ─── Minimal NBT reader for health + food ────────────────────────────────────
+// Reads only the Float tags named "Health" and the Int tag named "foodLevel"
+// from a gzipped NBT playerdata .dat file without any external library.
+
+async function readPlayerVitals(datPath) {
+    try {
+        const compressed = await fsp.readFile(datPath);
+        const buf = await new Promise((resolve, reject) => {
+            zlib.gunzip(compressed, (err, result) => err ? reject(err) : resolve(result));
+        });
+
+        let health = null;
+        let food   = null;
+        let i      = 0;
+
+        // NBT tag type IDs
+        const TAG_END       = 0;
+        const TAG_BYTE      = 1;
+        const TAG_SHORT     = 2;
+        const TAG_INT       = 3;
+        const TAG_LONG      = 4;
+        const TAG_FLOAT     = 5;
+        const TAG_DOUBLE    = 6;
+        const TAG_BYTE_ARR  = 7;
+        const TAG_STRING    = 8;
+        const TAG_LIST      = 9;
+        const TAG_COMPOUND  = 10;
+        const TAG_INT_ARR   = 11;
+        const TAG_LONG_ARR  = 12;
+
+        const readName = () => {
+            const len = buf.readUInt16BE(i); i += 2;
+            const name = buf.slice(i, i + len).toString('utf8'); i += len;
+            return name;
+        };
+
+        const skipPayload = (type) => {
+            if (type === TAG_BYTE)     { i += 1; }
+            else if (type === TAG_SHORT)    { i += 2; }
+            else if (type === TAG_INT)      { i += 4; }
+            else if (type === TAG_LONG)     { i += 8; }
+            else if (type === TAG_FLOAT)    { i += 4; }
+            else if (type === TAG_DOUBLE)   { i += 8; }
+            else if (type === TAG_BYTE_ARR) { const len = buf.readInt32BE(i); i += 4 + len; }
+            else if (type === TAG_STRING)   { const len = buf.readUInt16BE(i); i += 2 + len; }
+            else if (type === TAG_LIST) {
+                const elType = buf[i++];
+                const count  = buf.readInt32BE(i); i += 4;
+                for (let n = 0; n < count; n++) skipPayload(elType);
+            }
+            else if (type === TAG_COMPOUND) { readCompound(); }
+            else if (type === TAG_INT_ARR)  { const len = buf.readInt32BE(i); i += 4 + len * 4; }
+            else if (type === TAG_LONG_ARR) { const len = buf.readInt32BE(i); i += 4 + len * 8; }
+        };
+
+        const readCompound = () => {
+            while (i < buf.length) {
+                const type = buf[i++];
+                if (type === TAG_END) break;
+                const name = readName();
+                if (type === TAG_FLOAT && name === 'Health') {
+                    health = buf.readFloatBE(i); i += 4;
+                } else if (type === TAG_INT && name === 'foodLevel') {
+                    food = buf.readInt32BE(i); i += 4;
+                } else {
+                    skipPayload(type);
+                }
+                if (health !== null && food !== null) break;
+            }
+        };
+
+        // Root tag: TAG_Compound (10) + 2-byte name length + name bytes
+        i++; // skip root type byte (always 10)
+        const rootNameLen = buf.readUInt16BE(i); i += 2 + rootNameLen;
+        readCompound();
+
+        return { health, food };
+    } catch (e) {
+        return { health: null, food: null };
+    }
+}
+
+// ─── Online players ───────────────────────────────────────────────────────────
+
 router.get('/online', authenticateToken, checkPermission('server.players.read'), async (req, res) => {
     try {
         const { serverId } = req.params;
@@ -69,6 +142,8 @@ router.get('/online', authenticateToken, checkPermission('server.players.read'),
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
+
+// ─── Player list (from playerdata dir) ───────────────────────────────────────
 
 router.get('/list', authenticateToken, checkPermission('server.players.read'), async (req, res) => {
     try {
@@ -93,106 +168,7 @@ router.get('/list', authenticateToken, checkPermission('server.players.read'), a
     }
 });
 
-// ─── NBT helpers (unchanged) ─────────────────────────────────────────────────
-
-const simplifyNbt = (tag) => {
-    if (!tag) return null;
-    if (tag.type !== undefined && tag.value !== undefined) return simplifyNbt(tag.value);
-    if (Array.isArray(tag)) return tag.map(simplifyNbt);
-    if (typeof tag === 'object') {
-        const res = {};
-        for (const [key, val] of Object.entries(tag)) res[key] = simplifyNbt(val);
-        return res;
-    }
-    return tag;
-};
-
-const extractTextFromComponent = (component) => {
-    if (!component) return '';
-    if (typeof component === 'string') return component;
-    if (Array.isArray(component)) return component.map(extractTextFromComponent).join('');
-    let text = component.text || '';
-    if (component.extra) text += extractTextFromComponent(component.extra);
-    return text;
-};
-
-const parseJsonTextComponent = (rawText) => {
-    if (!rawText) return '';
-    if (typeof rawText !== 'string') return String(rawText);
-    const trimmed = rawText.trim();
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-        try { return extractTextFromComponent(JSON.parse(trimmed)); } catch (_) { return rawText; }
-    }
-    return rawText;
-};
-
-const parseItemTag = (rawTag) => {
-    if (!rawTag) return null;
-    const tag = simplifyNbt(rawTag);
-    if (!tag) return null;
-    const parsed = { customName: null, lore: [], enchantments: [], attributes: [], unbreakable: false, damage: 0 };
-    if (tag.display) {
-        if (tag.display.Name) parsed.customName = parseJsonTextComponent(tag.display.Name);
-        if (Array.isArray(tag.display.Lore)) parsed.lore = tag.display.Lore.map(line => parseJsonTextComponent(line));
-    }
-    const enchantsList = tag.Enchantments || tag.StoredEnchantments || tag.ench;
-    if (Array.isArray(enchantsList)) {
-        parsed.enchantments = enchantsList.map(e => ({ id: e.id || '', lvl: e.lvl !== undefined ? e.lvl : 1 }));
-    }
-    if (Array.isArray(tag.AttributeModifiers)) {
-        parsed.attributes = tag.AttributeModifiers.map(attr => ({
-            name: attr.AttributeName || attr.name || '',
-            amount: attr.Amount !== undefined ? attr.Amount : 0,
-            operation: attr.Operation !== undefined ? attr.Operation : 0
-        }));
-    }
-    if (tag.Unbreakable) parsed.unbreakable = !!tag.Unbreakable;
-    if (tag.Damage !== undefined) parsed.damage = tag.Damage;
-    return parsed;
-};
-
-const extractItems = (nbtList) => {
-    if (!nbtList || !nbtList.value || !nbtList.value.value) return [];
-    return nbtList.value.value.map(item => {
-        const slot = (item.Slot && item.Slot.value !== undefined) ? item.Slot.value : -1;
-        const id = (item.id && item.id.value !== undefined) ? item.id.value : 'unknown';
-        const countVal = (item.Count && item.Count.value !== undefined) ? item.Count.value :
-                         ((item.count && item.count.value !== undefined) ? item.count.value : 1);
-        let rawTag = null;
-        if (item.tag && item.tag.value) rawTag = item.tag.value;
-        return { slot, id, count: countVal, tag: rawTag, simplified: simplifyNbt(item.tag), parsed: parseItemTag(item.tag) };
-    });
-};
-
-const extractEffects = (effectsList) => {
-    if (!effectsList || !effectsList.value || !effectsList.value.value) return [];
-    return effectsList.value.value.map(eff => {
-        const rawId = (eff.id && eff.id.value !== undefined) ? eff.id.value :
-                      ((eff.Id && eff.Id.value !== undefined) ? eff.Id.value : -1);
-        let id = typeof rawId === 'string' ? rawId : ('minecraft:' + rawId);
-        const numericMap = {
-            1: 'minecraft:speed', 2: 'minecraft:slowness', 3: 'minecraft:haste',
-            4: 'minecraft:mining_fatigue', 5: 'minecraft:strength', 6: 'minecraft:instant_health',
-            7: 'minecraft:instant_damage', 8: 'minecraft:jump_boost', 9: 'minecraft:nausea',
-            10: 'minecraft:regeneration', 11: 'minecraft:resistance', 12: 'minecraft:fire_resistance',
-            13: 'minecraft:water_breathing', 14: 'minecraft:invisibility', 15: 'minecraft:blindness',
-            16: 'minecraft:night_vision', 17: 'minecraft:hunger', 18: 'minecraft:weakness',
-            19: 'minecraft:poison', 20: 'minecraft:wither', 21: 'minecraft:health_boost',
-            22: 'minecraft:absorption', 23: 'minecraft:saturation', 24: 'minecraft:glowing',
-            25: 'minecraft:levitation', 26: 'minecraft:luck', 27: 'minecraft:unluck',
-            28: 'minecraft:slow_falling', 29: 'minecraft:conduit_power', 30: 'minecraft:dolphins_grace',
-            31: 'minecraft:bad_omen', 32: 'minecraft:hero_of_the_village', 33: 'minecraft:darkness'
-        };
-        if (typeof rawId === 'number' && numericMap[rawId]) id = numericMap[rawId];
-        const amplifier = (eff.amplifier && eff.amplifier.value !== undefined) ? eff.amplifier.value :
-                          ((eff.Amplifier && eff.Amplifier.value !== undefined) ? eff.Amplifier.value : 0);
-        const duration = (eff.duration && eff.duration.value !== undefined) ? eff.duration.value :
-                         ((eff.Duration && eff.Duration.value !== undefined) ? eff.Duration.value : 0);
-        return { id, amplifier, duration };
-    });
-};
-
-// ─── Get player NBT ───────────────────────────────────────────────────────────
+// ─── Player stats (from server-generated stats JSON) ─────────────────────────
 
 router.get('/:uuid', authenticateToken, checkPermission('server.players.read'), async (req, res) => {
     const { uuid } = req.params;
@@ -200,73 +176,21 @@ router.get('/:uuid', authenticateToken, checkPermission('server.players.read'), 
         const server = await getServer(req.params.serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const serverDir = getServerDir(server);
-        const playerFile = path.join(serverDir, 'world', 'playerdata', `${uuid}.dat`);
-
-        const isOnline = processManager.getStatus(req.params.serverId.toString()) === 'online';
-        if (isOnline) {
-            try {
-                processManager.sendCommand(req.params.serverId.toString(), 'save-all');
-                await new Promise(resolve => setTimeout(resolve, 250));
-            } catch (cmdErr) {
-                logger.warn(`[playerRoutes] Dynamic save-all sync failed:`, cmdErr);
-            }
-        }
-
-        if (!fs.existsSync(playerFile)) return sendError(res, E.PLAYER_NOT_FOUND, 404);
 
         const usercache = loadUsercache(serverDir);
         const username = resolveUsername(usercache, uuid);
-        const fileBuffer = await fsp.readFile(playerFile);
-        const result = await parseNbt(fileBuffer);
-        const data = (result.parsed && result.parsed.value) ? result.parsed.value : (result.value || result);
 
-        const health = (data.Health && data.Health.value !== undefined) ? data.Health.value : 20;
-        const foodLevel = (data.foodLevel && data.foodLevel.value !== undefined) ? data.foodLevel.value : 20;
-        const xpLevel = (data.XpLevel && data.XpLevel.value !== undefined) ? data.XpLevel.value : 0;
-        const gameMode = (data.playerGameType && data.playerGameType.value !== undefined) ? data.playerGameType.value : 0;
+        const dashed = uuid.includes('-') ? uuid
+            : uuid.replace(/^([0-9a-f]{8})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{12})$/i, '$1-$2-$3-$4-$5');
 
-        let posList = [0, 0, 0];
-        if (data.Pos && data.Pos.value && data.Pos.value.value) {
-            posList = data.Pos.value.value.map(v => (v && v.value !== undefined) ? v.value : v);
-        } else if (data.Pos && data.Pos.value) {
-            posList = data.Pos.value.map(v => (v && v.value !== undefined) ? v.value : v);
-        }
-
-        const rawInventory = extractItems(data.Inventory);
-        const rawEnderChest = extractItems(data.EnderItems);
-
-        const inventory = Array(27).fill(null);
-        const hotbar = Array(9).fill(null);
-        const armor = { helmet: null, chestplate: null, leggings: null, boots: null };
-        let offhand = null;
-        const enderChest = Array(27).fill(null);
-
-        rawInventory.forEach(item => {
-            const slot = item.slot;
-            if (slot >= 0 && slot <= 8) hotbar[slot] = item;
-            else if (slot >= 9 && slot <= 35) inventory[slot - 9] = item;
-            else if (slot === 100) armor.boots = item;
-            else if (slot === 101) armor.leggings = item;
-            else if (slot === 102) armor.chestplate = item;
-            else if (slot === 103) armor.helmet = item;
-            else if (slot === -106 || slot === 106 || slot === 150) offhand = item;
-        });
-
-        rawEnderChest.forEach(item => {
-            const slot = item.slot;
-            if (slot >= 0 && slot <= 26) enderChest[slot] = item;
-        });
-
-        const dashed = uuid.includes('-') ? uuid : uuid.replace(/^([0-9a-f]{8})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{12})$/i, '$1-$2-$3-$4-$5');
-        const statsFile = path.join(serverDir, 'world', 'stats', `${dashed}.json`);
-        const statsFileAlt = path.join(serverDir, 'world', 'stats', `${uuid}.json`);
         const UUID_FILE_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/i;
 
+        // Read server-generated stats JSON
+        const statsFile    = path.join(serverDir, 'world', 'stats', `${dashed}.json`);
+        const statsFileAlt = path.join(serverDir, 'world', 'stats', `${uuid}.json`);
         let stats = {};
         if (UUID_FILE_RE.test(path.basename(statsFile))) {
-            try {
-                stats = JSON.parse(await fsp.readFile(statsFile, 'utf8'));
-            } catch (e) {
+            try { stats = JSON.parse(await fsp.readFile(statsFile, 'utf8')); } catch (e) {
                 if (e.code !== 'ENOENT') logger.warn(`[playerRoutes] Failed to read player stats:`, e);
                 if (UUID_FILE_RE.test(path.basename(statsFileAlt))) {
                     try { stats = JSON.parse(await fsp.readFile(statsFileAlt, 'utf8')); } catch (_) {}
@@ -274,18 +198,33 @@ router.get('/:uuid', authenticateToken, checkPermission('server.players.read'), 
             }
         }
 
+        // Read advancements JSON
+        const advFile = path.join(serverDir, 'world', 'advancements', `${dashed}.json`);
+        let advancements = {};
+        try { advancements = JSON.parse(await fsp.readFile(advFile, 'utf8')); } catch (_) {}
+
+        // Read live health + food from playerdata .dat (NBT binary)
+        const datFile    = path.join(serverDir, 'world', 'playerdata', `${dashed}.dat`);
+        const datFileAlt = path.join(serverDir, 'world', 'playerdata', `${uuid}.dat`);
+        let vitals = { health: null, food: null };
+        if (fs.existsSync(datFile))    vitals = await readPlayerVitals(datFile);
+        else if (fs.existsSync(datFileAlt)) vitals = await readPlayerVitals(datFileAlt);
+
         res.json({
-            uuid, username: username || uuid, health, foodLevel, xpLevel, gameMode,
-            position: { x: posList[0], y: posList[1], z: posList[2] },
-            inventory, hotbar, armor, offhand, enderChest,
-            activeEffects: extractEffects(data.ActiveEffects || data.active_effects),
-            stats
+            uuid,
+            username: username || uuid,
+            stats,
+            advancements,
+            health: vitals.health !== null ? Math.round(vitals.health * 10) / 10 : null,
+            food:   vitals.food,
         });
     } catch (e) {
-        logger.error(`[playerRoutes] Get player NBT error (Server: ${req.params.serverId}, User: ${req.user.id}, Player: ${uuid}):`, e);
+        logger.error(`[playerRoutes] Get player stats error (Server: ${req.params.serverId}, Player: ${uuid}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
+
+// ─── Admin commands ───────────────────────────────────────────────────────────
 
 router.post('/:uuid/command', authenticateToken, checkPermission('server.players.manage'), async (req, res) => {
     const { serverId, uuid } = req.params;
@@ -303,61 +242,100 @@ router.post('/:uuid/command', authenticateToken, checkPermission('server.players
     }
     if (!username) return sendError(res, E.PLAYER_USERNAME_UNRESOLVABLE, 400);
 
-    const allowedActions = ['kick', 'ban', 'pardon', 'op', 'deop', 'gamemode', 'xp', 'give', 'effect', 'clear', 'wipe', 'teleport', 'heal', 'kill'];
+    const allowedActions = [
+        'kick', 'ban', 'pardon', 'mute', 'unmute',
+        'op', 'deop',
+        'gamemode',
+        'xp', 'give', 'effect', 'clear',
+        'teleport', 'heal', 'feed', 'starve', 'kill',
+        'wipe'
+    ];
     if (!allowedActions.includes(action)) return sendError(res, E.PLAYER_ACTION_INVALID, 400);
 
     // Sanitize inputs to prevent newline-based command injection.
-    // Minecraft processes stdin line-by-line, so embedded newlines would execute extra commands.
     const sanitizeArg = (s) => String(s || '').replace(/[\r\n\0]/g, '').trim();
     const safeUsername = sanitizeArg(username);
     const safeValue    = sanitizeArg(value);
+
+    // Actions that require the server to be online
+    const requiresOnline = ['kick','ban','pardon','mute','unmute','op','deop','gamemode','xp','give','effect','clear','teleport','heal','feed','starve','kill'];
+    if (requiresOnline.includes(action)) {
+        const status = processManager.getStatus(serverId.toString());
+        if (status !== 'online') {
+            return sendError(res, E.PLAYER_SERVER_OFFLINE, 400);
+        }
+    }
 
     if (action === 'wipe') {
         try {
             if (processManager.getStatus(serverId.toString()) === 'online') {
                 return sendError(res, E.SERVER_MUST_BE_STOPPED, 400);
             }
-            const pDat = path.join(serverDir, 'world', 'playerdata', `${uuid}.dat`);
-            const pStats = path.join(serverDir, 'world', 'stats', `${uuid}.json`);
-            const pAdv = path.join(serverDir, 'world', 'advancements', `${uuid}.json`);
-            if (fs.existsSync(pDat)) fs.unlinkSync(pDat);
+            const dashed = uuid.includes('-') ? uuid
+                : uuid.replace(/^([0-9a-f]{8})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{12})$/i, '$1-$2-$3-$4-$5');
+            const pDat   = path.join(serverDir, 'world', 'playerdata', `${uuid}.dat`);
+            const pStats = path.join(serverDir, 'world', 'stats', `${dashed}.json`);
+            const pAdv   = path.join(serverDir, 'world', 'advancements', `${dashed}.json`);
+            if (fs.existsSync(pDat))   fs.unlinkSync(pDat);
             if (fs.existsSync(pStats)) fs.unlinkSync(pStats);
-            if (fs.existsSync(pAdv)) fs.unlinkSync(pAdv);
+            if (fs.existsSync(pAdv))   fs.unlinkSync(pAdv);
             return res.json({ message: `Wiped all player data files for ${username} successfully.` });
         } catch (e) {
-            logger.error(`[playerRoutes] Wipe player data files error (Server: ${serverId}, User: ${req.user.id}, Player: ${uuid}):`, e);
+            logger.error(`[playerRoutes] Wipe player data error (Server: ${serverId}, Player: ${uuid}):`, e);
             return sendError(res, E.INTERNAL_ERROR, 500);
         }
     }
 
     let command;
     switch (action) {
-        case 'kick': command = `kick ${safeUsername} ${safeValue || 'Kicked by panel'}`; break;
-        case 'ban': command = `ban ${safeUsername} ${safeValue || 'Banned by panel'}`; break;
-        case 'pardon': command = `pardon ${safeUsername}`; break;
-        case 'op': command = `op ${safeUsername}`; break;
-        case 'deop': command = `deop ${safeUsername}`; break;
-        case 'gamemode': if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Gamemode value required'); command = `gamemode ${safeValue} ${safeUsername}`; break;
-        case 'xp': if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'XP value required'); command = `xp add ${safeUsername} ${safeValue}`; break;
-        case 'give': if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Item/Give value required'); command = `give ${safeUsername} ${safeValue}`; break;
-        case 'effect': if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Effect value required'); command = `effect give ${safeUsername} ${safeValue}`; break;
-        case 'clear': command = `clear ${safeUsername}`; break;
-        case 'teleport': if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Teleport destination required'); command = `tp ${safeUsername} ${safeValue}`; break;
-        case 'heal': command = `effect give ${safeUsername} minecraft:instant_health 1 255`; break;
-        case 'kill': command = `kill ${safeUsername}`; break;
+        case 'kick':     command = `kick ${safeUsername} ${safeValue || 'Kicked by panel'}`; break;
+        case 'ban':      command = `ban ${safeUsername} ${safeValue || 'Banned by panel'}`; break;
+        case 'pardon':   command = `pardon ${safeUsername}`; break;
+        // mute/unmute use the standard /mute & /unmute commands (requires a mute plugin or Adventure mode)
+        case 'mute':     command = `mute ${safeUsername} ${safeValue || ''}`; break;
+        case 'unmute':   command = `unmute ${safeUsername}`; break;
+        case 'op':       command = `op ${safeUsername}`; break;
+        case 'deop':     command = `deop ${safeUsername}`; break;
+        case 'gamemode':
+            if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Gamemode value required');
+            command = `gamemode ${safeValue} ${safeUsername}`;
+            break;
+        case 'xp':
+            if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'XP value required');
+            command = `xp add ${safeUsername} ${safeValue}`;
+            break;
+        case 'give':
+            if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Item value required');
+            command = `give ${safeUsername} ${safeValue}`;
+            break;
+        case 'effect':
+            if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Effect value required');
+            command = `effect give ${safeUsername} ${safeValue}`;
+            break;
+        case 'clear':    command = `clear ${safeUsername}`; break;
+        case 'teleport':
+            if (!safeValue) return sendError(res, E.BAD_REQUEST, 400, 'Teleport destination required');
+            command = `tp ${safeUsername} ${safeValue}`;
+            break;
+        case 'heal':     command = `effect give ${safeUsername} minecraft:regeneration 3 255`; break;
+        case 'feed':     command = `effect give ${safeUsername} minecraft:saturation 3 255`; break;
+        case 'starve':   command = `effect give ${safeUsername} minecraft:hunger 30 255`; break;
+        case 'kill':     command = `kill ${safeUsername}`; break;
+        default:
+            return sendError(res, E.PLAYER_ACTION_INVALID, 400);
     }
 
     try {
         processManager.sendCommand(serverId.toString(), command);
         res.json({ message: `Command executed: /${command}`, command });
     } catch (e) {
-        logger.error(`[playerRoutes] Send player command error (Server: ${serverId}, User: ${req.user.id}, Player: ${uuid}, Action: ${action}):`, e);
+        logger.error(`[playerRoutes] Send player command error (Server: ${serverId}, Player: ${uuid}, Action: ${action}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
 
-// ─── UUID helper ──────────────────────────────────────────────────────────────
-const crypto = require('crypto');
+// ─── UUID resolution helpers ──────────────────────────────────────────────────
+
 function getOfflineUUID(username) {
     const hash = crypto.createHash('md5').update('OfflinePlayer:' + username).digest();
     hash[6] = (hash[6] & 0x0f) | 0x30;
@@ -382,7 +360,8 @@ async function resolvePlayerUUID(username) {
     return getOfflineUUID(username);
 }
 
-// ─── Player lists ─────────────────────────────────────────────────────────────
+// ─── Player lists (whitelist / ops / bans) ────────────────────────────────────
+
 const listFileMap = {
     'whitelist': 'whitelist.json', 'ops': 'ops.json',
     'banned-players': 'banned-players.json', 'banned-ips': 'banned-ips.json'
@@ -400,7 +379,7 @@ router.get('/lists/:listName', authenticateToken, checkPermission('server.player
         const raw = fs.readFileSync(filePath, 'utf8');
         res.json(JSON.parse(raw || '[]'));
     } catch (e) {
-        logger.error(`[playerRoutes] GET /lists/${listName} error:`, e);
+        logger.error(`[playerRoutes] GET /lists/${req.params.listName} error:`, e);
         res.json([]);
     }
 });
@@ -420,10 +399,10 @@ router.post('/lists/:listName', authenticateToken, checkPermission('server.playe
     try {
         if (isOnline) {
             let command = '';
-            if (listName === 'whitelist') command = `whitelist add ${target}`;
-            else if (listName === 'ops') command = `op ${target}`;
+            if (listName === 'whitelist')       command = `whitelist add ${target}`;
+            else if (listName === 'ops')         command = `op ${target}`;
             else if (listName === 'banned-players') command = `ban ${target} ${reason || 'Banned by panel'}`;
-            else if (listName === 'banned-ips') command = `ban-ip ${target} ${reason || 'Banned by panel'}`;
+            else if (listName === 'banned-ips')  command = `ban-ip ${target} ${reason || 'Banned by panel'}`;
             processManager.sendCommand(serverId.toString(), command);
             return res.json({ message: `Sent command to online server: /${command}` });
         } else {
@@ -469,10 +448,10 @@ router.delete('/lists/:listName/:target', authenticateToken, checkPermission('se
     try {
         if (isOnline) {
             let command = '';
-            if (listName === 'whitelist') command = `whitelist remove ${target}`;
-            else if (listName === 'ops') command = `deop ${target}`;
+            if (listName === 'whitelist')       command = `whitelist remove ${target}`;
+            else if (listName === 'ops')         command = `deop ${target}`;
             else if (listName === 'banned-players') command = `pardon ${target}`;
-            else if (listName === 'banned-ips') command = `pardon-ip ${target}`;
+            else if (listName === 'banned-ips')  command = `pardon-ip ${target}`;
             processManager.sendCommand(serverId.toString(), command);
             return res.json({ message: `Sent command to online server: /${command}` });
         } else {

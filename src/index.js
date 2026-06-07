@@ -3,10 +3,38 @@ require('./core/utils/envHelper').sanitizeSecrets();
 
 // --- Launcher Process Logic (must be the absolute first thing) ---
 if (process.env.MINEPANEL_SERVER !== 'true' && process.env.NODE_ENV !== 'test') {
-    const { spawn } = require('child_process');
+    const { spawn, execSync, spawnSync } = require('child_process');
     const path = require('path');
     const fs = require('fs');
     const { updateEnvPort } = require('./core/utils/envHelper');
+
+    // ── Clear terminal ────────────────────────────────────────────────────────
+    process.stdout.write(process.platform === 'win32' ? '\x1Bc' : '\x1B[2J\x1B[3J\x1B[H');
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Frontend build ────────────────────────────────────────────────────────
+    const frontendDir = path.resolve(__dirname, 'frontend');
+    const isWin = process.platform === 'win32';
+
+    function runSync(cmd, args, cwd) {
+        const result = spawnSync(cmd, args, { cwd, stdio: 'inherit', shell: isWin });
+        if (result.status !== 0) throw new Error(`${cmd} exited with code ${result.status}`);
+    }
+
+    try {
+        if (!fs.existsSync(path.join(frontendDir, 'node_modules'))) {
+            console.log('[MinePanel] Installing frontend dependencies...');
+            runSync(isWin ? 'npm.cmd' : 'npm', ['install'], frontendDir);
+        }
+        console.log('[MinePanel] Building frontend assets...');
+        const viteBin = path.join(frontendDir, 'node_modules', '.bin', isWin ? 'vite.cmd' : 'vite');
+        runSync(viteBin, ['build'], frontendDir);
+        console.log('[MinePanel] Frontend build complete.');
+    } catch (err) {
+        console.error('[MinePanel] Frontend build failed — starting backend anyway.');
+        console.error(err.message);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     function getPortFromEnv() {
         const envPath = path.resolve(__dirname, '../.env');
@@ -104,10 +132,6 @@ if (CONFIG.HTTPS_ENABLED) {
     const certPath = require('path').resolve(__dirname, '..', CONFIG.HTTPS_CERT);
     if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
         console.error(`[HTTPS] Certificate files not found!`);
-        console.error(`  Key:  ${keyPath}`);
-        console.error(`  Cert: ${certPath}`);
-        console.error(`  Run this command to generate self-signed certs for local dev:`);
-        console.error(`  mkdir certs && openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem -out certs/cert.pem -days 365 -nodes -subj "/CN=localhost"`);
         process.exit(1);
     }
     const sslOptions = {
@@ -133,7 +157,6 @@ if (CONFIG.HTTPS_ENABLED) {
     server = net2.createServer((socket) => {
         activeSockets.add(socket);
         socket.on('close', () => activeSockets.delete(socket));
-        
         socket.once('data', (buffer) => {
             socket.pause();
             if (buffer[0] === 22) {
@@ -144,17 +167,13 @@ if (CONFIG.HTTPS_ENABLED) {
             socket.unshift(buffer);
             process.nextTick(() => socket.resume());
         });
-        
         socket.on('error', (err) => {
-            if (err.code !== 'ECONNRESET') {
-                console.error('[Sniffer Socket Error]', err.message);
-            }
+            if (err.code !== 'ECONNRESET') console.error('[Sniffer Socket Error]', err.message);
         });
     });
 } else {
     server = http.createServer(app);
     logger.info('[HTTP] Running in HTTP mode (use Nginx + Let\'s Encrypt for production HTTPS)');
-    
     const activeSockets = new Set();
     global.activeSockets = activeSockets;
     server.on('connection', (socket) => {
@@ -162,14 +181,11 @@ if (CONFIG.HTTPS_ENABLED) {
         socket.on('close', () => activeSockets.delete(socket));
     });
 }
-// ----------------------------------
 
 const wss = new WebSocket.Server({ server: CONFIG.HTTPS_ENABLED ? secureServer : server, path: '/ws' });
 
 const allowedOrigins = CONFIG.ALLOWED_ORIGINS;
-if (allowedOrigins.length === 0) {
-    console.warn('[CORS] No allowed origins configured. All requests will be denied.');
-}
+if (allowedOrigins.length === 0) console.warn('[CORS] No allowed origins configured.');
 app.use(cors({
     origin: (origin, callback) => {
         if (!origin) return callback(null, true);
@@ -178,15 +194,10 @@ app.use(cors({
     },
 }));
 
-// --- Security Headers ---
 app.use((req, res, next) => {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    // Only send HSTS on actual HTTPS connections — sending it on HTTP can cause
-    // browsers to refuse plain-HTTP access even if HTTPS is not available.
-    if (CONFIG.HTTPS_ENABLED) {
-        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    }
+    if (CONFIG.HTTPS_ENABLED) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' ws: wss: https:; frame-ancestors 'none'");
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
@@ -197,7 +208,6 @@ app.use(requestLogger);
 
 let cachedSettings = null;
 let lastCacheTime = 0;
-
 const getSettings = () => {
     const now = Date.now();
     if (cachedSettings && (now - lastCacheTime < 30000)) return cachedSettings;
@@ -214,65 +224,47 @@ const getSettings = () => {
     return cachedSettings;
 };
 
-// Global Rate Limiter
 const globalRateLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
     max: CONFIG.RATE_LIMIT,
     message: { error: 'Too many requests from this IP, please try again later.' }
 });
-
 app.use('/api/', (req, res, next) => {
     if (req.path === '/servers/import') return next();
     return globalRateLimiter(req, res, next);
 });
 
-// Serve static frontend files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Health check endpoint
 app.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        version: require('../package.json').version,
-        uptime: Math.floor(process.uptime()),
-        timestamp: new Date().toISOString(),
-    });
+    res.json({ status: 'ok', version: require('../package.json').version, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
 });
 
-// Serve static assets from root directory
-app.use('/assets', express.static(path.join(__dirname, '../assets')));
-
-// Serve user avatars
 app.use('/avatars', express.static(path.join(__dirname, '../data/avatars')));
 
-// ── Metrics endpoint ──────────────────────────────────────────────────────────
 app.get('/metrics', (req, res) => {
-    // Authentication is ON by default. Disable by setting METRICS_AUTH=false in .env.
     const metricsAuthDisabled = process.env.METRICS_AUTH === 'false';
     if (!metricsAuthDisabled) {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
+        const token = (req.headers['authorization'] || '').split(' ')[1];
         if (!token) return res.status(401).json({ error: 'Unauthorized' });
         try { jwt.verify(token, SECRET_KEY); } catch (_) { return res.status(401).json({ error: 'Unauthorized' }); }
     }
     const uptime = Math.floor(process.uptime());
-    const memUsage = process.memoryUsage();
-    const lines = [
-        '# HELP minepanel_uptime_seconds Total uptime of the MinePanel process',
-        '# TYPE minepanel_uptime_seconds gauge',
-        `minepanel_uptime_seconds ${uptime}`,
-        '# HELP minepanel_memory_heap_used_bytes Heap memory used',
-        '# TYPE minepanel_memory_heap_used_bytes gauge',
-        `minepanel_memory_heap_used_bytes ${memUsage.heapUsed}`,
-        '# HELP minepanel_memory_rss_bytes RSS memory',
-        '# TYPE minepanel_memory_rss_bytes gauge',
-        `minepanel_memory_rss_bytes ${memUsage.rss}`,
-    ];
+    const mem = process.memoryUsage();
     res.set('Content-Type', 'text/plain; charset=utf-8');
-    res.send(lines.join('\n') + '\n');
+    res.send([
+        `# HELP minepanel_uptime_seconds Total uptime`,
+        `# TYPE minepanel_uptime_seconds gauge`,
+        `minepanel_uptime_seconds ${uptime}`,
+        `# HELP minepanel_memory_heap_used_bytes Heap memory used`,
+        `# TYPE minepanel_memory_heap_used_bytes gauge`,
+        `minepanel_memory_heap_used_bytes ${mem.heapUsed}`,
+        `# HELP minepanel_memory_rss_bytes RSS memory`,
+        `# TYPE minepanel_memory_rss_bytes gauge`,
+        `minepanel_memory_rss_bytes ${mem.rss}`,
+    ].join('\n') + '\n');
 });
 
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/servers', serverRoutes);
@@ -290,42 +282,33 @@ app.use('/api/discord/bots', discordBotsRoutes);
 app.use('/api/servers/:serverId/stats', statsRouter);
 app.use('/api/stats/config', statsConfigRouter);
 
-// Global Error Handler
-app.use((err, req, res, next) => {
-    if (err.message === 'Not allowed by CORS') {
-        return res.status(403).json({ error: 'Origin not allowed by CORS' });
-    }
-    if (err.code && err.status && typeof err.toResponse === 'function') {
-        return res.status(err.status).json(err.toResponse());
-    }
-    logger.error('[Global Error]', err);
-    const { AppError, E } = require('./core/errors');
-    const wrapped = new AppError(E.INTERNAL_ERROR, 500);
-    return res.status(500).json(wrapped.toResponse());
+// SPA catch-all — trimite index.html pentru orice rută non-API (React Router)
+app.get(/^(?!\/api\/).*$/, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// WebSocket connections
+app.use((err, req, res, next) => {
+    if (err.message === 'Not allowed by CORS') return res.status(403).json({ error: 'Origin not allowed by CORS' });
+    if (err.code && err.status && typeof err.toResponse === 'function') return res.status(err.status).json(err.toResponse());
+    logger.error('[Global Error]', err);
+    const { AppError, E } = require('./core/errors');
+    return res.status(500).json(new AppError(E.INTERNAL_ERROR, 500).toResponse());
+});
+
 wss.on('connection', (ws, req) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const serverId = url.searchParams.get('serverId');
-
     if (!serverId) { ws.close(4000, 'Missing serverId'); return; }
 
     let authenticated = false;
     let canWrite = false;
-    let authTimeout = setTimeout(() => {
-        if (!authenticated) ws.close(4002, 'Authentication timeout');
-    }, 5000);
-
+    let authTimeout = setTimeout(() => { if (!authenticated) ws.close(4002, 'Authentication timeout'); }, 5000);
     let statsInterval = null;
-    let consoleListener = null;
-    let statusListener = null;
-    let clearConsoleListener = null;
+    let consoleListener = null, statusListener = null, clearConsoleListener = null;
 
     ws.on('message', async (message) => {
         try {
             const parsed = JSON.parse(message);
-
             if (!authenticated) {
                 if (parsed.type === 'auth' && parsed.token) {
                     jwt.verify(parsed.token, SECRET_KEY, async (err, user) => {
@@ -334,34 +317,20 @@ wss.on('connection', (ws, req) => {
                             const canRead = await hasPermission(user.id, serverId, 'server.console.read');
                             canWrite = await hasPermission(user.id, serverId, 'server.console.write');
                             if (!canRead) { ws.close(4003, 'Forbidden'); return; }
-
                             authenticated = true;
                             clearTimeout(authTimeout);
-
                             const history = processManager.getHistory(serverId);
                             if (history.length > 0) ws.send(JSON.stringify({ type: 'history', data: history }));
                             ws.send(JSON.stringify({ type: 'status', data: processManager.getStatus(serverId) }));
-
-                            consoleListener = (emittedServerId, output) => {
-                                if (emittedServerId === serverId) ws.send(JSON.stringify({ type: 'console', data: output }));
-                            };
-                            statusListener = (emittedServerId, status) => {
-                                if (emittedServerId === serverId) ws.send(JSON.stringify({ type: 'status', data: status }));
-                            };
-                            clearConsoleListener = (emittedServerId) => {
-                                if (emittedServerId === serverId) ws.send(JSON.stringify({ type: 'clear_console' }));
-                            };
-
+                            consoleListener = (sid, output) => { if (sid === serverId) ws.send(JSON.stringify({ type: 'console', data: output })); };
+                            statusListener = (sid, status) => { if (sid === serverId) ws.send(JSON.stringify({ type: 'status', data: status })); };
+                            clearConsoleListener = (sid) => { if (sid === serverId) ws.send(JSON.stringify({ type: 'clear_console' })); };
                             processManager.on('console', consoleListener);
                             processManager.on('status', statusListener);
                             processManager.on('clear_console', clearConsoleListener);
-
                             statsInterval = setInterval(async () => {
                                 if (ws.readyState === 1) {
-                                    try {
-                                        const stats = await processManager.getStats(serverId);
-                                        ws.send(JSON.stringify({ type: 'stats', data: stats }));
-                                    } catch (_) {}
+                                    try { ws.send(JSON.stringify({ type: 'stats', data: await processManager.getStats(serverId) })); } catch (_) {}
                                 }
                             }, 2000);
                         } catch (e) { ws.close(5000, 'Internal Server Error'); }
@@ -369,12 +338,8 @@ wss.on('connection', (ws, req) => {
                 } else { ws.close(4004, 'Authentication required'); }
                 return;
             }
-
             if (parsed.type === 'command') {
-                if (!canWrite) {
-                    ws.send(JSON.stringify({ type: 'console', data: '\n[System] Access denied: Missing server.console.write\n' }));
-                    return;
-                }
+                if (!canWrite) { ws.send(JSON.stringify({ type: 'console', data: '\n[System] Access denied: Missing server.console.write\n' })); return; }
                 processManager.sendCommand(serverId, parsed.data);
             }
         } catch (e) {}
@@ -393,193 +358,104 @@ const PORT = CONFIG.PORT;
 
 initDb().then(async () => {
     logger.info('Database initialized successfully.');
-
-    // Start stats collector
     statsCollector.start();
-
-    // Initialize version manager
     const versionManager = require('./core/versionManager');
     if (typeof versionManager.init === 'function') versionManager.init();
 
-    // Hourly cleanup for expired invite tokens
     const { dbRun } = require('./db/database');
     setInterval(async () => {
-        try {
-            await dbRun('DELETE FROM account_creation_tokens WHERE expires_at < ?', [new Date().toISOString()]);
-        } catch (err) {
-            logger.error('[Cleanup Error] Failed to delete expired tokens:', err);
-        }
+        try { await dbRun('DELETE FROM account_creation_tokens WHERE expires_at < ?', [new Date().toISOString()]); } catch (err) { logger.error('[Cleanup Error]', err); }
     }, 60 * 60 * 1000);
-    
-    // Migrate server directories from numeric to named
-    try {
-        await migrateServerDirectories();
-        logger.info('Server directory migration complete.');
-    } catch (e) {
-        logger.warn('Directory migration warning: ' + e.message);
-    }
 
-    // Start FTP Server
+    try { await migrateServerDirectories(); logger.info('Server directory migration complete.'); } catch (e) { logger.warn('Directory migration warning: ' + e.message); }
+
     const settings = getSettings();
     if (settings.ftpEnabled === true) {
-        try {
-            await initFtpServer(settings.ftpPort || 2121);
-        } catch (ftpErr) {
-            logger.error('Failed to start FTP service: ' + ftpErr.message);
-        }
-    } else {
-        logger.info('FTP service is disabled in settings.');
-    }
+        try { await initFtpServer(settings.ftpPort || 2121); } catch (ftpErr) { logger.error('Failed to start FTP service: ' + ftpErr.message); }
+    } else { logger.info('FTP service is disabled in settings.'); }
 
-    // Start Discord bots
     const discordManager = require('./core/discord/discordManager');
-    try {
-        await discordManager.startAll();
-    } catch (e) {
-        logger.warn('[Discord] Init warning: ' + e.message);
-    }
+    try { await discordManager.startAll(); } catch (e) { logger.warn('[Discord] Init warning: ' + e.message); }
 
-    // ── Autostart servers ────────────────────────────────────────────────────
-    // Start servers marked with autostart=1 after panel boots
     const { dbAll: dbAllForAutostart } = require('./db/database');
     try {
-        const autostartServers = await dbAllForAutostart(
-            `SELECT * FROM servers WHERE autostart = 1`
-        );
+        const autostartServers = await dbAllForAutostart(`SELECT * FROM servers WHERE autostart = 1`);
         if (autostartServers.length > 0) {
             logger.info(`[Autostart] Found ${autostartServers.length} server(s) to auto-start...`);
-            // Delay slightly to let everything finish initializing
             setTimeout(async () => {
                 for (const srv of autostartServers) {
                     try {
                         const { getServerDir } = require('./core/serverHelper');
-                        const { resolveJar } = require('./core/resolvers');
-                        const path = require('path');
                         const serverDir = getServerDir(srv);
-                        const jarFile = path.join(serverDir, 'server.jar');
+                        const jarFile = require('path').join(serverDir, 'server.jar');
                         const srvId = srv.id.toString();
                         if (processManager.getStatus(srvId) === 'offline') {
                             logger.info(`[Autostart] Starting server: ${srv.name} (id=${srvId})`);
                             processManager.start(srvId, serverDir, [], jarFile, srv.ram_mb, null, srv.java_path || 'java');
                         }
-                    } catch (e) {
-                        logger.error(`[Autostart] Failed to start server ${srv.id} (${srv.name}): ${e.message}`);
-                    }
+                    } catch (e) { logger.error(`[Autostart] Failed to start server ${srv.id}: ${e.message}`); }
                 }
             }, 3000);
         }
-    } catch (e) {
-        logger.warn('[Autostart] Could not load autostart servers: ' + e.message);
-    }
+    } catch (e) { logger.warn('[Autostart] Could not load autostart servers: ' + e.message); }
 
-    // ── Autostart on crash handler ───────────────────────────────────────────
     processManager.on('crash', async (serverId, info) => {
         try {
             const { dbGet: dbGetCrash } = require('./db/database');
             const srv = await dbGetCrash('SELECT * FROM servers WHERE id = ?', [serverId]);
             if (!srv || !srv.autostart_on_crash) return;
-
-            logger.warn(`[CrashRestart] Server ${serverId} (${srv.name}) crashed (code ${info.code}). Restarting in 5s...`);
-
-            const path = require('path');
+            logger.warn(`[CrashRestart] Server ${serverId} crashed. Restarting in 5s...`);
             const { getServerDir } = require('./core/serverHelper');
             const serverDir = getServerDir(srv);
-            const jarFile = path.join(serverDir, 'server.jar');
-
-            // Broadcast crash message to WS clients
+            const jarFile = require('path').join(serverDir, 'server.jar');
             const crashMsg = `\n[MinePanel] Server crashed (exit code ${info.code}). Auto-restarting in 5 seconds...\n`;
             processManager.appendHistory(serverId.toString(), crashMsg);
             processManager.emit('console', serverId.toString(), crashMsg);
-
             setTimeout(() => {
                 try {
                     if (processManager.getStatus(serverId.toString()) === 'offline') {
-                        logger.info(`[CrashRestart] Restarting server ${serverId} (${srv.name})...`);
                         processManager.start(serverId.toString(), serverDir, [], jarFile, srv.ram_mb, null, srv.java_path || 'java');
                     }
-                } catch (e) {
-                    logger.error(`[CrashRestart] Failed to restart server ${serverId}: ${e.message}`);
-                }
+                } catch (e) { logger.error(`[CrashRestart] Failed to restart server ${serverId}: ${e.message}`); }
             }, 5000);
-        } catch (e) {
-            logger.error(`[CrashRestart] Error handling crash for server ${serverId}: ${e.message}`);
-        }
+        } catch (e) { logger.error(`[CrashRestart] Error handling crash for server ${serverId}: ${e.message}`); }
     });
 
-    // Global port switch and restart trigger
     global.changePortAndRestart = async (newPort) => {
         try {
-            logger.info(`[Server] Re-routing server port to ${newPort} and triggering restart...`);
-            if (global.activeSockets) {
-                for (const socket of global.activeSockets) socket.destroy();
-                global.activeSockets.clear();
-            }
-            try {
-                const discordManager = require('./core/discord/discordManager');
-                await discordManager.destroyAll();
-                logger.info('[Server] Discord bots disconnected.');
-            } catch (e) { logger.error('[Server] Discord bots cleanup error: ' + e.message); }
-            try {
-                const { stopFtpServer } = require('./core/ftpServer');
-                stopFtpServer();
-                logger.info('[Server] FTP service stopped.');
-            } catch (e) { logger.error('[Server] FTP cleanup error: ' + e.message); }
-
+            logger.info(`[Server] Changing port to ${newPort} and restarting...`);
+            if (global.activeSockets) { for (const s of global.activeSockets) s.destroy(); global.activeSockets.clear(); }
+            try { await require('./core/discord/discordManager').destroyAll(); } catch (e) {}
+            try { require('./core/ftpServer').stopFtpServer(); } catch (e) {}
             statsCollector.stop();
-
-            server.close(() => {
-                logger.info('[Server] Core listeners closed. Exiting process with code 100 for port switch.');
-                process.exit(100);
-            });
-            setTimeout(() => { logger.warn('[Server] Force exiting process with code 100.'); process.exit(100); }, 2000);
-        } catch (err) {
-            logger.error('[Server] Error in changePortAndRestart:', err);
-            process.exit(100);
-        }
+            server.close(() => { process.exit(100); });
+            setTimeout(() => process.exit(100), 2000);
+        } catch (err) { logger.error('[Server] Error in changePortAndRestart:', err); process.exit(100); }
     };
 
     server.on('error', (err) => {
         logger.error('[Server Bind Error]', err);
-        if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
-            logger.error(`[Server] Failed to bind to port ${PORT}. Exiting with code 101 for self-healing rollback.`);
-            process.exit(101);
-        }
+        if (err.code === 'EADDRINUSE' || err.code === 'EACCES') { process.exit(101); }
     });
 
     if (process.env.NODE_ENV !== 'test') {
         server.listen(PORT, () => {
             logger.info(`MinePanel is running on port ${PORT}`);
-            if (CONFIG.HTTPS_ENABLED) {
-                secureServer.timeout = 0;
-                secureServer.keepAliveTimeout = 0;
-                secureServer.headersTimeout = 0;
-                redirectServer.timeout = 0;
-                redirectServer.keepAliveTimeout = 0;
-                redirectServer.headersTimeout = 0;
-            } else {
-                server.timeout = 0;
-                server.keepAliveTimeout = 0;
-                server.headersTimeout = 0;
-            }
+            server.timeout = 0;
+            server.keepAliveTimeout = 0;
+            server.headersTimeout = 0;
         });
     }
-}).catch(err => {
-    console.error('Failed to initialize database:', err);
-    process.exit(1);
-});
+}).catch(err => { console.error('Failed to initialize database:', err); process.exit(1); });
 
 module.exports = { app, server };
 
 const gracefulShutdown = async (signal) => {
     logger.info(`[${signal}] Shutting down...`);
     statsCollector.stop();
-    try {
-        const dm = require('./core/discord/discordManager');
-        await dm.destroyAll();
-    } catch (_) {}
+    try { await require('./core/discord/discordManager').destroyAll(); } catch (_) {}
     process.exit(0);
 };
-
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 }

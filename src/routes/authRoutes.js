@@ -406,6 +406,27 @@ router.post('/2fa/regenerate-backup-codes', authenticateToken, async (req, res) 
     }
 });
 
+// ── Forgot password — check if user has 2FA ──────────────────────────────────
+
+router.post('/forgot-check', passwordResetLimiter, async (req, res) => {
+    try {
+        const { username } = req.body;
+        if (!username) return sendError(res, E.BAD_REQUEST, 400, 'Username is required');
+
+        const user = await User.findOne({
+            where: { username: { [Op.eq]: username } },
+            attributes: ['id', 'totp_enabled', 'totp_secret']
+        });
+
+        // Always respond — don't reveal if user exists or not (anti-enumeration)
+        const has2fa = !!(user && user.totp_enabled && user.totp_secret);
+        res.json({ has2fa });
+    } catch (err) {
+        logger.error('[authRoutes] forgot-check error:', err);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
 // ── Password reset using TOTP (no old password needed) ────────────────────────
 
 router.post('/password-reset-with-totp', passwordResetLimiter, async (req, res) => {

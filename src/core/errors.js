@@ -74,6 +74,7 @@ const E = {
     PLAYER_USERNAME_UNRESOLVABLE:   'PLAYER_USERNAME_UNRESOLVABLE',
     PLAYER_ACTION_INVALID:          'PLAYER_ACTION_INVALID',
     PLAYER_LIST_INVALID:            'PLAYER_LIST_INVALID',
+    PLAYER_SERVER_OFFLINE:          'PLAYER_SERVER_OFFLINE',
 
     // Ranks
     RANK_NOT_FOUND:                 'RANK_NOT_FOUND',
@@ -163,6 +164,7 @@ const MESSAGES = {
     [E.PLAYER_USERNAME_UNRESOLVABLE]:   'Cannot resolve username for this player UUID.',
     [E.PLAYER_ACTION_INVALID]:          'Invalid player action.',
     [E.PLAYER_LIST_INVALID]:            'Invalid list name.',
+    [E.PLAYER_SERVER_OFFLINE]:          'The server is offline. Start it before running player commands.',
 
     [E.RANK_NOT_FOUND]:                 'Rank not found.',
     [E.RANK_NAME_TAKEN]:                'A rank with this name already exists.',
