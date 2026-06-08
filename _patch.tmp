@@ -1,0 +1,3 @@
+        console.log('[MinePanel] Building frontend assets...');
+        const viteBin = path.join(frontendDir, 'node_modules', '.bin', isWin ? 'vite.cmd' : 'vite');
+        runSync(viteBin, ['build'], frontendDir);

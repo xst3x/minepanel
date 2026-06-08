@@ -1,0 +1,528 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { api } from '../lib/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import { toast, showConfirm } from '../components/Toast.jsx';
+
+export default function Panel() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [servers, setServers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Versions state
+  const [versions, setVersions] = useState(null);
+  const [syncingVersions, setSyncingVersions] = useState(false);
+
+  // Modals state
+  const action = searchParams.get('action');
+  const showCreateModal = action === 'create';
+  const showImportModal = action === 'import';
+
+  // Create Server Form State
+  const [csName, setCsName] = useState('');
+  const [csSoftware, setCsSoftware] = useState('paper');
+  const [csVersion, setCsVersion] = useState('');
+  const [csRam, setCsRam] = useState(2048);
+  const [csPort, setCsPort] = useState(25565);
+  const [csBusy, setCsBusy] = useState(false);
+
+  // Import Server Form State
+  const [impFile, setImpFile] = useState(null);
+  const [impName, setImpName] = useState('');
+  const [impPort, setImpPort] = useState(25565);
+  const [impSoftware, setImpSoftware] = useState('paper');
+  const [impVersion, setImpVersion] = useState('');
+  const [impRam, setImpRam] = useState(2048);
+  const [impJar, setImpJar] = useState('');
+  const [impRoot, setImpRoot] = useState('');
+  const [importProgress, setImportProgress] = useState(null); // { label, pct }
+  const [impBusy, setImpBusy] = useState(false);
+
+  const fileInputRef = useRef(null);
+
+  // Load servers
+  const loadServers = async () => {
+    try {
+      const svs = await api('/api/servers');
+      setServers(svs || []);
+    } catch (e) {
+      console.error(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load versions
+  const loadVersions = async (refresh = false) => {
+    try {
+      if (refresh) setSyncingVersions(true);
+      const data = await api(`/api/system/versions${refresh ? '?refresh=true' : ''}`);
+      setVersions(data);
+    } catch (e) {
+      console.error(e.message);
+    } finally {
+      if (refresh) setSyncingVersions(false);
+    }
+  };
+
+  useEffect(() => {
+    loadServers();
+    loadVersions();
+    const interval = setInterval(loadServers, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Update default version when software changes
+  useEffect(() => {
+    if (versions && versions[csSoftware]) {
+      setCsVersion(versions[csSoftware][0] || '');
+    }
+  }, [csSoftware, versions]);
+
+  useEffect(() => {
+    if (versions && versions[impSoftware]) {
+      setImpVersion(versions[impSoftware][0] || '');
+    }
+  }, [impSoftware, versions]);
+
+  const refreshVersions = async () => {
+    await loadVersions(true);
+  };
+
+  const handleCreateServer = async (e) => {
+    e.preventDefault();
+    if (!csName || !csVersion) return toast('Name and version are required.', 'error');
+    setCsBusy(true);
+    try {
+      await api('/api/servers/create', {
+        method: 'POST',
+        body: { name: csName, software: csSoftware, version: csVersion, ram_mb: Number(csRam), port: Number(csPort) }
+      });
+      setSearchParams({});
+      loadServers();
+      setCsName(''); setCsSoftware('paper'); setCsRam(2048); setCsPort(25565);
+    } catch (err) {
+      toast(err.message || 'Server creation failed.', 'error');
+    } finally {
+      setCsBusy(false);
+    }
+  };
+
+  // Drag & drop handlers
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith('.zip') || file.type === 'application/zip')) {
+      setFile(file);
+    } else {
+      toast('Only .zip files are accepted.', 'error');
+    }
+  };
+
+  const setFile = (file) => {
+    setImpFile(file);
+    if (!impName) {
+      const fallbackName = file.name
+        .replace(/\.zip$/i, '')
+        .replace(/[-_]+/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+      setImpName(fallbackName);
+    }
+  };
+
+  const handleImportServer = async (e) => {
+    e.preventDefault();
+    if (!impFile) return toast('Please select a .zip archive first.', 'error');
+    if (!impName) return toast('Server name is required.', 'error');
+    if (!impVersion) return toast('Minecraft version is required.', 'error');
+    if (!impJar) return toast('Executable path is required.', 'error');
+
+    setImpBusy(true);
+    setImportProgress({ label: 'Uploading…', pct: 0 });
+
+    const fd = new FormData();
+    fd.append('archive', impFile, impFile.name);
+    fd.append('name', impName);
+    fd.append('port', impPort);
+    fd.append('software', impSoftware);
+    fd.append('version', impVersion);
+    fd.append('ram_mb', impRam);
+    fd.append('jar_path', impJar);
+    fd.append('root_path', impRoot);
+
+    const token = localStorage.getItem('mp_token');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/servers/import');
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const pct = Math.round((event.loaded / event.total) * 90);
+        setImportProgress({
+          label: pct >= 90 ? 'Extracting & configuring…' : 'Uploading…',
+          pct
+        });
+      }
+    };
+
+    xhr.onload = () => {
+      setImportProgress({ label: 'Finished', pct: 100 });
+      let data;
+      try { data = JSON.parse(xhr.responseText); } catch { data = { error: 'Invalid server response' }; }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        setSearchParams({});
+        loadServers();
+        setImpFile(null); setImpName(''); setImpPort(25565);
+        setImpSoftware('paper'); setImpRam(2048); setImpJar(''); setImpRoot('');
+        setImportProgress(null);
+        toast('Server imported successfully.', 'success');
+      } else {
+        toast(data.error || 'Import failed.', 'error');
+        setImportProgress(null);
+      }
+      setImpBusy(false);
+    };
+
+    xhr.onerror = () => {
+      toast('Network error during import. Please try again.', 'error');
+      setImportProgress(null);
+      setImpBusy(false);
+    };
+
+    xhr.send(fd);
+  };
+
+  const isAdmin = user?.role === 'admin';
+
+  return (
+    <div className="page" style={{ padding: '2.25rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h2 style={{ margin: 0 }}>Your Servers</h2>
+        {isAdmin && (
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn primary" onClick={() => setSearchParams({ action: 'create' })}>
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Create Server
+            </button>
+            <button className="btn outline" onClick={() => setSearchParams({ action: 'import' })}>
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              Import Server
+            </button>
+          </div>
+        )}
+      </div>
+
+      {loading ? (
+        <p className="text-muted">Loading servers...</p>
+      ) : servers.length === 0 ? (
+        <p className="text-muted">No servers found.</p>
+      ) : (
+        <div className="servers-grid" id="servers-grid">
+          {servers.map((sv) => (
+            <div 
+              key={sv.id} 
+              className="server-card"
+              onClick={() => navigate(`/server/${sv.id}/overview`)}
+            >
+              <h4>{sv.name}</h4>
+              <p>{sv.software} {sv.version}</p>
+              <span className={`status-badge ${sv.status || 'offline'}`}>
+                {(sv.status || 'offline').toUpperCase()}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create Modal */}
+      {showCreateModal && (
+        <div className="modal-overlay active" id="modal-create-server">
+          <div className="modal">
+            <div className="modal-header">
+              <h3>Create new server</h3>
+              <button className="close-btn" onClick={() => setSearchParams({})} disabled={csBusy}>&times;</button>
+            </div>
+            <form onSubmit={handleCreateServer}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Server Name</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="My Server" 
+                    value={csName}
+                    onChange={(e) => setCsName(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Software Engine</label>
+                  <select 
+                    value={csSoftware}
+                    onChange={(e) => setCsSoftware(e.target.value)}
+                  >
+                    <option value="paper">Paper (Recommended)</option>
+                    <option value="vanilla">Vanilla</option>
+                    <option value="snapshots">Vanilla Snapshots</option>
+                    <option value="purpur">Purpur</option>
+                    <option value="fabric">Fabric</option>
+                    <option value="forge">Forge</option>
+                    <option value="quilt">Quilt</option>
+                    <option value="magma">Magma</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Minecraft Version</label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <select 
+                      style={{ flex: 1, height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
+                      value={csVersion}
+                      onChange={(e) => setCsVersion(e.target.value)}
+                    >
+                      {versions && versions[csSoftware]?.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                      {(!versions || !versions[csSoftware]?.length) && (
+                        <option value="">{syncingVersions ? 'Syncing...' : 'No versions available'}</option>
+                      )}
+                    </select>
+                    <button 
+                      type="button" 
+                      className="btn outline" 
+                      title="Refresh versions"
+                      onClick={refreshVersions}
+                      disabled={syncingVersions}
+                      style={{ height: '38px', padding: '0 0.75rem' }}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
+                  <div className="col" style={{ flex: 1 }}>
+                    <label>RAM (MB)</label>
+                    <input 
+                      type="number" 
+                      min="512" 
+                      max="16384" 
+                      value={csRam}
+                      onChange={(e) => setCsRam(e.target.value)}
+                    />
+                  </div>
+                  <div className="col" style={{ flex: 1 }}>
+                    <label>Port</label>
+                    <input 
+                      type="number" 
+                      min="1024" 
+                      max="65535" 
+                      value={csPort}
+                      onChange={(e) => setCsPort(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn outline" onClick={() => setSearchParams({})} disabled={csBusy}>Cancel</button>
+                <button type="submit" className="btn primary" disabled={csBusy}>
+                  {csBusy ? 'Creating...' : 'Create Server'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="modal-overlay active" id="modal-import-server">
+          <div className="modal large">
+            <div className="modal-header">
+              <h3>Import Existing Server</h3>
+              <button className="close-btn" onClick={() => setSearchParams({})} disabled={impBusy}>&times;</button>
+            </div>
+            <form onSubmit={handleImportServer}>
+              <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Server Archive (.zip)</label>
+                  <div 
+                    id="import-dropzone" 
+                    style={{
+                      border: '2px dashed var(--border-color)',
+                      borderRadius: 'var(--radius)',
+                      padding: '1.75rem',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      background: impFile ? 'var(--accent-subtle)' : 'var(--bg-input)',
+                      borderColor: impFile ? 'var(--accent)' : 'var(--border-color)',
+                      transition: 'border-color 0.2s, background 0.2s'
+                    }}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <svg viewBox="0 0 24 24" width="32" height="32" stroke="var(--text-muted)" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 0.5rem', display: 'block' }}>
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      {impFile ? `✓ ${impFile.name}` : 'Click to select a .zip file, or drag & drop here'}
+                    </p>
+                  </div>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    accept=".zip,application/zip" 
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) setFile(e.target.files[0]);
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Server Name</label>
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="My Imported Server" 
+                      value={impName}
+                      onChange={(e) => setImpName(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Port</label>
+                    <input 
+                      type="number" 
+                      min="1024" 
+                      max="65535" 
+                      value={impPort}
+                      onChange={(e) => setImpPort(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Software</label>
+                    <select 
+                      style={{ width: '100%', height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
+                      value={impSoftware}
+                      onChange={(e) => setImpSoftware(e.target.value)}
+                    >
+                      <option value="paper">Paper</option>
+                      <option value="vanilla">Vanilla</option>
+                      <option value="snapshots">Vanilla Snapshots</option>
+                      <option value="purpur">Purpur</option>
+                      <option value="fabric">Fabric</option>
+                      <option value="forge">Forge</option>
+                      <option value="quilt">Quilt</option>
+                      <option value="magma">Magma</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Minecraft Version</label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <select 
+                        style={{ flex: 1, height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
+                        value={impVersion}
+                        onChange={(e) => setImpVersion(e.target.value)}
+                      >
+                        {versions && versions[impSoftware]?.map(v => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                      <button 
+                        type="button" 
+                        className="btn outline" 
+                        onClick={refreshVersions}
+                        disabled={syncingVersions}
+                        style={{ height: '38px', padding: '0 0.75rem' }}
+                      >
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M23 4v6h-6"></path>
+                          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>RAM (MB)</label>
+                    <input 
+                      type="number" 
+                      min="512" 
+                      max="16384" 
+                      value={impRam}
+                      onChange={(e) => setImpRam(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Executable Path <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(inside archive)</span></label>
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="server.jar or versions/paper.jar" 
+                      value={impJar}
+                      onChange={(e) => setImpJar(e.target.value)}
+                    />
+                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Path to the server jar <em>inside</em> the zip (relative to root path).</p>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Server Root Path <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+                    <input 
+                      type="text" 
+                      placeholder="Leave blank if server is in zip root" 
+                      value={impRoot}
+                      onChange={(e) => setImpRoot(e.target.value)}
+                    />
+                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If your server lives in a sub-folder inside the zip, enter that folder name (e.g. <code>myserver</code>).</p>
+                  </div>
+                </div>
+
+                {importProgress && (
+                  <div id="import-progress-wrap" style={{ display: 'block' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      <span>{importProgress.label}</span>
+                      <span>{importProgress.pct}%</span>
+                    </div>
+                    <div style={{ background: 'var(--bg-input)', borderRadius: '4px', height: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                      <div style={{ background: 'var(--accent)', height: '100%', width: `${importProgress.pct}%`, transition: 'width 0.2s ease' }}></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn outline" onClick={() => setSearchParams({})} disabled={impBusy}>Cancel</button>
+                <button type="submit" className="btn primary" disabled={impBusy}>
+                  {impBusy ? 'Importing...' : 'Import Server'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
