@@ -1,0 +1,36 @@
+# ── Git ───────────────────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+
+# ── Node ─────────────────────────────────────────────────────────────────────
+node_modules
+npm-debug.log*
+
+# ── Frontend source (built in Stage 1, not needed in final image) ─────────────
+# src/frontend is copied in the builder stage only — exclude from prod context
+# (docker multi-stage handles this, but .dockerignore speeds up the build)
+
+# ── Dev / local data (never bake into the image) ─────────────────────────────
+data
+servers
+cache
+logs
+.env
+*.env
+
+# ── Certs (mounted as volume in production) ───────────────────────────────────
+certs
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+tests
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+.claude
+*.log
+.DS_Store
+Thumbs.db
+Plans-and-internal-stuff
+core-rules.md
+README.md
+docs

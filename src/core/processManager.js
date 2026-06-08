@@ -1,4 +1,4 @@
-const { spawn } = require('child_process');
+﻿const { spawn } = require('child_process');
 const EventEmitter = require('events');
 const path = require('path');
 const fs = require('fs');
@@ -14,12 +14,27 @@ class ProcessManager extends EventEmitter {
         this._crashRestartTimers = new Map(); // serverId -> timer
     }
 
-    acquireLock(serverId) {
+    acquireLock(serverId, timeoutMs = 60000) {
         const idStr = serverId.toString();
         if (this.locks.has(idStr)) {
             return false;
         }
         this.locks.add(idStr);
+        // Auto-release after timeoutMs to prevent permanent deadlock
+        setTimeout(() => {
+            if (this.locks.has(idStr)) {
+                console.warn(`[ProcessManager] Lock for server ${idStr} auto-released after ${timeoutMs}ms timeout`);
+                this.locks.delete(idStr);
+            }
+        }, timeoutMs);
+        return true;
+    }
+
+    // Force-acquire lock â€” bypasses the existing lock (for kill/emergency stop)
+    acquireLockForce(serverId) {
+        const idStr = serverId.toString();
+        this.locks.add(idStr);
+        setTimeout(() => { this.locks.delete(idStr); }, 60000);
         return true;
     }
 

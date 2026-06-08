@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { toast, showConfirm } from '../components/Toast.jsx';
+import { ExecutionModeBadge } from '../components/DockerModePanel.jsx';
 
 export default function Panel() {
   const { user } = useAuth();
@@ -242,9 +243,12 @@ export default function Panel() {
             >
               <h4>{sv.name}</h4>
               <p>{sv.software} {sv.version}</p>
-              <span className={`status-badge ${sv.status || 'offline'}`}>
-                {(sv.status || 'offline').toUpperCase()}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span className={`status-badge ${sv.status || 'offline'}`}>
+                  {(sv.status || 'offline').toUpperCase()}
+                </span>
+                <ExecutionModeBadge mode={sv.execution_mode || 'native'} />
+              </div>
             </div>
           ))}
         </div>
@@ -384,7 +388,7 @@ export default function Panel() {
                       <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
                     <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      {impFile ? `✓ ${impFile.name}` : 'Click to select a .zip file, or drag & drop here'}
+                      {impFile ? ` ${impFile.name}` : 'Click to select a .zip file, or drag & drop here'}
                     </p>
                   </div>
                   <input 

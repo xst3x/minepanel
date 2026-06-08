@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon src/index.js",
+    "start": "node minepanel_main.js",
+    "dev": "nodemon src/minepanel.js",
     "test": "jest --runInBand --detectOpenHandles",
     "db": "node db-cli.js",
     "db:status": "node db-cli.js status",
@@ -23,6 +23,7 @@
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "discord.js": "^14.26.4",
+    "dockerode": "^4.0.12",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.2.0",

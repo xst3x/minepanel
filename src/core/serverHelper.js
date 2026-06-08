@@ -6,7 +6,9 @@ const WebhookManager = require('./webhookManager');
 // archiver v8 replaced archiver('zip', opts) factory with new ZipArchive(opts)
 function archiver(_fmt, opts) { return new _ZipArchive(opts); }
 
-const SERVERS_DIR = path.resolve(__dirname, '../../servers');
+const SERVERS_DIR = process.env.DATA_DIR
+    ? require('path').join(process.env.DATA_DIR, 'servers')
+    : path.resolve(__dirname, '../../servers');
 
 if (!fs.existsSync(SERVERS_DIR)) {
     fs.mkdirSync(SERVERS_DIR, { recursive: true });

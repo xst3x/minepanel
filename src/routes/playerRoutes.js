@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const { authenticateToken } = require('../core/auth');
 const { checkPermission } = require('../core/permissions');
 const processManager = require('../core/processManager');
+const executionManager = require('../core/executionManager');
 const { getServer, getServerDir } = require('../core/serverHelper');
 const { E, sendError } = require('../core/errors');
 const logger = require('../core/utils/logger');
@@ -133,7 +134,7 @@ async function readPlayerVitals(datPath) {
 router.get('/online', authenticateToken, checkPermission('server.players.read'), async (req, res) => {
     try {
         const { serverId } = req.params;
-        const status = processManager.getStatus(serverId.toString());
+        const status = await executionManager.getStatus(serverId.toString());
         if (status !== 'online') return res.json({ count: 0, players: [] });
         const names = getOnlinePlayerNames(serverId);
         res.json({ count: names.length, players: names });
@@ -260,7 +261,7 @@ router.post('/:uuid/command', authenticateToken, checkPermission('server.players
     // Actions that require the server to be online
     const requiresOnline = ['kick','ban','pardon','mute','unmute','op','deop','gamemode','xp','give','effect','clear','teleport','heal','feed','starve','kill'];
     if (requiresOnline.includes(action)) {
-        const status = processManager.getStatus(serverId.toString());
+        const status = await executionManager.getStatus(serverId.toString());
         if (status !== 'online') {
             return sendError(res, E.PLAYER_SERVER_OFFLINE, 400);
         }
@@ -268,7 +269,8 @@ router.post('/:uuid/command', authenticateToken, checkPermission('server.players
 
     if (action === 'wipe') {
         try {
-            if (processManager.getStatus(serverId.toString()) === 'online') {
+            const wipeStatus = await executionManager.getStatus(serverId.toString());
+            if (wipeStatus === 'online') {
                 return sendError(res, E.SERVER_MUST_BE_STOPPED, 400);
             }
             const dashed = uuid.includes('-') ? uuid
@@ -326,7 +328,13 @@ router.post('/:uuid/command', authenticateToken, checkPermission('server.players
     }
 
     try {
-        processManager.sendCommand(serverId.toString(), command);
+        const mode = server.execution_mode || 'native';
+        if (mode === 'docker') {
+            const dockerService = require('../core/dockerService');
+            await dockerService.sendStdin(serverId.toString(), command);
+        } else {
+            processManager.sendCommand(serverId.toString(), command);
+        }
         res.json({ message: `Command executed: /${command}`, command });
     } catch (e) {
         logger.error(`[playerRoutes] Send player command error (Server: ${serverId}, Player: ${uuid}, Action: ${action}):`, e);
@@ -394,7 +402,17 @@ router.post('/lists/:listName', authenticateToken, checkPermission('server.playe
     const server = await getServer(serverId);
     if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
     const serverDir = getServerDir(server);
-    const isOnline = processManager.getStatus(serverId.toString()) === 'online';
+    const isOnline = (await executionManager.getStatus(serverId.toString())) === 'online';
+    const mode = server.execution_mode || 'native';
+
+    const sendCmd = async (cmd) => {
+        if (mode === 'docker') {
+            const dockerService = require('../core/dockerService');
+            await dockerService.sendStdin(serverId.toString(), cmd);
+        } else {
+            processManager.sendCommand(serverId.toString(), cmd);
+        }
+    };
 
     try {
         if (isOnline) {
@@ -403,7 +421,7 @@ router.post('/lists/:listName', authenticateToken, checkPermission('server.playe
             else if (listName === 'ops')         command = `op ${target}`;
             else if (listName === 'banned-players') command = `ban ${target} ${reason || 'Banned by panel'}`;
             else if (listName === 'banned-ips')  command = `ban-ip ${target} ${reason || 'Banned by panel'}`;
-            processManager.sendCommand(serverId.toString(), command);
+            await sendCmd(command);
             return res.json({ message: `Sent command to online server: /${command}` });
         } else {
             const filePath = path.join(serverDir, filename);
@@ -443,16 +461,26 @@ router.delete('/lists/:listName/:target', authenticateToken, checkPermission('se
     const server = await getServer(serverId);
     if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
     const serverDir = getServerDir(server);
-    const isOnline = processManager.getStatus(serverId.toString()) === 'online';
+    const isOnline = (await executionManager.getStatus(serverId.toString())) === 'online';
+    const mode = server.execution_mode || 'native';
+
+    const sendCmd = async (cmd) => {
+        if (mode === 'docker') {
+            const dockerService = require('../core/dockerService');
+            await dockerService.sendStdin(serverId.toString(), cmd);
+        } else {
+            processManager.sendCommand(serverId.toString(), cmd);
+        }
+    };
 
     try {
         if (isOnline) {
             let command = '';
-            if (listName === 'whitelist')       command = `whitelist remove ${target}`;
-            else if (listName === 'ops')         command = `deop ${target}`;
-            else if (listName === 'banned-players') command = `pardon ${target}`;
-            else if (listName === 'banned-ips')  command = `pardon-ip ${target}`;
-            processManager.sendCommand(serverId.toString(), command);
+            if (listName === 'whitelist')           command = `whitelist remove ${target}`;
+            else if (listName === 'ops')             command = `deop ${target}`;
+            else if (listName === 'banned-players')  command = `pardon ${target}`;
+            else if (listName === 'banned-ips')      command = `pardon-ip ${target}`;
+            await sendCmd(command);
             return res.json({ message: `Sent command to online server: /${command}` });
         } else {
             const filePath = path.join(serverDir, filename);

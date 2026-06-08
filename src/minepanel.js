@@ -1,4 +1,4 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+﻿require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 require('./core/utils/envHelper').sanitizeSecrets();
 
 // --- Launcher Process Logic (must be the absolute first thing) ---
@@ -114,6 +114,7 @@ const { migrateServerDirectories } = require('./core/serverHelper');
 const CONFIG = require('./config');
 const jwt = require('jsonwebtoken');
 const logger = require('./core/utils/logger');
+const executionManager = require('./core/executionManager');
 
 const app = express();
 
@@ -240,7 +241,11 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', version: require('../package.json').version, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
 });
 
-app.use('/avatars', express.static(path.join(__dirname, '../data/avatars')));
+app.use('/avatars', express.static(
+    process.env.DATA_DIR
+        ? require('path').join(process.env.DATA_DIR, 'avatars')
+        : path.join(__dirname, '../data/avatars')
+));
 
 app.get('/metrics', (req, res) => {
     const metricsAuthDisabled = process.env.METRICS_AUTH === 'false';
@@ -281,6 +286,8 @@ app.use('/api/servers/:serverId/discord', discordRoutes);
 app.use('/api/discord/bots', discordBotsRoutes);
 app.use('/api/servers/:serverId/stats', statsRouter);
 app.use('/api/stats/config', statsConfigRouter);
+const dockerRoutes = require('./routes/dockerRoutes');
+app.use('/api/docker', dockerRoutes);
 
 // SPA catch-all — trimite index.html pentru orice rută non-API (React Router)
 app.get(/^(?!\/api\/).*$/, (req, res) => {
@@ -321,18 +328,74 @@ wss.on('connection', (ws, req) => {
                             clearTimeout(authTimeout);
                             const history = processManager.getHistory(serverId);
                             if (history.length > 0) ws.send(JSON.stringify({ type: 'history', data: history }));
-                            ws.send(JSON.stringify({ type: 'status', data: processManager.getStatus(serverId) }));
+                            // Send correct status (native or docker)
+                            const initStatus = await executionManager.getStatus(serverId);
+                            ws.send(JSON.stringify({ type: 'status', data: initStatus }));
                             consoleListener = (sid, output) => { if (sid === serverId) ws.send(JSON.stringify({ type: 'console', data: output })); };
                             statusListener = (sid, status) => { if (sid === serverId) ws.send(JSON.stringify({ type: 'status', data: status })); };
                             clearConsoleListener = (sid) => { if (sid === serverId) ws.send(JSON.stringify({ type: 'clear_console' })); };
                             processManager.on('console', consoleListener);
                             processManager.on('status', statusListener);
                             processManager.on('clear_console', clearConsoleListener);
-                            statsInterval = setInterval(async () => {
-                                if (ws.readyState === 1) {
-                                    try { ws.send(JSON.stringify({ type: 'stats', data: await processManager.getStats(serverId) })); } catch (_) {}
+
+                            // For Docker servers: attach container log stream + poll status
+                            let dockerLogHandle = null;
+                            let lastDockerStatus = initStatus;
+                            const mode = await executionManager.getExecutionMode(serverId);
+
+                            async function attachDockerLogs() {
+                                if (dockerLogHandle) { try { dockerLogHandle.destroy(); } catch (_) {} dockerLogHandle = null; }
+                                const dockerSvc = require('./core/dockerService');
+                                dockerLogHandle = await dockerSvc.attachLogs(serverId, (line) => {
+                                    if (ws.readyState === 1) {
+                                        try { ws.send(JSON.stringify({ type: 'console', data: line })); } catch (_) {}
+                                    }
+                                });
+                            }
+
+                            if (mode === 'docker' && initStatus === 'online') {
+                                // If history is empty (panel restarted while container kept running),
+                                // fetch the last 200 lines from docker logs and seed the history
+                                const existingHistory = processManager.getHistory(serverId);
+                                if (existingHistory.length === 0) {
+                                    try {
+                                        const dockerSvc = require('./core/dockerService');
+                                        const tail = await dockerSvc.getLogsTail(serverId, 200);
+                                        if (tail) {
+                                            processManager.appendHistory(serverId, tail);
+                                            ws.send(JSON.stringify({ type: 'history', data: [tail] }));
+                                        }
+                                    } catch (_) {}
                                 }
+                                await attachDockerLogs();
+                            }
+
+                            statsInterval = setInterval(async () => {
+                                if (ws.readyState !== 1) return;
+                                try {
+                                    // Stats
+                                    ws.send(JSON.stringify({ type: 'stats', data: await executionManager.getStats(serverId) }));
+                                    // For Docker: poll container status and push status change + re-attach logs on start
+                                    const curMode = await executionManager.getExecutionMode(serverId);
+                                    if (curMode === 'docker') {
+                                        const curStatus = await executionManager.getStatus(serverId);
+                                        if (curStatus !== lastDockerStatus) {
+                                            lastDockerStatus = curStatus;
+                                            ws.send(JSON.stringify({ type: 'status', data: curStatus }));
+                                            // Re-attach log stream when container comes online
+                                            if (curStatus === 'online') {
+                                                await attachDockerLogs();
+                                            } else {
+                                                // Detach when stopped/offline
+                                                if (dockerLogHandle) { try { dockerLogHandle.destroy(); } catch (_) {} dockerLogHandle = null; }
+                                            }
+                                        }
+                                    }
+                                } catch (_) {}
                             }, 2000);
+
+                            // Store handle for cleanup on WS close
+                            ws._dockerLogHandle = () => { if (dockerLogHandle) { try { dockerLogHandle.destroy(); } catch (_) {} dockerLogHandle = null; } };
                         } catch (e) { ws.close(5000, 'Internal Server Error'); }
                     });
                 } else { ws.close(4004, 'Authentication required'); }
@@ -340,7 +403,17 @@ wss.on('connection', (ws, req) => {
             }
             if (parsed.type === 'command') {
                 if (!canWrite) { ws.send(JSON.stringify({ type: 'console', data: '\n[System] Access denied: Missing server.console.write\n' })); return; }
-                processManager.sendCommand(serverId, parsed.data);
+                const mode = await executionManager.getExecutionMode(serverId);
+                if (mode === 'docker') {
+                    try {
+                        const dockerSvc = require('./core/dockerService');
+                        await dockerSvc.sendStdin(serverId, parsed.data);
+                    } catch (e) {
+                        ws.send(JSON.stringify({ type: 'console', data: `\n[System] Command send failed: ${e.message}\n` }));
+                    }
+                } else {
+                    processManager.sendCommand(serverId, parsed.data);
+                }
             }
         } catch (e) {}
     });
@@ -351,6 +424,8 @@ wss.on('connection', (ws, req) => {
         if (consoleListener) processManager.removeListener('console', consoleListener);
         if (statusListener) processManager.removeListener('status', statusListener);
         if (clearConsoleListener) processManager.removeListener('clear_console', clearConsoleListener);
+        // Destroy Docker log stream if attached
+        try { if (ws._dockerLogHandle) ws._dockerLogHandle(); } catch (_) {}
     });
 });
 
@@ -386,12 +461,26 @@ initDb().then(async () => {
                 for (const srv of autostartServers) {
                     try {
                         const { getServerDir } = require('./core/serverHelper');
-                        const serverDir = getServerDir(srv);
-                        const jarFile = require('path').join(serverDir, 'server.jar');
                         const srvId = srv.id.toString();
-                        if (processManager.getStatus(srvId) === 'offline') {
-                            logger.info(`[Autostart] Starting server: ${srv.name} (id=${srvId})`);
-                            processManager.start(srvId, serverDir, [], jarFile, srv.ram_mb, null, srv.java_path || 'java');
+                        const mode = srv.execution_mode || 'native';
+                        if (mode === 'docker') {
+                            const dockerService = require('./core/dockerService');
+                            const status = await dockerService.getContainerStatus(srvId);
+                            if (status !== 'running') {
+                                logger.info(`[Autostart] Starting Docker container: ${srv.name} (id=${srvId})`);
+                                if (status === 'notfound') {
+                                    const serverDir = getServerDir(srv);
+                                    await dockerService.createContainer(srv, serverDir);
+                                }
+                                await dockerService.startContainer(srvId);
+                            }
+                        } else {
+                            const serverDir = getServerDir(srv);
+                            const jarFile = require('path').join(serverDir, 'server.jar');
+                            if (processManager.getStatus(srvId) === 'offline') {
+                                logger.info(`[Autostart] Starting server: ${srv.name} (id=${srvId})`);
+                                processManager.start(srvId, serverDir, [], jarFile, srv.ram_mb, null, srv.java_path || 'java');
+                            }
                         }
                     } catch (e) { logger.error(`[Autostart] Failed to start server ${srv.id}: ${e.message}`); }
                 }
@@ -404,6 +493,8 @@ initDb().then(async () => {
             const { dbGet: dbGetCrash } = require('./db/database');
             const srv = await dbGetCrash('SELECT * FROM servers WHERE id = ?', [serverId]);
             if (!srv || !srv.autostart_on_crash) return;
+            // Docker containers manage their own lifecycle; skip native crash-restart for them
+            if ((srv.execution_mode || 'native') === 'docker') return;
             logger.warn(`[CrashRestart] Server ${serverId} crashed. Restarting in 5s...`);
             const { getServerDir } = require('./core/serverHelper');
             const serverDir = getServerDir(srv);

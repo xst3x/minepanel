@@ -34,7 +34,9 @@ UserCustomAccent.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 DiscordBot.belongsToMany(Server, { through: DiscordBotServer, foreignKey: 'bot_id', otherKey: 'server_id', as: 'servers' });
 Server.belongsToMany(DiscordBot, { through: DiscordBotServer, foreignKey: 'server_id', otherKey: 'bot_id', as: 'discordBots' });
 
-const dbDir = path.join(__dirname, '../../data');
+const dbDir = process.env.DATA_DIR
+    ? require('path').join(process.env.DATA_DIR, 'db')
+    : path.join(__dirname, '../../data');
 if (process.env.NODE_ENV !== 'test' && !fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
 }

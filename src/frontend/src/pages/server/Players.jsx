@@ -336,8 +336,8 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, marginLeft: 'auto' }}>
-            <button className="btn outline small" onClick={onRefresh}>↺ Refresh</button>
-            <button className="btn outline small" onClick={onClose} style={{ borderColor: 'var(--red)', color: 'var(--red)' }}>✕ Close</button>
+            <button className="btn outline small" onClick={onRefresh}>Refresh</button>
+            <button className="btn outline small" onClick={onClose} style={{ borderColor: 'var(--red)', color: 'var(--red)' }}>Close</button>
           </div>
         </div>
 

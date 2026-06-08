@@ -8,5 +8,6 @@
   "defaultPort": 25565,
   "maxRam": 16384,
   "requireInviteTokenToCreateAccount": true,
-  "defaultRankId": 5
+  "defaultRankId": 5,
+  "dockerMode": false
 }

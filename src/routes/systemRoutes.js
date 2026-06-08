@@ -13,7 +13,9 @@ const { initFtpServer, stopFtpServer, isFtpRunning } = require('../core/ftpServe
 const logger = require('../core/utils/logger');
 
 const router = express.Router();
-const SETTINGS_FILE = path.resolve(__dirname, '../../settings.json');
+const SETTINGS_FILE = process.env.DATA_DIR
+    ? path.join(process.env.DATA_DIR, 'settings.json')
+    : path.resolve(__dirname, '../../settings.json');
 
 const getSettings = async () => {
     const defaults = {

@@ -16,8 +16,8 @@ marked.use({ renderer });
 const PAGE_SIZE = 24;
 
 const VENDORS = [
-  { id: 'modrinth', label: 'Modrinth', icon: '◈' },
-  { id: 'hangar',   label: 'Hangar',   icon: '◈' },
+  { id: 'modrinth', label: 'Modrinth', icon: '' },
+  { id: 'hangar',   label: 'Hangar',   icon: '' },
 ];
 
 const MODRINTH_CATEGORIES = [
@@ -443,7 +443,7 @@ export default function Content() {
                         {hit.source === 'hangar' ? 'Hangar' : 'Modrinth'}
                       </span>
                       <button className="btn outline small" onClick={() => window.open(externalUrl, '_blank', 'noopener')}>
-                        View on {hit.source === 'hangar' ? 'Hangar' : 'Modrinth'} ↗
+                        View on {hit.source === 'hangar' ? 'Hangar' : 'Modrinth'} 
                       </button>
                     </div>
                   </div>
@@ -518,7 +518,7 @@ export default function Content() {
                                   {isExternal ? (
                                     <button className="btn outline small"
                                       onClick={() => window.open(v.externalUrl, '_blank', 'noopener')}>
-                                      Download ↗
+                                      Download 
                                     </button>
                                   ) : hasNoFile ? (
                                     <button className="btn outline small" disabled>No file</button>

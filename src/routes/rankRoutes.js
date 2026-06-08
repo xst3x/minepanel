@@ -9,10 +9,26 @@ const logger = require('../core/utils/logger');
 
 const router = express.Router();
 
+// Ensure sort_order column exists (safe migration)
+(async () => {
+    try {
+        await dbRun('ALTER TABLE ranks ADD COLUMN sort_order INTEGER DEFAULT 999');
+        // Set initial order based on built-in priority
+        const PRIORITY = { owner: 0, manager: 1, admin: 2, helper: 3, player: 4 };
+        const ranks = await dbAll('SELECT id, name FROM ranks');
+        for (const r of ranks) {
+            const order = PRIORITY[r.name.toLowerCase()] ?? 999;
+            await dbRun('UPDATE ranks SET sort_order = ? WHERE id = ?', [order, r.id]);
+        }
+    } catch (e) {
+        // Column likely already exists — ignore
+    }
+})();
+
 // List all ranks
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const ranks = await dbAll('SELECT * FROM ranks ORDER BY is_builtin DESC, name ASC');
+        const ranks = await dbAll('SELECT * FROM ranks ORDER BY sort_order ASC, id ASC');
         res.json(ranks.map(r => {
             let parsedPerms = {};
             try { parsedPerms = JSON.parse(r.permissions); } catch(e) {}
@@ -22,6 +38,30 @@ router.get('/', authenticateToken, async (req, res) => {
         }));
     } catch (e) {
         logger.error(`[rankRoutes] List ranks error (User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// Reorder ranks — must be before /:rankId routes
+router.post('/reorder', authenticateToken, async (req, res) => {
+    const { order } = req.body;
+    if (!Array.isArray(order)) return sendError(res, E.BAD_REQUEST, 400, 'order must be an array of rank IDs');
+    // Allow admins (role=admin) OR users with account.manage permission
+    const user = req.user;
+    if (user.role !== 'admin') {
+        const { getEffectivePermissions } = require('../core/permissions');
+        const perms = await getEffectivePermissions(user.id, null);
+        if (!perms.includes('*') && !perms.includes('root') && !perms.includes('account.manage')) {
+            return sendError(res, E.FORBIDDEN, 403);
+        }
+    }
+    try {
+        for (let i = 0; i < order.length; i++) {
+            await dbRun('UPDATE ranks SET sort_order = ? WHERE id = ?', [i, Number(order[i])]);
+        }
+        res.json({ message: 'Order saved' });
+    } catch (e) {
+        logger.error(`[rankRoutes] Reorder ranks error (User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });

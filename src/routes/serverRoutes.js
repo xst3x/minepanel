@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const { db, dbRun, dbGet, dbAll } = require('../db/database');
 const { authenticateToken } = require('../core/auth');
 const { checkPermission, getEffectivePermissions } = require('../core/permissions');
@@ -7,6 +7,7 @@ const { validate } = require('../middleware/validation');
 const V = require('../middleware/validators');
 const { resolveJar, downloadJar } = require('../core/resolvers');
 const processManager = require('../core/processManager');
+const executionManager = require('../core/executionManager');
 const { SERVERS_DIR, sanitizeDirName, ensureUniqueDirName, getServer, getServerDir, createBackup } = require('../core/serverHelper');
 const { retryRename, retryDelete, retryUnlink, retryCopy } = require('../core/utils/fsRetry');
 const { startServerFtp, stopServerFtp, isServerFtpRunning, storePasswordCache, getPasswordCache } = require('../core/ftpServer');
@@ -150,10 +151,11 @@ router.get('/', authenticateToken, async (req, res) => {
                 WHERE s.owner_id = ? OR p.user_id IS NOT NULL OR ur.user_id IS NOT NULL
             `, [userId, userId, userId]);
         }
-        const result = (servers || []).map(s => ({
+        const result = await Promise.all((servers || []).map(async s => ({
             ...s,
-            status: processManager.getStatus(s.id.toString())
-        }));
+            status: await executionManager.getStatus(s.id.toString()),
+            execution_mode: s.execution_mode || 'native',
+        })));
         res.json(result);
     } catch (e) {
         logger.error(`[serverRoutes] GET / error (User: ${req.user.id}):`, e);
@@ -166,7 +168,8 @@ router.get('/:serverId', authenticateToken, async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
-        server.status = processManager.getStatus(server.id.toString());
+        server.status = await executionManager.getStatus(server.id.toString());
+        server.execution_mode = server.execution_mode || 'native';
         res.json(server);
     } catch (e) {
         logger.error(`[serverRoutes] GET /:serverId error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
@@ -465,6 +468,29 @@ router.post('/:serverId/start', authenticateToken, checkPermission('server.start
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
+        const mode = server.execution_mode || 'native';
+
+        // Docker mode: start/restart the container
+        if (mode === 'docker') {
+            if (!processManager.acquireLock(serverId)) return sendError(res, E.SERVER_LOCKED, 409);
+            try {
+                const dockerService = require('../core/dockerService');
+                const status = await dockerService.getContainerStatus(serverId);
+                if (status === 'running') return sendError(res, E.BAD_REQUEST, 400, 'Server is already running.');
+                if (status === 'notfound') {
+                    // Container was removed — recreate it
+                    const serverDir = getServerDir(server);
+                    await dockerService.createContainer(server, serverDir);
+                }
+                processManager.clearHistory(serverId.toString());
+                await dockerService.startContainer(serverId);
+                return res.json({ message: 'Server starting (Docker)' });
+            } finally {
+                processManager.releaseLock(serverId);
+            }
+        }
+
+        // Native mode (existing logic)
         const { serverDir, jarFile, customArgs } = getStartInfo(server);
 
         if (!fs.existsSync(jarFile) && !customArgs) {
@@ -497,6 +523,21 @@ router.post('/:serverId/stop', authenticateToken, checkPermission('server.stop')
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
+        const mode = server.execution_mode || 'native';
+
+        if (mode === 'docker') {
+            processManager.acquireLockForce(serverId.toString());
+            try {
+                const dockerService = require('../core/dockerService');
+                // Send /stop to Minecraft stdin â€” graceful shutdown, same as native
+                await dockerService.sendStdin(serverId, 'stop');
+                processManager.clearHistory(serverId.toString());
+                return res.json({ message: 'Server stopped (Docker)', graceful: true });
+            } finally {
+                processManager.releaseLock(serverId.toString());
+            }
+        }
+
         if (!processManager.acquireLock(serverId.toString())) {
             return sendError(res, E.SERVER_LOCKED, 409);
         }
@@ -525,6 +566,35 @@ router.post('/:serverId/restart', authenticateToken, checkPermission('server.res
     try {
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+
+        const mode = server.execution_mode || 'native';
+
+        if (mode === 'docker') {
+            if (!processManager.acquireLock(serverId)) return sendError(res, E.SERVER_LOCKED, 409);
+            try {
+                const dockerService = require('../core/dockerService');
+                // Graceful stop via /stop command to Minecraft stdin
+                await dockerService.sendStdin(serverId, 'stop');
+                // Wait up to 30s for container to stop on its own
+                let waited = 0;
+                while (waited < 30000) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    waited += 1000;
+                    const s = await dockerService.getContainerStatus(serverId);
+                    if (s !== 'running') break;
+                }
+                processManager.clearHistory(serverId.toString());
+                const cStatus = await dockerService.getContainerStatus(serverId);
+                if (cStatus === 'notfound') {
+                    const serverDir = getServerDir(server);
+                    await dockerService.createContainer(server, serverDir);
+                }
+                await dockerService.startContainer(serverId);
+                return res.json({ message: 'Server restarted (Docker)', graceful: true, started: true });
+            } finally {
+                processManager.releaseLock(serverId);
+            }
+        }
 
         const { serverDir, jarFile, customArgs } = getStartInfo(server);
 
@@ -561,10 +631,23 @@ router.post('/:serverId/kill', authenticateToken, checkPermission('server.kill')
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
-        if (!processManager.acquireLock(serverId.toString())) {
-            return sendError(res, E.SERVER_LOCKED, 409);
+        const killMode = server.execution_mode || 'native';
+
+        if (killMode === 'docker') {
+            // Force-acquire â€” kill must never be blocked by a stale lock
+            processManager.acquireLockForce(serverId.toString());
+            try {
+                const dockerService = require('../core/dockerService');
+                await dockerService.stopContainer(serverId, 3); // 3s grace, then Docker force-kills
+                processManager.clearHistory(serverId.toString());
+                return res.json({ message: 'Docker container force-stopped' });
+            } finally {
+                processManager.releaseLock(serverId.toString());
+            }
         }
 
+        // Kill must never be blocked â€” force-acquire the lock
+        processManager.acquireLockForce(serverId.toString());
         try {
             processManager.kill(serverId.toString());
             processManager.clearHistory(serverId.toString());

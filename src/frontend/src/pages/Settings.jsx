@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { toast, showConfirm } from '../components/Toast.jsx';
+import DockerModePanel from '../components/DockerModePanel.jsx';
 
 // Exact presets from old frontend
 const ACCENT_PRESETS = [
@@ -194,7 +195,7 @@ export default function Settings() {
       {loading ? (
         <p className="text-muted">Loading settings...</p>
       ) : (
-        <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+        <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
 
           {/* Security & Rate Limits */}
           <div className="card">
@@ -255,12 +256,12 @@ export default function Settings() {
           </div>
 
           {/* Appearance */}
-          <div className="card accent-appearance-card">
+          <div className="card accent-appearance-card" style={{ minWidth: 0 }}>
             <h3>Appearance</h3>
             <p className="text-muted" style={{ fontSize: '0.82rem', margin: '0.25rem 0 1.25rem' }}>
               Your accent color â€” saved to your account and applied instantly everywhere.
             </p>
-            <div className="accent-picker" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px 8px', marginBottom: '1rem' }}>
+            <div className="accent-picker" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(50px, 1fr))', gap: '10px 6px', marginBottom: '1rem' }}>
               {ACCENT_PRESETS.map(preset => {
                 const isSelected = selectedAccent === preset.value;
                 return (
@@ -276,7 +277,7 @@ export default function Settings() {
                         boxShadow: isSelected
                           ? `0 0 0 2px var(--bg-surface), 0 0 0 4px ${preset.value}`
                           : '0 2px 6px rgba(0,0,0,0.35)',
-                        transform: isSelected ? 'scale(1.12)' : 'scale(1)',
+                        transform: isSelected ? 'scale(1.1)' : 'scale(1)',
                         transition: 'all 0.18s cubic-bezier(0.34,1.4,0.64,1)',
                         flexShrink: 0,
                       }}
@@ -367,6 +368,9 @@ export default function Settings() {
               </select>
             </div>
           </div>
+
+          {/* Docker Execution Mode */}
+          <DockerModePanel />
 
         </div>
       )}

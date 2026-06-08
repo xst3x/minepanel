@@ -1,0 +1,71 @@
+services:
+  minepanel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: minepanel:latest
+    container_name: minepanel
+    restart: unless-stopped
+
+    ports:
+      # Panel web UI — access at http://localhost:8081
+      - "${PORT:-8081}:${PORT:-8081}"
+      # FTP — only used when FTP_ENABLED=true
+      - "${FTP_PORT:-2121}:${FTP_PORT:-2121}"
+      # Minecraft servers — one port per server you plan to create.
+      # Extend the range as needed (e.g. 25565-25580).
+      - "25565-25575:25565-25575"
+
+    volumes:
+      # All persistent data mounted at /data inside the container
+      - minepanel_data:/data
+
+      # Docker socket — needed for Docker execution mode
+      # (lets MinePanel start each server in its own container)
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    environment:
+      # ── REQUIRED — generate with:
+      #    node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      CSRF_SECRET: ${CSRF_SECRET:?Set CSRF_SECRET in .env}
+
+      # ── Paths ─────────────────────────────────────────────────────────────
+      # Tells the backend where to store all persistent data
+      DATA_DIR: /data
+      MINEPANEL_SERVER: "true"
+
+      # ── Panel ─────────────────────────────────────────────────────────────
+      PORT: ${PORT:-8081}
+      RATE_LIMIT: ${RATE_LIMIT:-100}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
+
+      # ── FTP ───────────────────────────────────────────────────────────────
+      FTP_ENABLED: ${FTP_ENABLED:-false}
+      FTP_PORT: ${FTP_PORT:-2121}
+
+      # ── HTTPS ─────────────────────────────────────────────────────────────
+      # Keep false when running behind Nginx/Caddy (recommended).
+      # Set true only if you put TLS certs in /data/certs/ and set paths below.
+      HTTPS: ${HTTPS:-false}
+      # HTTPS_KEY: /data/certs/key.pem
+      # HTTPS_CERT: /data/certs/cert.pem
+
+    # Keep stdin open — Minecraft servers need it for console input
+    stdin_open: true
+    tty: false
+
+    # Memory limit for the whole container (panel + all Minecraft servers inside it).
+    # Increase if you run multiple servers.
+    mem_limit: ${CONTAINER_MEM_LIMIT:-4g}
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8081}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  minepanel_data:
+    driver: local
