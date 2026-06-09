@@ -2,8 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { toast, showConfirm } from '../components/Toast.jsx';
-import DockerModePanel from '../components/DockerModePanel.jsx';
-
 // Exact presets from old frontend
 const ACCENT_PRESETS = [
   { id: 'emerald',       label: 'Emerald',       value: 'hsl(149,100%,47%)' },
@@ -368,9 +366,6 @@ export default function Settings() {
               </select>
             </div>
           </div>
-
-          {/* Docker Execution Mode */}
-          <DockerModePanel />
 
         </div>
       )}

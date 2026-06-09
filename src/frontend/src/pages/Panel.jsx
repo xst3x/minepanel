@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { toast, showConfirm } from '../components/Toast.jsx';
-import { ExecutionModeBadge } from '../components/DockerModePanel.jsx';
 
 export default function Panel() {
   const { user } = useAuth();
@@ -247,7 +246,6 @@ export default function Panel() {
                 <span className={`status-badge ${sv.status || 'offline'}`}>
                   {(sv.status || 'offline').toUpperCase()}
                 </span>
-                <ExecutionModeBadge mode={sv.execution_mode || 'native'} />
               </div>
             </div>
           ))}

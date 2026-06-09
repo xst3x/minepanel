@@ -1,8 +1,8 @@
 services:
   minepanel:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
     image: minepanel:latest
     container_name: minepanel
     restart: unless-stopped

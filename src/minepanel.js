@@ -3,37 +3,13 @@ require('./core/utils/envHelper').sanitizeSecrets();
 
 // --- Launcher Process Logic (must be the absolute first thing) ---
 if (process.env.MINEPANEL_SERVER !== 'true' && process.env.NODE_ENV !== 'test') {
-    const { spawn, execSync, spawnSync } = require('child_process');
+    const { spawn } = require('child_process');
     const path = require('path');
     const fs = require('fs');
     const { updateEnvPort } = require('./core/utils/envHelper');
 
     // ── Clear terminal ────────────────────────────────────────────────────────
     process.stdout.write(process.platform === 'win32' ? '\x1Bc' : '\x1B[2J\x1B[3J\x1B[H');
-    // ─────────────────────────────────────────────────────────────────────────
-
-    // ── Frontend build ────────────────────────────────────────────────────────
-    const frontendDir = path.resolve(__dirname, 'frontend');
-    const isWin = process.platform === 'win32';
-
-    function runSync(cmd, args, cwd) {
-        const result = spawnSync(cmd, args, { cwd, stdio: 'inherit', shell: isWin });
-        if (result.status !== 0) throw new Error(`${cmd} exited with code ${result.status}`);
-    }
-
-    try {
-        if (!fs.existsSync(path.join(frontendDir, 'node_modules'))) {
-            console.log('[MinePanel] Installing frontend dependencies...');
-            runSync(isWin ? 'npm.cmd' : 'npm', ['install'], frontendDir);
-        }
-        console.log('[MinePanel] Building frontend assets...');
-        const viteBin = path.join(frontendDir, 'node_modules', '.bin', isWin ? 'vite.cmd' : 'vite');
-        runSync(viteBin, ['build'], frontendDir);
-        console.log('[MinePanel] Frontend build complete.');
-    } catch (err) {
-        console.error('[MinePanel] Frontend build failed — starting backend anyway.');
-        console.error(err.message);
-    }
     // ─────────────────────────────────────────────────────────────────────────
 
     function getPortFromEnv() {
@@ -103,6 +79,7 @@ const discordBotsRoutes = require('./routes/discordBotsRoutes');
 const userRoutes = require('./routes/userRoutes');
 const rankRoutes = require('./routes/rankRoutes');
 const { statsRouter, statsConfigRouter } = require('./routes/statsRoutes');
+const docsRoutes = require('./routes/docsRoutes');
 const statsCollector = require('./core/statsCollector');
 const processManager = require('./core/processManager');
 const { initFtpServer } = require('./core/ftpServer');
@@ -286,6 +263,7 @@ app.use('/api/servers/:serverId/discord', discordRoutes);
 app.use('/api/discord/bots', discordBotsRoutes);
 app.use('/api/servers/:serverId/stats', statsRouter);
 app.use('/api/stats/config', statsConfigRouter);
+app.use('/api/docs', docsRoutes);
 
 // SPA catch-all — trimite index.html pentru orice rută non-API (React Router)
 app.get(/^(?!\/api\/).*$/, (req, res) => {
