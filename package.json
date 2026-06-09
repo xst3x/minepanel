@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "private": true,
+  "workspaces": [
+    "src/frontend"
+  ],
   "scripts": {
     "start": "node minepanel_main.js",
     "dev": "nodemon src/minepanel.js",

@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 const logger = require('../core/utils/logger');
 const sequelize = require('./sequelize');
 const User = require('./models/User');
@@ -177,6 +178,55 @@ const PREMADE_RANKS = [
 
 const { runMigrations } = require('./migrationRunner');
 
+const ADMIN_CREDS_FILE = path.join(__dirname, '../../ADMIN_CREDENTIALS.txt');
+
+const ensureAdminAccount = async () => {
+    try {
+        const userCount = await dbGet('SELECT COUNT(*) as count FROM users');
+        if (userCount && userCount.count > 0) return;
+
+        // No accounts — generate admin
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*';
+        let password = '';
+        for (let i = 0; i < 15; i++) password += chars[Math.floor(Math.random() * chars.length)];
+
+        const hash = await bcrypt.hash(password, 12);
+        await dbRun(
+            'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+            ['admin', hash, 'admin']
+        );
+
+        const msg = [
+            '╔══════════════════════════════════════════╗',
+            '║         MINEPANEL DEFAULT ADMIN          ║',
+            '║                                          ║',
+            `║  Username : admin                        ║`,
+            `║  Password : ${password.padEnd(28)}║`,
+            '║                                          ║',
+            '║  Credentials saved to:                   ║',
+            '║  ADMIN_CREDENTIALS.txt                   ║',
+            '║  Change your password after first login! ║',
+            '╚══════════════════════════════════════════╝',
+        ].join('\n');
+
+        logger.warn('\n' + msg);
+
+        const fileContent = [
+            'MinePanel — Auto-generated Admin Account',
+            '========================================',
+            `Username : admin`,
+            `Password : ${password}`,
+            '',
+            'IMPORTANT: Delete this file and change your password after logging in!',
+            `Generated: ${new Date().toISOString()}`,
+        ].join('\n');
+
+        fs.writeFileSync(ADMIN_CREDS_FILE, fileContent, 'utf8');
+    } catch (e) {
+        logger.error('[DB] ensureAdminAccount failed:', e.message);
+    }
+};
+
 const initDb = async () => {
     // Integrity check before migrations
     if (process.env.NODE_ENV !== 'test') {
@@ -199,6 +249,7 @@ const initDb = async () => {
     await runMigrations(dbRun, dbGet);
     await seedRanks();
     await migratePermissionsData();
+    if (process.env.NODE_ENV !== 'test') await ensureAdminAccount();
 };
 
 const seedRanks = async () => {

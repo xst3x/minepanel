@@ -36,7 +36,7 @@ COPY src/ ./src/
 COPY minepanel_main.js ./
 
 # Overwrite the auto-built public dir with our Vite build from Stage 1
-COPY --from=frontend-builder /build/frontend/dist ./src/public
+COPY --from=frontend-builder /build/public ./src/public
 
 # All persistent data lives under /data (mounted as Docker volume).
 # The backend reads DATA_DIR env var to find its subdirectories:

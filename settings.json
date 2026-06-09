@@ -9,5 +9,5 @@
   "maxRam": 16384,
   "requireInviteTokenToCreateAccount": true,
   "defaultRankId": 5,
-  "dockerMode": false
+  "dockerMode": true
 }

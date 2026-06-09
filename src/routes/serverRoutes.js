@@ -7,7 +7,7 @@ const { validate } = require('../middleware/validation');
 const V = require('../middleware/validators');
 const { resolveJar, downloadJar } = require('../core/resolvers');
 const processManager = require('../core/processManager');
-const executionManager = require('../core/executionManager');
+const executionManager = require('../core/executionManager'); // native-only wrapper
 const { SERVERS_DIR, sanitizeDirName, ensureUniqueDirName, getServer, getServerDir, createBackup } = require('../core/serverHelper');
 const { retryRename, retryDelete, retryUnlink, retryCopy } = require('../core/utils/fsRetry');
 const { startServerFtp, stopServerFtp, isServerFtpRunning, storePasswordCache, getPasswordCache } = require('../core/ftpServer');
@@ -19,6 +19,7 @@ const multer = require('multer');
 const os = require('os');
 const StreamZip = require('adm-zip');
 const logger = require('../core/utils/logger');
+const javaManager = require('../core/javaManager');
 
 // Multer â€” store uploaded zip in OS temp dir
 const importUpload = multer({
@@ -154,7 +155,6 @@ router.get('/', authenticateToken, async (req, res) => {
         const result = await Promise.all((servers || []).map(async s => ({
             ...s,
             status: await executionManager.getStatus(s.id.toString()),
-            execution_mode: s.execution_mode || 'native',
         })));
         res.json(result);
     } catch (e) {
@@ -169,7 +169,6 @@ router.get('/:serverId', authenticateToken, async (req, res) => {
         const server = await getServer(req.params.serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         server.status = await executionManager.getStatus(server.id.toString());
-        server.execution_mode = server.execution_mode || 'native';
         res.json(server);
     } catch (e) {
         logger.error(`[serverRoutes] GET /:serverId error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
@@ -468,29 +467,6 @@ router.post('/:serverId/start', authenticateToken, checkPermission('server.start
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
-        const mode = server.execution_mode || 'native';
-
-        // Docker mode: start/restart the container
-        if (mode === 'docker') {
-            if (!processManager.acquireLock(serverId)) return sendError(res, E.SERVER_LOCKED, 409);
-            try {
-                const dockerService = require('../core/dockerService');
-                const status = await dockerService.getContainerStatus(serverId);
-                if (status === 'running') return sendError(res, E.BAD_REQUEST, 400, 'Server is already running.');
-                if (status === 'notfound') {
-                    // Container was removed — recreate it
-                    const serverDir = getServerDir(server);
-                    await dockerService.createContainer(server, serverDir);
-                }
-                processManager.clearHistory(serverId.toString());
-                await dockerService.startContainer(serverId);
-                return res.json({ message: 'Server starting (Docker)' });
-            } finally {
-                processManager.releaseLock(serverId);
-            }
-        }
-
-        // Native mode (existing logic)
         const { serverDir, jarFile, customArgs } = getStartInfo(server);
 
         if (!fs.existsSync(jarFile) && !customArgs) {
@@ -505,7 +481,8 @@ router.post('/:serverId/start', authenticateToken, checkPermission('server.start
             // Clear console history for a fresh view
             processManager.clearHistory(serverId.toString());
 
-            processManager.start(serverId.toString(), serverDir, [], jarFile, server.ram_mb, customArgs, server.java_path || 'java');
+            const javaPath = await javaManager.getJavaPath(server.java_path);
+            processManager.start(serverId.toString(), serverDir, [], jarFile, server.ram_mb, customArgs, javaPath);
             res.json({ message: 'Server starting' });
         } finally {
             processManager.releaseLock(serverId);
@@ -522,21 +499,6 @@ router.post('/:serverId/stop', authenticateToken, checkPermission('server.stop')
     try {
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
-
-        const mode = server.execution_mode || 'native';
-
-        if (mode === 'docker') {
-            processManager.acquireLockForce(serverId.toString());
-            try {
-                const dockerService = require('../core/dockerService');
-                // Send /stop to Minecraft stdin â€” graceful shutdown, same as native
-                await dockerService.sendStdin(serverId, 'stop');
-                processManager.clearHistory(serverId.toString());
-                return res.json({ message: 'Server stopped (Docker)', graceful: true });
-            } finally {
-                processManager.releaseLock(serverId.toString());
-            }
-        }
 
         if (!processManager.acquireLock(serverId.toString())) {
             return sendError(res, E.SERVER_LOCKED, 409);
@@ -567,35 +529,6 @@ router.post('/:serverId/restart', authenticateToken, checkPermission('server.res
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
-        const mode = server.execution_mode || 'native';
-
-        if (mode === 'docker') {
-            if (!processManager.acquireLock(serverId)) return sendError(res, E.SERVER_LOCKED, 409);
-            try {
-                const dockerService = require('../core/dockerService');
-                // Graceful stop via /stop command to Minecraft stdin
-                await dockerService.sendStdin(serverId, 'stop');
-                // Wait up to 30s for container to stop on its own
-                let waited = 0;
-                while (waited < 30000) {
-                    await new Promise(r => setTimeout(r, 1000));
-                    waited += 1000;
-                    const s = await dockerService.getContainerStatus(serverId);
-                    if (s !== 'running') break;
-                }
-                processManager.clearHistory(serverId.toString());
-                const cStatus = await dockerService.getContainerStatus(serverId);
-                if (cStatus === 'notfound') {
-                    const serverDir = getServerDir(server);
-                    await dockerService.createContainer(server, serverDir);
-                }
-                await dockerService.startContainer(serverId);
-                return res.json({ message: 'Server restarted (Docker)', graceful: true, started: true });
-            } finally {
-                processManager.releaseLock(serverId);
-            }
-        }
-
         const { serverDir, jarFile, customArgs } = getStartInfo(server);
 
         if (!fs.existsSync(jarFile) && !customArgs) {
@@ -608,8 +541,9 @@ router.post('/:serverId/restart', authenticateToken, checkPermission('server.res
 
         try {
             processManager.clearHistory(serverId.toString());
+            const javaPath = await javaManager.getJavaPath(server.java_path);
             const result = await processManager.restartGraceful(
-                serverId.toString(), serverDir, [], jarFile, server.ram_mb, 15000, customArgs, server.java_path || 'java'
+                serverId.toString(), serverDir, [], jarFile, server.ram_mb, 15000, customArgs, javaPath
             );
             if (!result.graceful) {
                 return res.json({ message: result.message || 'Server did not stop within timeout. Use Kill to force terminate, then start manually.', graceful: false, started: false });
@@ -630,21 +564,6 @@ router.post('/:serverId/kill', authenticateToken, checkPermission('server.kill')
     try {
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
-
-        const killMode = server.execution_mode || 'native';
-
-        if (killMode === 'docker') {
-            // Force-acquire â€” kill must never be blocked by a stale lock
-            processManager.acquireLockForce(serverId.toString());
-            try {
-                const dockerService = require('../core/dockerService');
-                await dockerService.stopContainer(serverId, 3); // 3s grace, then Docker force-kills
-                processManager.clearHistory(serverId.toString());
-                return res.json({ message: 'Docker container force-stopped' });
-            } finally {
-                processManager.releaseLock(serverId.toString());
-            }
-        }
 
         // Kill must never be blocked â€” force-acquire the lock
         processManager.acquireLockForce(serverId.toString());
@@ -764,7 +683,8 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
 
     if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No archive uploaded');
 
-    const { name, software, version, ram_mb, port, jar_path, root_path } = req.body;
+    const { name, software: rawSoftware, version, ram_mb, port, jar_path, root_path } = req.body;
+    const software = (rawSoftware || '').trim().toLowerCase();
     if (!name || !software || !version || !ram_mb || !port || !jar_path) {
         fsp.unlink(req.file.path).catch(() => {});
         return sendError(res, E.BAD_REQUEST, 400, 'Missing required fields: name, software, version, ram_mb, port, jar_path');

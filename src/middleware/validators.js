@@ -66,7 +66,7 @@ const SOFTWARE_VALUES = ['vanilla', 'paper', 'purpur', 'fabric', 'forge', 'quilt
 
 const createServer = Joi.object({
     name:     Joi.string().min(1).max(64).required(),
-    software: Joi.string().valid(...SOFTWARE_VALUES).required(),
+    software: Joi.string().trim().lowercase().valid(...SOFTWARE_VALUES).required(),
     version:  Joi.string().min(1).max(32).required(),
     ram_mb:   ram,
     port,
@@ -88,7 +88,7 @@ const changeVersion = Joi.object({
 });
 
 const switchSoftware = Joi.object({
-    software: Joi.string().valid(...SOFTWARE_VALUES).required(),
+    software: Joi.string().trim().lowercase().valid(...SOFTWARE_VALUES).required(),
     version:  Joi.string().min(1).max(32).required(),
     confirm:  Joi.boolean().optional(),
 });
