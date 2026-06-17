@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const { db, dbRun, dbGet, dbAll } = require('../db/database');
 const { authenticateToken } = require('../core/auth');
 const { checkPermission, getEffectivePermissions } = require('../core/permissions');
@@ -9,6 +9,7 @@ const { resolveJar, downloadJar } = require('../core/resolvers');
 const processManager = require('../core/processManager');
 const executionManager = require('../core/executionManager'); // native-only wrapper
 const { SERVERS_DIR, sanitizeDirName, ensureUniqueDirName, getServer, getServerDir, createBackup } = require('../core/serverHelper');
+const bedrockAdapter = require('../adapters/bedrock');
 const { retryRename, retryDelete, retryUnlink, retryCopy } = require('../core/utils/fsRetry');
 const { startServerFtp, stopServerFtp, isServerFtpRunning, storePasswordCache, getPasswordCache } = require('../core/ftpServer');
 const bcrypt = require('bcryptjs');
@@ -21,7 +22,7 @@ const StreamZip = require('adm-zip');
 const logger = require('../core/utils/logger');
 const javaManager = require('../core/javaManager');
 
-// Multer â€” store uploaded zip in OS temp dir
+// Multer  store uploaded zip in OS temp dir
 const importUpload = multer({
     storage: multer.diskStorage({
         destination: (_req, _file, cb) => cb(null, os.tmpdir()),
@@ -46,10 +47,17 @@ const router = express.Router();
 
 function getStartInfo(server) {
     const serverDir = getServerDir(server);
+
+    //  Bedrock: native binary, no JVM needed 
+    if (bedrockAdapter.isBedrock(server.software)) {
+        return bedrockAdapter.getBedrockLaunchDescriptor(server, serverDir);
+    }
+
+    //  Java servers (all other software types) 
     const jarFile = path.join(serverDir, 'server.jar');
 
     // JVM flags incompatible with older JVMs (require JDK 24+ Lilliput project).
-    // Strip these wherever they appear — run.bat inline, user_jvm_args.txt, or
+    // Strip these wherever they appear  run.bat inline, user_jvm_args.txt, or
     // any @libraries/.../*.txt arg-file that Forge generates.
     const STRIP_FLAGS = [
         '-XX:+UseCompactObjectHeaders',
@@ -136,7 +144,7 @@ function getStartInfo(server) {
     return { serverDir, jarFile, customArgs };
 }
 
-// â”€â”€â”€ List all servers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  List all servers 
 router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
@@ -163,7 +171,7 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
-// â”€â”€â”€ Get single server details â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Get single server details 
 router.get('/:serverId', authenticateToken, async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
@@ -176,7 +184,7 @@ router.get('/:serverId', authenticateToken, async (req, res) => {
     }
 });
 
-// â”€â”€â”€ Get current user's permissions for a server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Get current user's permissions for a server 
 router.get('/:serverId/my-permissions', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { serverId } = req.params;
@@ -191,7 +199,7 @@ router.get('/:serverId/my-permissions', authenticateToken, async (req, res) => {
 });
 
 
-// â”€â”€â”€ Create a server (admin only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Create a server (admin only) 
 router.post('/create', authenticateToken, validate(V.createServer), async (req, res) => {
     const { name, software, version, ram_mb, port } = req.body;
     const userId = req.user.id;
@@ -226,19 +234,28 @@ router.post('/create', authenticateToken, validate(V.createServer), async (req, 
 
         try {
             const finalJarInfo = await downloadJar(jarInfo);
-            const targetJar = path.join(serverDir, 'server.jar');
             const softwareLower = software.toLowerCase();
 
-            if (softwareLower === 'forge') {
+            if (softwareLower === 'bedrock') {
+                // Bedrock: extract the ZIP and write default configs
+                await bedrockAdapter.installBedrock(finalJarInfo.localPath, serverDir, port);
+                logger.info(`Bedrock server ${serverId} (${dirName}) setup complete.`);
+            } else if (softwareLower === 'forge') {
+                const targetJar = path.join(serverDir, 'server.jar');
                 await runForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+                fs.writeFileSync(path.join(serverDir, 'eula.txt'), 'eula=true\n');
+                if (!fs.existsSync(path.join(serverDir, 'server.properties'))) {
+                    fs.writeFileSync(path.join(serverDir, 'server.properties'), `server-port=${port}\n`);
+                }
             } else {
+                const targetJar = path.join(serverDir, 'server.jar');
                 fs.copyFileSync(finalJarInfo.localPath, targetJar);
+                fs.writeFileSync(path.join(serverDir, 'eula.txt'), 'eula=true\n');
+                if (!fs.existsSync(path.join(serverDir, 'server.properties'))) {
+                    fs.writeFileSync(path.join(serverDir, 'server.properties'), `server-port=${port}\n`);
+                }
             }
 
-            fs.writeFileSync(path.join(serverDir, 'eula.txt'), 'eula=true\n');
-            if (!fs.existsSync(path.join(serverDir, 'server.properties'))) {
-                fs.writeFileSync(path.join(serverDir, 'server.properties'), `server-port=${port}\n`);
-            }
             logger.info(`Server ${serverId} (${dirName}) setup complete.`);
             res.json({ message: 'Server deployed successfully', id: serverId, uuid, directory_name: dirName });
         } catch (e) {
@@ -272,7 +289,7 @@ router.post('/create', authenticateToken, validate(V.createServer), async (req, 
     }
 });
 
-// â”€â”€â”€ Change server version â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Change server version 
 router.post('/:serverId/change-version', authenticateToken, checkPermission('server.properties.write'), validate(V.changeVersion), async (req, res) => {
     const { serverId } = req.params;
     const { version } = req.body;
@@ -316,7 +333,7 @@ router.post('/:serverId/change-version', authenticateToken, checkPermission('ser
     }
 });
 
-// â”€â”€â”€ Switch server software (e.g. Paper -> Fabric) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Switch server software (e.g. Paper -> Fabric) 
 router.post('/:serverId/switch-software', authenticateToken, checkPermission('server.properties.write'), validate(V.switchSoftware), async (req, res) => {
     const { serverId } = req.params;
     const { software, version, confirm } = req.body;
@@ -460,17 +477,22 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
     }
 });
 
-// â”€â”€â”€ Start server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Start server 
 router.post('/:serverId/start', authenticateToken, checkPermission('server.start'), async (req, res) => {
     const serverId = req.params.serverId;
     try {
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
-        const { serverDir, jarFile, customArgs } = getStartInfo(server);
+        const startInfo = getStartInfo(server);
+        const { serverDir, jarFile, customArgs } = startInfo;
+        const isBedrock = !!startInfo.isBedrock;
 
-        if (!fs.existsSync(jarFile) && !customArgs) {
+        if (!isBedrock && !fs.existsSync(jarFile) && !customArgs) {
             return sendError(res, E.BAD_REQUEST, 400, 'Server jar not found. May still be downloading.');
+        }
+        if (isBedrock && !fs.existsSync(startInfo.executable)) {
+            return sendError(res, E.BAD_REQUEST, 400, 'Bedrock server binary not found. May still be installing.');
         }
 
         if (!processManager.acquireLock(serverId)) {
@@ -481,8 +503,16 @@ router.post('/:serverId/start', authenticateToken, checkPermission('server.start
             // Clear console history for a fresh view
             processManager.clearHistory(serverId.toString());
 
-            const javaPath = await javaManager.getJavaPath(server.java_path);
-            processManager.start(serverId.toString(), serverDir, [], jarFile, server.ram_mb, customArgs, javaPath);
+            if (isBedrock) {
+                processManager.start(
+                    serverId.toString(), serverDir,
+                    [], startInfo.executable, server.ram_mb,
+                    [], startInfo.executable, startInfo.env
+                );
+            } else {
+                const javaPath = await javaManager.getJavaPath(server.java_path);
+                processManager.start(serverId.toString(), serverDir, [], jarFile, server.ram_mb, customArgs, javaPath);
+            }
             res.json({ message: 'Server starting' });
         } finally {
             processManager.releaseLock(serverId);
@@ -493,7 +523,7 @@ router.post('/:serverId/start', authenticateToken, checkPermission('server.start
     }
 });
 
-// â”€â”€â”€ Stop server (graceful: sends /stop to stdin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Stop server (graceful: sends /stop to stdin) 
 router.post('/:serverId/stop', authenticateToken, checkPermission('server.stop'), async (req, res) => {
     const serverId = req.params.serverId;
     try {
@@ -522,17 +552,22 @@ router.post('/:serverId/stop', authenticateToken, checkPermission('server.stop')
     }
 });
 
-// â”€â”€â”€ Restart server (graceful stop then start) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Restart server (graceful stop then start) 
 router.post('/:serverId/restart', authenticateToken, checkPermission('server.restart'), async (req, res) => {
     const serverId = req.params.serverId;
     try {
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
-        const { serverDir, jarFile, customArgs } = getStartInfo(server);
+        const restartInfo = getStartInfo(server);
+        const { serverDir, jarFile, customArgs } = restartInfo;
+        const isBedrock = !!restartInfo.isBedrock;
 
-        if (!fs.existsSync(jarFile) && !customArgs) {
+        if (!isBedrock && !fs.existsSync(jarFile) && !customArgs) {
             return sendError(res, E.BAD_REQUEST, 400, 'Server jar not found.');
+        }
+        if (isBedrock && !fs.existsSync(restartInfo.executable)) {
+            return sendError(res, E.BAD_REQUEST, 400, 'Bedrock server binary not found.');
         }
 
         if (!processManager.acquireLock(serverId)) {
@@ -541,10 +576,19 @@ router.post('/:serverId/restart', authenticateToken, checkPermission('server.res
 
         try {
             processManager.clearHistory(serverId.toString());
-            const javaPath = await javaManager.getJavaPath(server.java_path);
-            const result = await processManager.restartGraceful(
-                serverId.toString(), serverDir, [], jarFile, server.ram_mb, 15000, customArgs, javaPath
-            );
+            let result;
+            if (isBedrock) {
+                result = await processManager.restartGraceful(
+                    serverId.toString(), serverDir,
+                    [], restartInfo.executable, server.ram_mb, 15000,
+                    [], restartInfo.executable, restartInfo.env
+                );
+            } else {
+                const javaPath = await javaManager.getJavaPath(server.java_path);
+                result = await processManager.restartGraceful(
+                    serverId.toString(), serverDir, [], jarFile, server.ram_mb, 15000, customArgs, javaPath
+                );
+            }
             if (!result.graceful) {
                 return res.json({ message: result.message || 'Server did not stop within timeout. Use Kill to force terminate, then start manually.', graceful: false, started: false });
             }
@@ -558,14 +602,14 @@ router.post('/:serverId/restart', authenticateToken, checkPermission('server.res
     }
 });
 
-// â”€â”€â”€ Kill server (force terminate specific PID only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Kill server (force terminate specific PID only) 
 router.post('/:serverId/kill', authenticateToken, checkPermission('server.kill'), async (req, res) => {
     const serverId = req.params.serverId;
     try {
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
-        // Kill must never be blocked â€” force-acquire the lock
+        // Kill must never be blocked  force-acquire the lock
         processManager.acquireLockForce(serverId.toString());
         try {
             processManager.kill(serverId.toString());
@@ -580,7 +624,7 @@ router.post('/:serverId/kill', authenticateToken, checkPermission('server.kill')
     }
 });
 
-// â”€â”€â”€ Clear server console history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Clear server console history 
 router.post('/:serverId/clear-console', authenticateToken, checkPermission('server.console.write'), async (req, res) => {
     const serverId = req.params.serverId;
     try {
@@ -595,7 +639,7 @@ router.post('/:serverId/clear-console', authenticateToken, checkPermission('serv
     }
 });
 
-// â”€â”€â”€ Get backup config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Get backup config 
 router.get('/:serverId/backup-config', authenticateToken, checkPermission('server.backups.read'), async (req, res) => {
     try {
         const row = await dbGet('SELECT auto_backup, backup_interval, backup_includes FROM servers WHERE id = ?', [req.params.serverId]);
@@ -607,7 +651,7 @@ router.get('/:serverId/backup-config', authenticateToken, checkPermission('serve
     }
 });
 
-// â”€â”€â”€ Update backup config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Update backup config 
 router.post('/:serverId/backup-config', authenticateToken, checkPermission('server.backups.create'), validate(V.backupConfig), (req, res) => {
     const { serverId } = req.params;
     const { enabled, interval, includes } = req.body;
@@ -625,7 +669,7 @@ router.post('/:serverId/backup-config', authenticateToken, checkPermission('serv
     );
 });
 
-// â”€â”€â”€ Delete server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Delete server 
 router.delete('/:serverId', authenticateToken, checkPermission('account.manage'), async (req, res) => {
     const { serverId } = req.params;
     try {
@@ -672,7 +716,7 @@ router.delete('/:serverId', authenticateToken, checkPermission('account.manage')
 });
 
 
-// â”€â”€â”€ Import server from zip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Import server from zip 
 router.post('/import', authenticateToken, importUpload.single('archive'), async (req, res) => {
     const userId = req.user.id;
     const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
@@ -782,7 +826,7 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
             const propsPath = path.join(serverDir, 'server.properties');
             try {
                 await fsp.access(propsPath);
-                // File exists â€” patch port in-place
+                // File exists  patch port in-place
                 let content = await fsp.readFile(propsPath, 'utf8');
                 if (/^server-port=/m.test(content)) {
                     content = content.replace(/^server-port=.*/m, `server-port=${portNum}`);
@@ -823,7 +867,7 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
 });
 
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 
 /**
  * Run the Forge installer jar in --installServer mode.
@@ -982,7 +1026,7 @@ function findForgeJarRecursive(dir) {
     return null;
 }
 
-// â”€â”€ FTP Per-Server Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  FTP Per-Server Routes 
 
 // GET FTP config for a server (requires server.ftp.access)
 router.get('/:serverId/ftp', authenticateToken, checkPermission('server.ftp.access'), async (req, res) => {

@@ -3,6 +3,7 @@ const EventEmitter = require('events');
 const path = require('path');
 const fs = require('fs');
 const pidusage = require('pidusage');
+const { parseBedrockOutput } = require('../adapters/bedrock');
 
 class ProcessManager extends EventEmitter {
     constructor() {
@@ -12,6 +13,7 @@ class ProcessManager extends EventEmitter {
         this.locks = new Set(); // serverId under lifecycle task (e.g., start, stop, restart, switch)
         this._stopIntents = new Set(); // serverId intentionally stopped (not a crash)
         this._crashRestartTimers = new Map(); // serverId -> timer
+        this._bedrockServers = new Set(); // serverId -> is bedrock (for output parsing)
     }
 
     acquireLock(serverId, timeoutMs = 60000) {
@@ -30,7 +32,7 @@ class ProcessManager extends EventEmitter {
         return true;
     }
 
-    // Force-acquire lock â€” bypasses the existing lock (for kill/emergency stop)
+    // Force-acquire lock  bypasses the existing lock (for kill/emergency stop)
     acquireLockForce(serverId) {
         const idStr = serverId.toString();
         this.locks.add(idStr);
@@ -46,7 +48,7 @@ class ProcessManager extends EventEmitter {
         return this.locks.has(serverId.toString());
     }
 
-    start(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs = null, javaPath = 'java') {
+    start(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs = null, javaPath = 'java', spawnEnv = null) {
         if (this.processes.has(serverId)) {
             throw new Error('Server is already running');
         }
@@ -56,11 +58,26 @@ class ProcessManager extends EventEmitter {
             clearTimeout(this._crashRestartTimers.get(serverId));
             this._crashRestartTimers.delete(serverId);
         }
-        // Clear stop intent — starting fresh
+        // Clear stop intent  starting fresh
         this._stopIntents.delete(serverId);
 
+        // ── Bedrock native binary detection ──────────────────────────────────
+        // When isBedrock flag is set (via customArgs sentinel), we skip JVM args
+        // entirely and just run the binary directly with no arguments.
+        const isBedrock = Array.isArray(customArgs) && customArgs.length === 0 &&
+                          javaPath !== 'java' && javaPath === jarFile;
+
+        if (isBedrock) {
+            this._bedrockServers.add(serverId);
+        } else {
+            this._bedrockServers.delete(serverId);
+        }
+
         let args;
-        if (customArgs) {
+        if (isBedrock) {
+            // Bedrock Dedicated Server: run the binary with no arguments
+            args = [];
+        } else if (customArgs && customArgs.length > 0) {
             args = [
                 `-Xms${maxMemoryMb}M`,
                 `-Xmx${maxMemoryMb}M`,
@@ -80,10 +97,15 @@ class ProcessManager extends EventEmitter {
 
         console.log(`Starting server ${serverId} with args:`, args);
 
-        const child = spawn(javaPath, args, {
+        const spawnOptions = {
             cwd: serverDir,
             stdio: ['pipe', 'pipe', 'pipe']
-        });
+        };
+        if (spawnEnv) {
+            spawnOptions.env = spawnEnv;
+        }
+
+        const child = spawn(javaPath, args, spawnOptions);
 
         this.processes.set(serverId, child);
 
@@ -92,13 +114,16 @@ class ProcessManager extends EventEmitter {
         });
 
         child.stdout.on('data', (data) => {
-            const output = data.toString();
+            const raw = data.toString();
+            const output = this._bedrockServers.has(serverId) ? parseBedrockOutput(raw) : raw;
             this.appendHistory(serverId, output);
             this.emit('console', serverId, output);
         });
 
         child.stderr.on('data', (data) => {
-            let output = data.toString();
+            const raw = data.toString();
+            const isBed = this._bedrockServers.has(serverId);
+            let output = isBed ? parseBedrockOutput(raw) : raw;
 
             // Detect "Current Java is X but we require at least Y" from Forge bootstrap
             const javaVersionMatch = output.match(/Current Java is (\d+) but we require at least (\d+)/);
@@ -136,6 +161,7 @@ class ProcessManager extends EventEmitter {
             this.appendHistory(serverId, msg);
             this.emit('console', serverId, msg);
             this.processes.delete(serverId);
+            this._bedrockServers.delete(serverId);
             this.emit('status', serverId, 'offline');
 
             // Crash detection: if exit was NOT intentional (not /stop or kill)
@@ -145,7 +171,7 @@ class ProcessManager extends EventEmitter {
             // Non-zero exit code = crash (code 0 or null = clean exit / /stop)
             const isCrash = !wasIntentional && code !== 0 && code !== null;
             if (isCrash) {
-                this.emit('crash', serverId, { code, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs, javaPath });
+                this.emit('crash', serverId, { code, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs, javaPath, spawnEnv });
             }
         });
 
@@ -227,7 +253,7 @@ class ProcessManager extends EventEmitter {
      * Graceful restart: stop, wait for exit, then start again.
      * Returns { graceful, started } indicating whether shutdown was clean and if restart succeeded.
      */
-    async restartGraceful(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, timeoutMs = 15000, customArgs = null, javaPath = 'java') {
+    async restartGraceful(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, timeoutMs = 15000, customArgs = null, javaPath = 'java', spawnEnv = null) {
         const stopResult = await this.gracefulStop(serverId, timeoutMs);
 
         if (!stopResult.graceful) {
@@ -238,7 +264,7 @@ class ProcessManager extends EventEmitter {
         await new Promise(r => setTimeout(r, 1500));
 
         try {
-            this.start(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs, javaPath);
+            this.start(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs, javaPath, spawnEnv);
             return { graceful: true, started: true };
         } catch (e) {
             return { graceful: true, started: false, message: e.message };

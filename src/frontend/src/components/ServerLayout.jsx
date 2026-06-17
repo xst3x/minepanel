@@ -214,7 +214,13 @@ export default function ServerLayout() {
     ftp: 'server.ftp.access'
   };
 
+  const isBedrock = serverInfo?.software?.toLowerCase() === 'bedrock';
+
+  // Tabs not applicable to Bedrock servers (plugins/mods don't exist, players API is Java-only)
+  const BEDROCK_HIDDEN_TABS = new Set(['content', 'players']);
+
   const visibleTabs = tabs.filter(([slug]) => {
+    if (isBedrock && BEDROCK_HIDDEN_TABS.has(slug)) return false;
     const reqPerm = TAB_PERMS[slug];
     return reqPerm === null || hasPerm(reqPerm);
   });

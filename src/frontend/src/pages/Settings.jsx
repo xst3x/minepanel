@@ -169,7 +169,7 @@ export default function Settings() {
 
   return (
     <div className="page" style={{ padding: '2.25rem' }}>
-      {/* Back button â€” same as old frontend */}
+      {/* Back button  same as old frontend */}
       <button className="back-btn" onClick={() => navigate('/panel')} style={{ marginBottom: '1rem' }}>
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
           <line x1="19" y1="12" x2="5" y2="12" />
@@ -212,7 +212,7 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Network & Ports â€” exact same card as old frontend, combined */}
+          {/* Network & Ports  exact same card as old frontend, combined */}
           <div className="card">
             <h3>Network &amp; Ports</h3>
             <div className="form-group" style={{ marginTop: '1rem' }}>
@@ -257,7 +257,7 @@ export default function Settings() {
           <div className="card accent-appearance-card" style={{ minWidth: 0 }}>
             <h3>Appearance</h3>
             <p className="text-muted" style={{ fontSize: '0.82rem', margin: '0.25rem 0 1.25rem' }}>
-              Your accent color â€” saved to your account and applied instantly everywhere.
+              Your accent color  saved to your account and applied instantly everywhere.
             </p>
             <div className="accent-picker" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(50px, 1fr))', gap: '10px 6px', marginBottom: '1rem' }}>
               {ACCENT_PRESETS.map(preset => {
@@ -361,7 +361,7 @@ export default function Settings() {
                 onChange={e => setDefaultRankId(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: '13.5px', outline: 'none' }}
               >
-                <option value="">â€” No rank â€”</option>
+                <option value=""> No rank </option>
                 {ranks.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
             </div>
@@ -386,7 +386,7 @@ export default function Settings() {
   );
 }
 
-// â”€â”€ Color Well (custom color picker) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Color Well (custom color picker) 
 function ColorWell({ onClose, onApply }) {
   const canvasRef = useRef(null);
   const cursorRef = useRef(null);
@@ -581,7 +581,7 @@ function ColorWell({ onClose, onApply }) {
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <div style={{ width: 44, height: 44, borderRadius: 'var(--radius)', background: previewColor, flexShrink: 0, border: '1px solid var(--border)' }} />
-            <input type="text" placeholder="Name this colorâ€¦" maxLength={24}
+            <input type="text" placeholder="Name this color" maxLength={24}
               value={colorName} onChange={e => setColorName(e.target.value)}
               style={{ flex: 1 }} />
           </div>

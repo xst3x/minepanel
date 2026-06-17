@@ -63,7 +63,7 @@ export default function ServerSettings() {
 
   const handleRefreshVersions = async () => {
     try {
-      toast('Syncing latest Minecraft versions from APIsâ€¦', 'info');
+      toast('Syncing latest Minecraft versions from APIs', 'info');
       const data = await api('/api/system/versions?refresh=true');
       setVersions(data);
       toast('Versions synced successfully!', 'success');
@@ -144,7 +144,7 @@ export default function ServerSettings() {
   const executeSwitchSoftware = async () => {
     setShowSwitchModal(false);
     try {
-      toast('Initiating transitionâ€¦', 'info');
+      toast('Initiating transition', 'info');
       const res = await api(`/api/servers/${serverId}/switch-software`, {
         method: 'POST',
         body: { software: newSoftware, version: newVersion, confirm: true }
@@ -172,7 +172,7 @@ export default function ServerSettings() {
     }
 
     try {
-      toast('Deleting serverâ€¦', 'info');
+      toast('Deleting server', 'info');
       await api(`/api/servers/${serverId}`, { method: 'DELETE' });
       toast('Server successfully deleted.', 'success');
       navigate('/panel');
@@ -220,6 +220,7 @@ export default function ServerSettings() {
                 <option value="forge">Forge</option>
                 <option value="quilt">Quilt</option>
                 <option value="magma">Magma</option>
+                <option value="bedrock">Bedrock (Native)</option>
               </select>
             </div>
             <div className="form-group" style={{ margin: 0 }}>
@@ -230,7 +231,7 @@ export default function ServerSettings() {
                   onChange={(e) => setNewVersion(e.target.value)}
                   style={{ flex: 1, height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
                 >
-                  <option value="">Select versionâ€¦</option>
+                  <option value="">Select version</option>
                   {availableVersions.map(v => (
                     <option key={v} value={v}>{v}</option>
                   ))}
@@ -265,7 +266,7 @@ export default function ServerSettings() {
         </p>
 
         {loading ? (
-          <p className="text-muted">Loading settingsâ€¦</p>
+          <p className="text-muted">Loading settings</p>
         ) : (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
@@ -281,10 +282,12 @@ export default function ServerSettings() {
                 <label>Custom Server Port</label>
                 <input type="number" value={port} onChange={(e) => setPort(e.target.value)} placeholder="25565" min="1024" max="65535" />
               </div>
-              <div className="form-group">
-                <label>Java Path / Binary</label>
-                <input type="text" value={javaPath} onChange={(e) => setJavaPath(e.target.value)} placeholder="java" />
-              </div>
+              {serverInfo?.software?.toLowerCase() !== 'bedrock' && (
+                <div className="form-group">
+                  <label>Java Path / Binary</label>
+                  <input type="text" value={javaPath} onChange={(e) => setJavaPath(e.target.value)} placeholder="java" />
+                </div>
+              )}
             </div>
 
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
@@ -330,7 +333,7 @@ export default function ServerSettings() {
             {hasPerm('server.properties.write') && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
                 <button className="btn primary" onClick={handleSaveSettings} disabled={saving}>
-                  {saving ? 'Savingâ€¦' : 'Save Settings'}
+                  {saving ? 'Saving' : 'Save Settings'}
                 </button>
               </div>
             )}
@@ -340,7 +343,7 @@ export default function ServerSettings() {
 
       {/* Danger Zone */}
       {hasPerm('account.manage') && (
-        <div className="card" style={{ border: '1px solid var(--danger)', background: 'rgba(239,68,68,0.05)' }}>
+        <div className="card" style={{ border: '1px solid var(--danger)', background: 'rgba(239,68,68,0.8)' }}>
           <h3 style={{ color: 'var(--danger)', marginTop: 0 }}>Delete Server</h3>
           <p className="text-muted" style={{ marginBottom: '0.75rem' }}>
             Permanently delete this server, including all files, databases, and configurations. This action cannot be undone.

@@ -62,7 +62,7 @@ const generateToken = Joi.object({
 
 // ─── Server ──────────────────────────────────────────────────────────────────
 
-const SOFTWARE_VALUES = ['vanilla', 'paper', 'purpur', 'fabric', 'forge', 'quilt', 'magma', 'spigot', 'bungeecord', 'waterfall', 'velocity'];
+const SOFTWARE_VALUES = ['vanilla', 'paper', 'purpur', 'fabric', 'forge', 'quilt', 'magma', 'spigot', 'bungeecord', 'waterfall', 'velocity', 'bedrock'];
 
 const createServer = Joi.object({
     name:     Joi.string().min(1).max(64).required(),

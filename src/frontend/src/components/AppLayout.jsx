@@ -4,6 +4,103 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import BgCanvas from './BgCanvas.jsx';
 
+// Logo SVG Components
+const LogoIcon = () => (
+  <svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" className="sidebar-logo">
+    <defs>
+      <style>{`
+        :root { --logo-accent: var(--accent, hsl(149, 100%, 47%)); --logo-glow: var(--accent-glow, hsla(149, 100%, 47%, 0.15)); --logo-dark: hsl(0, 0%, 12%); --logo-darker: hsl(0, 0%, 8%); }
+        [data-theme="light"] { --logo-accent: var(--accent, hsl(149, 100%, 35%)); --logo-glow: var(--accent-glow, rgba(0, 180, 88, 0.15)); --logo-dark: hsl(0, 0%, 88%); --logo-darker: hsl(0, 0%, 92%); }
+        .logo-cube-body { fill: var(--logo-darker); stroke: var(--logo-accent); stroke-width: 1.5; stroke-linejoin: round; }
+        .logo-cube-top { fill: var(--logo-dark); stroke: var(--logo-accent); stroke-width: 1.5; stroke-linejoin: round; }
+        .logo-circuit { stroke: var(--logo-accent); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+        .logo-node { fill: var(--logo-accent); filter: drop-shadow(0 0 3px var(--logo-glow)); }
+        .logo-power { fill: none; stroke: var(--logo-accent); stroke-width: 1.5; stroke-linecap: round; }
+        .logo-power-dot { fill: var(--logo-accent); }
+        .logo-glow-filter { filter: drop-shadow(0 0 6px var(--logo-glow)) drop-shadow(0 0 2px var(--logo-glow)); }
+      `}</style>
+      <filter id="logo-shadow">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
+        <feOffset dx="0" dy="1" result="offsetblur"/>
+        <feComponentTransfer><feFuncA type="linear" slope="0.2"/></feComponentTransfer>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <g id="logo-main" filter="url(#logo-shadow)">
+      {/* Isometric cube - scaled to use full viewBox */}
+      <path className="logo-cube-body" d="M 70 140 L 70 90 L 110 65 L 110 115 Z" />
+      <path className="logo-cube-top" d="M 110 65 L 150 90 L 150 140 L 110 115 Z" />
+      <path className="logo-cube-top" d="M 70 90 L 110 65 L 150 90 L 110 115 Z" />
+      
+      {/* Circuit traces */}
+      <g className="logo-glow-filter">
+        <path className="logo-circuit" d="M 70 90 Q 40 70 20 60" />
+        <path className="logo-circuit" d="M 150 90 Q 180 70 200 60" />
+        <path className="logo-circuit" d="M 70 140 Q 40 160 20 170" />
+        <path className="logo-circuit" d="M 150 140 Q 180 160 200 170" />
+        <path className="logo-circuit" d="M 110 140 Q 110 170 110 190" />
+      </g>
+      
+      {/* Connection nodes */}
+      <g className="logo-glow-filter">
+        <circle className="logo-node" cx="20" cy="60" r="2.5" />
+        <circle className="logo-node" cx="200" cy="60" r="2.5" />
+        <circle className="logo-node" cx="20" cy="170" r="2.5" />
+        <circle className="logo-node" cx="200" cy="170" r="2.5" />
+        <circle className="logo-node" cx="110" cy="190" r="2.5" />
+        <circle className="logo-node" cx="40" cy="80" r="2" />
+        <circle className="logo-node" cx="180" cy="80" r="2" />
+        <circle className="logo-node" cx="40" cy="150" r="2" />
+        <circle className="logo-node" cx="180" cy="150" r="2" />
+      </g>
+      
+      {/* Power button */}
+      <circle className="logo-power" cx="110" cy="90" r="9" />
+      <g className="logo-glow-filter">
+        <path className="logo-power" d="M 110 81 L 110 85" strokeWidth="1.2" />
+        <circle className="logo-power-dot" cx="110" cy="86" r="1.5" />
+      </g>
+      
+      {/* Accent lines */}
+      <path className="logo-circuit" d="M 65 110 L 155 110" />
+      <path className="logo-circuit" d="M 130 70 L 130 135" />
+    </g>
+  </svg>
+);
+
+const FaviconIcon = (props) => (
+  <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <defs>
+      <style>{`
+        :root { --logo-accent: var(--accent, hsl(149, 100%, 47%)); --logo-glow: var(--accent-glow, hsla(149, 100%, 47%, 0.15)); --logo-dark: hsl(0, 0%, 12%); --logo-darker: hsl(0, 0%, 8%); }
+        [data-theme="light"] { --logo-accent: var(--accent, hsl(149, 100%, 35%)); --logo-glow: var(--accent-glow, rgba(0, 180, 88, 0.15)); --logo-dark: hsl(0, 0%, 88%); --logo-darker: hsl(0, 0%, 92%); }
+        .favicon-cube-body { fill: var(--logo-darker); stroke: var(--logo-accent); stroke-width: 0.4; stroke-linejoin: round; }
+        .favicon-cube-top { fill: var(--logo-dark); stroke: var(--logo-accent); stroke-width: 0.4; stroke-linejoin: round; }
+        .favicon-circuit { stroke: var(--logo-accent); stroke-width: 0.3; stroke-linecap: round; fill: none; }
+        .favicon-node { fill: var(--logo-accent); }
+        .favicon-power { fill: none; stroke: var(--logo-accent); stroke-width: 0.4; stroke-linecap: round; }
+        .favicon-power-dot { fill: var(--logo-accent); }
+      `}</style>
+    </defs>
+    <g id="favicon-main">
+      <path className="favicon-cube-body" d="M 18 36.5 L 18 23 L 28.5 17 L 28.5 30.5 Z" />
+      <path className="favicon-cube-top" d="M 28.5 17 L 39 23 L 39 36.5 L 28.5 30.5 Z" />
+      <path className="favicon-cube-top" d="M 18 23 L 28.5 17 L 39 23 L 28.5 29.5 Z" />
+      <path className="favicon-circuit" d="M 18 23 L 8 15" />
+      <path className="favicon-circuit" d="M 39 23 L 49 15" />
+      <path className="favicon-circuit" d="M 18 36.5 L 8 44" />
+      <path className="favicon-circuit" d="M 39 36.5 L 49 44" />
+      <circle className="favicon-node" cx="8" cy="15" r="0.7" />
+      <circle className="favicon-node" cx="49" cy="15" r="0.7" />
+      <circle className="favicon-node" cx="8" cy="44" r="0.7" />
+      <circle className="favicon-node" cx="49" cy="44" r="0.7" />
+      <circle className="favicon-power" cx="28.5" cy="24" r="2.5" />
+      <path className="favicon-power" d="M 28.5 21 L 28.5 22" strokeWidth="0.3" />
+      <circle className="favicon-power-dot" cx="28.5" cy="22.6" r="0.4" />
+    </g>
+  </svg>
+);
+
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -81,12 +178,7 @@ export default function AppLayout() {
           </svg>
         </button>
         <div className="mobile-logo">
-          <svg viewBox="0 0 24 24" width="20" height="20" stroke="var(--accent)" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-            <path d="M2 17l10 5 10-5"/>
-            <path d="M2 12l10 5 10-5"/>
-            <path d="M2 7v10"/><path d="M12 12v10"/><path d="M22 7v10"/>
-          </svg>
+          <FaviconIcon style={{ width: '24px', height: '24px' }} />
           <span>MinePanel</span>
         </div>
         <div className="mobile-user-circle"
@@ -135,12 +227,7 @@ export default function AppLayout() {
           </button>
 
           <Link to="/panel" className="sidebar-brand" onClick={() => setIsMobileMenuOpen(false)}>
-            <svg viewBox="0 0 24 24" width="24" height="24" stroke="var(--accent)" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
-              <path d="M2 7v10"/><path d="M12 12v10"/><path d="M22 7v10"/>
-            </svg>
+            <LogoIcon />
             <span>MinePanel</span>
           </Link>
 

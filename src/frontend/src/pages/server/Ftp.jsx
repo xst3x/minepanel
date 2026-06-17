@@ -94,7 +94,7 @@ export default function ServerFtp() {
     try {
       setActionLoading(true);
       const data = await api(`/api/servers/${serverId}/ftp/password`);
-      setPlainPassword(data.password || '(not available â€” enter password again to reveal)');
+      setPlainPassword(data.password || '(not available  enter password again to reveal)');
       setRevealPass(true);
     } catch (err) {
       setPlainPassword('(not available)');
@@ -132,17 +132,17 @@ export default function ServerFtp() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Port</span>
-                <code className="text-mono" style={{ color: 'var(--text)' }}>{ftpInfo?.port || 'â€”'}</code>
+                <code className="text-mono" style={{ color: 'var(--text)' }}>{ftpInfo?.port || ''}</code>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Username</span>
-                <code className="text-mono" style={{ color: 'var(--text)' }}>{ftpInfo?.username || 'â€”'}</code>
+                <code className="text-mono" style={{ color: 'var(--text)' }}>{ftpInfo?.username || ''}</code>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Password</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <code className="text-mono" style={{ color: 'var(--text)' }}>
-                    {revealPass ? plainPassword : 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'}
+                    {revealPass ? plainPassword : ''}
                   </code>
                   {hasPerm('server.ftp.manage') && (
                     <button
@@ -232,12 +232,12 @@ export default function ServerFtp() {
       <div className="card">
         <h3 style={{ marginBottom: '0.75rem' }}>How to connect</h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-          This panel uses <strong>SFTP</strong> (SSH File Transfer Protocol) â€” not plain FTP. Use FileZilla, WinSCP, or any SFTP-capable client.
+          This panel uses <strong>SFTP</strong> (SSH File Transfer Protocol)  not plain FTP. Use FileZilla, WinSCP, or any SFTP-capable client.
         </p>
         <ol style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', paddingLeft: '1.25rem', lineHeight: 1.9, margin: '0 0 0.75rem' }}>
           <li>Set credentials &amp; port, click <strong>Save &amp; Apply</strong></li>
           <li>Click <strong>Enable FTP</strong> to start the SFTP daemon</li>
-          <li><strong>FileZilla:</strong> Site Manager &rarr; Protocol: <em>SFTP â€“ SSH File Transfer Protocol</em></li>
+          <li><strong>FileZilla:</strong> Site Manager &rarr; Protocol: <em>SFTP  SSH File Transfer Protocol</em></li>
           <li><strong>WinSCP:</strong> New Session &rarr; File Protocol: <em>SFTP</em></li>
           <li>Enter Host / Port / Username / Password from the Connection Info card</li>
         </ol>

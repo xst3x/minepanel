@@ -617,7 +617,7 @@ const EyeOffIcon = ({ size = 16 }) => (
         <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
           <div className="modal large" style={{ maxWidth: '900px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Permissions Matrix â€” {selectedUser?.username}</h3>
+              <h3>Permissions Matrix  {selectedUser?.username}</h3>
               <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
@@ -733,7 +733,7 @@ const EyeOffIcon = ({ size = 16 }) => (
                             return (
                               <td key={s.id} style={{ padding: '8px' }}>
                                 {isDisabledColumn ? (
-                                  <span style={{ color: 'var(--text-muted)', opacity: 0.3 }}>â€”</span>
+                                  <span style={{ color: 'var(--text-muted)', opacity: 0.3 }}></span>
                                 ) : (
                                   <input
                                     type="checkbox"

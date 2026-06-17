@@ -21,6 +21,7 @@ export default function Panel() {
   const showImportModal = action === 'import';
 
   // Create Server Form State
+  const [csTab, setCsTab] = useState('java'); // 'java' | 'bedrock'
   const [csName, setCsName] = useState('');
   const [csSoftware, setCsSoftware] = useState('paper');
   const [csVersion, setCsVersion] = useState('');
@@ -74,6 +75,17 @@ export default function Panel() {
     return () => clearInterval(interval);
   }, []);
 
+  // When the tab changes, reset software & port defaults
+  useEffect(() => {
+    if (csTab === 'java') {
+      setCsSoftware('paper');
+      setCsPort(25565);
+    } else {
+      setCsSoftware('bedrock');
+      setCsPort(19132);
+    }
+  }, [csTab]);
+
   // Update default version when software changes
   useEffect(() => {
     if (versions && versions[csSoftware]) {
@@ -102,7 +114,7 @@ export default function Panel() {
       });
       setSearchParams({});
       loadServers();
-      setCsName(''); setCsSoftware('paper'); setCsRam(2048); setCsPort(25565);
+      setCsName(''); setCsSoftware('paper'); setCsRam(2048); setCsPort(25565); setCsTab('java');
     } catch (err) {
       toast(err.message || 'Server creation failed.', 'error');
     } finally {
@@ -258,91 +270,182 @@ export default function Panel() {
           <div className="modal">
             <div className="modal-header">
               <h3>Create new server</h3>
-              <button className="close-btn" onClick={() => setSearchParams({})} disabled={csBusy}>&times;</button>
+              <button className="close-btn" onClick={() => { setSearchParams({}); setCsTab('java'); }} disabled={csBusy}>&times;</button>
             </div>
+
+            {/* Tab bar */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', padding: '0 1.5rem', gap: '0.25rem' }}>
+              <button
+                type="button"
+                onClick={() => setCsTab('java')}
+                style={{
+                  padding: '0.65rem 1.1rem',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: csTab === 'java' ? '2px solid var(--accent)' : '2px solid transparent',
+                  color: csTab === 'java' ? 'var(--accent)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontWeight: csTab === 'java' ? 600 : 400,
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  transition: 'color 0.15s, border-color 0.15s',
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                </svg>
+                Java Edition
+              </button>
+              <button
+                type="button"
+                onClick={() => setCsTab('bedrock')}
+                style={{
+                  padding: '0.65rem 1.1rem',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: csTab === 'bedrock' ? '2px solid var(--accent)' : '2px solid transparent',
+                  color: csTab === 'bedrock' ? 'var(--accent)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontWeight: csTab === 'bedrock' ? 600 : 400,
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  transition: 'color 0.15s, border-color 0.15s',
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/>
+                </svg>
+                Bedrock Edition
+              </button>
+            </div>
+
             <form onSubmit={handleCreateServer}>
               <div className="modal-body">
                 <div className="form-group">
                   <label>Server Name</label>
-                  <input 
-                    type="text" 
-                    required 
-                    placeholder="My Server" 
+                  <input
+                    type="text"
+                    required
+                    placeholder="My Server"
                     value={csName}
                     onChange={(e) => setCsName(e.target.value)}
                   />
                 </div>
-                <div className="form-group">
-                  <label>Software Engine</label>
-                  <select 
-                    value={csSoftware}
-                    onChange={(e) => setCsSoftware(e.target.value)}
-                  >
-                    <option value="paper">Paper (Recommended)</option>
-                    <option value="vanilla">Vanilla</option>
-                    <option value="snapshots">Vanilla Snapshots</option>
-                    <option value="purpur">Purpur</option>
-                    <option value="fabric">Fabric</option>
-                    <option value="forge">Forge</option>
-                    <option value="quilt">Quilt</option>
-                    <option value="magma">Magma</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Minecraft Version</label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <select 
-                      style={{ flex: 1, height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
-                      value={csVersion}
-                      onChange={(e) => setCsVersion(e.target.value)}
-                    >
-                      {versions && versions[csSoftware]?.map(v => (
-                        <option key={v} value={v}>{v}</option>
-                      ))}
-                      {(!versions || !versions[csSoftware]?.length) && (
-                        <option value="">{syncingVersions ? 'Syncing...' : 'No versions available'}</option>
-                      )}
-                    </select>
-                    <button 
-                      type="button" 
-                      className="btn outline" 
-                      title="Refresh versions"
-                      onClick={refreshVersions}
-                      disabled={syncingVersions}
-                      style={{ height: '38px', padding: '0 0.75rem' }}
-                    >
-                      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M23 4v6h-6"></path>
-                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+
+                {/* ── JAVA TAB ── */}
+                {csTab === 'java' && (
+                  <>
+                    <div className="form-group">
+                      <label>Software Engine</label>
+                      <select value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
+                        <option value="paper">Paper (Recommended)</option>
+                        <option value="vanilla">Vanilla</option>
+                        <option value="snapshots">Vanilla Snapshots</option>
+                        <option value="purpur">Purpur</option>
+                        <option value="fabric">Fabric</option>
+                        <option value="forge">Forge</option>
+                        <option value="quilt">Quilt</option>
+                        <option value="magma">Magma</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Minecraft Version</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <select
+                          style={{ flex: 1, height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
+                          value={csVersion}
+                          onChange={(e) => setCsVersion(e.target.value)}
+                        >
+                          {versions && versions[csSoftware]?.map(v => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                          {(!versions || !versions[csSoftware]?.length) && (
+                            <option value="">{syncingVersions ? 'Syncing...' : 'No versions available'}</option>
+                          )}
+                        </select>
+                        <button type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
+                          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
+                      <div className="col" style={{ flex: 1 }}>
+                        <label>RAM (MB)</label>
+                        <input type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
+                      </div>
+                      <div className="col" style={{ flex: 1 }}>
+                        <label>Port</label>
+                        <input type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* ── BEDROCK TAB ── */}
+                {csTab === 'bedrock' && (
+                  <>
+                    <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.75rem 1rem', marginBottom: '0.75rem', fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px', color: 'var(--accent)' }}>
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                       </svg>
-                    </button>
-                  </div>
-                </div>
-                <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
-                  <div className="col" style={{ flex: 1 }}>
-                    <label>RAM (MB)</label>
-                    <input 
-                      type="number" 
-                      min="512" 
-                      max="16384" 
-                      value={csRam}
-                      onChange={(e) => setCsRam(e.target.value)}
-                    />
-                  </div>
-                  <div className="col" style={{ flex: 1 }}>
-                    <label>Port</label>
-                    <input 
-                      type="number" 
-                      min="1024" 
-                      max="65535" 
-                      value={csPort}
-                      onChange={(e) => setCsPort(e.target.value)}
-                    />
-                  </div>
-                </div>
+                      Bedrock servers use UDP instead of TCP. Make sure your firewall allows the selected UDP port.
+                    </div>
+                    <div className="form-group">
+                      <label>Software Engine</label>
+                      <select value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
+                        <option value="bedrock">Bedrock Dedicated Server (Official BDS)</option>
+                        <option value="pocketmine">PocketMine-MP</option>
+                        <option value="nukkitx">NukkitX</option>
+                        <option value="powernukkitx">PowerNukkitX</option>
+                        <option value="waterdogpe">WaterdogPE (Proxy)</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Version</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <select
+                          style={{ flex: 1, height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
+                          value={csVersion}
+                          onChange={(e) => setCsVersion(e.target.value)}
+                        >
+                          {versions && versions[csSoftware]?.map(v => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                          {(!versions || !versions[csSoftware]?.length) && (
+                            <option value="">{syncingVersions ? 'Syncing...' : 'No versions available'}</option>
+                          )}
+                        </select>
+                        <button type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
+                          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
+                      <div className="col" style={{ flex: 1 }}>
+                        <label>RAM (MB)</label>
+                        <input type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
+                      </div>
+                      <div className="col" style={{ flex: 1 }}>
+                        <label>
+                          Port <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(UDP)</span>
+                        </label>
+                        <input type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
+                        <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Default: 19132</small>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn outline" onClick={() => setSearchParams({})} disabled={csBusy}>Cancel</button>
+                <button type="button" className="btn outline" onClick={() => { setSearchParams({}); setCsTab('java'); }} disabled={csBusy}>Cancel</button>
                 <button type="submit" className="btn primary" disabled={csBusy}>
                   {csBusy ? 'Creating...' : 'Create Server'}
                 </button>
@@ -439,6 +542,7 @@ export default function Panel() {
                       <option value="forge">Forge</option>
                       <option value="quilt">Quilt</option>
                       <option value="magma">Magma</option>
+                      <option value="bedrock">Bedrock (Native)</option>
                     </select>
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>

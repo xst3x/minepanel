@@ -9,6 +9,7 @@ const fabricResolver = require('./fabric');
 const forgeResolver = require('./forge');
 const quiltResolver = require('./quilt');
 const magmaResolver = require('./magma');
+const bedrockResolver = require('./bedrock');
 
 const paperResolver = new PaperResolver('paper');
 const purpurResolver = new PurpurResolver();
@@ -46,6 +47,7 @@ const getProvider = (software) => {
         case 'forge': return forgeResolver;
         case 'quilt': return quiltResolver;
         case 'magma': return magmaResolver;
+        case 'bedrock': return bedrockResolver;
         default: throw new Error(`Unsupported software: ${software}`);
     }
 };
@@ -62,7 +64,9 @@ const downloadJar = (jarInfo, onProgress) => {
             fs.mkdirSync(providerDir, { recursive: true });
         }
 
-        const fileName = `${jarInfo.type}-${jarInfo.version}-${jarInfo.build}.jar`;
+        const fileName = jarInfo.isZip
+            ? `${jarInfo.type}-${jarInfo.version}-${jarInfo.build}.zip`
+            : `${jarInfo.type}-${jarInfo.version}-${jarInfo.build}.jar`;
         const filePath = path.join(providerDir, fileName);
 
         if (fs.existsSync(filePath)) {

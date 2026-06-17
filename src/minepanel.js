@@ -71,6 +71,7 @@ const fileRoutes = require('./routes/fileRoutes');
 const systemRoutes = require('./routes/systemRoutes');
 const playerRoutes = require('./routes/playerRoutes');
 const pluginRoutes = require('./routes/pluginRoutes');
+const pocketmineRoutes = require('./routes/pocketmineRoutes');
 const backupRoutes = require('./routes/backupRoutes');
 const propertiesRoutes = require('./routes/propertiesRoutes');
 const logRoutes = require('./routes/logRoutes');
@@ -254,6 +255,7 @@ app.use('/api/servers/:serverId/files', fileRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/servers/:serverId/players', playerRoutes);
 app.use('/api/servers/:serverId/plugins', pluginRoutes);
+app.use('/api/servers/:serverId/pocketmine', pocketmineRoutes);
 app.use('/api/servers/:serverId/backups', backupRoutes);
 app.use('/api/servers/:serverId/properties', propertiesRoutes);
 app.use('/api/servers/:serverId/logs', logRoutes);
@@ -373,14 +375,20 @@ initDb().then(async () => {
                 for (const srv of autostartServers) {
                     try {
                         const { getServerDir } = require('./core/serverHelper');
+                        const bedrockAdapter = require('./adapters/bedrock');
                         const srvId = srv.id.toString();
                         const serverDir = getServerDir(srv);
-                        const jarFile = require('path').join(serverDir, 'server.jar');
                         if (processManager.getStatus(srvId) === 'offline') {
                             logger.info(`[Autostart] Starting server: ${srv.name} (id=${srvId})`);
-                            const javaManager = require('./core/javaManager');
-                            const javaPath = await javaManager.getJavaPath(srv.java_path);
-                            processManager.start(srvId, serverDir, [], jarFile, srv.ram_mb, null, javaPath);
+                            if (bedrockAdapter.isBedrock(srv.software)) {
+                                const desc = bedrockAdapter.getBedrockLaunchDescriptor(srv, serverDir);
+                                processManager.start(srvId, serverDir, [], desc.executable, srv.ram_mb, [], desc.executable, desc.env);
+                            } else {
+                                const jarFile = require('path').join(serverDir, 'server.jar');
+                                const javaManager = require('./core/javaManager');
+                                const javaPath = await javaManager.getJavaPath(srv.java_path);
+                                processManager.start(srvId, serverDir, [], jarFile, srv.ram_mb, null, javaPath);
+                            }
                         }
                     } catch (e) { logger.error(`[Autostart] Failed to start server ${srv.id}: ${e.message}`); }
                 }
@@ -395,17 +403,23 @@ initDb().then(async () => {
             if (!srv || !srv.autostart_on_crash) return;
             logger.warn(`[CrashRestart] Server ${serverId} crashed. Restarting in 5s...`);
             const { getServerDir } = require('./core/serverHelper');
+            const bedrockAdapter = require('./adapters/bedrock');
             const serverDir = getServerDir(srv);
-            const jarFile = require('path').join(serverDir, 'server.jar');
             const crashMsg = `\n[MinePanel] Server crashed (exit code ${info.code}). Auto-restarting in 5 seconds...\n`;
             processManager.appendHistory(serverId.toString(), crashMsg);
             processManager.emit('console', serverId.toString(), crashMsg);
             setTimeout(async () => {
                 try {
                     if (processManager.getStatus(serverId.toString()) === 'offline') {
-                        const javaManager = require('./core/javaManager');
-                        const javaPath = await javaManager.getJavaPath(srv.java_path);
-                        processManager.start(serverId.toString(), serverDir, [], jarFile, srv.ram_mb, null, javaPath);
+                        if (bedrockAdapter.isBedrock(srv.software)) {
+                            const desc = bedrockAdapter.getBedrockLaunchDescriptor(srv, serverDir);
+                            processManager.start(serverId.toString(), serverDir, [], desc.executable, srv.ram_mb, [], desc.executable, desc.env);
+                        } else {
+                            const jarFile = require('path').join(serverDir, 'server.jar');
+                            const javaManager = require('./core/javaManager');
+                            const javaPath = await javaManager.getJavaPath(srv.java_path);
+                            processManager.start(serverId.toString(), serverDir, [], jarFile, srv.ram_mb, null, javaPath);
+                        }
                     }
                 } catch (e) { logger.error(`[CrashRestart] Failed to restart server ${serverId}: ${e.message}`); }
             }, 5000);

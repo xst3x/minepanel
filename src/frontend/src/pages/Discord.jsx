@@ -149,7 +149,7 @@ export default function Discord() {
   };
 
   const getTimeAgo = (dateStr) => {
-    if (!dateStr) return 'â€”';
+    if (!dateStr) return '';
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return 'just now';
@@ -274,7 +274,7 @@ export default function Discord() {
                     type="password"
                     value={botToken}
                     onChange={(e) => setBotToken(e.target.value)}
-                    placeholder={editingBot ? 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢ (leave blank to keep current)' : 'Bot Token'}
+                    placeholder={editingBot ? ' (leave blank to keep current)' : 'Bot Token'}
                     style={{ flex: 1 }}
                   />
                   <button className="btn outline" onClick={handleValidateToken} disabled={validating || !botToken}>

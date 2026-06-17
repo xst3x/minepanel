@@ -5,6 +5,7 @@ const fabricResolver = require('./resolvers/fabric');
 const forgeResolver = require('./resolvers/forge');
 const quiltResolver = require('./resolvers/quilt');
 const magmaResolver = require('./resolvers/magma');
+const bedrockResolvers = require('./resolvers/bedrock');
 
 const paperResolver = new PaperResolver('paper');
 const purpurResolver = new PurpurResolver();
@@ -33,7 +34,13 @@ async function fetchAllVersions() {
         fabric: [],
         forge: [],
         quilt: [],
-        magma: []
+        magma: [],
+        // Bedrock software (from GitHub releases via bedrock/ resolvers)
+        bedrock: [],       // Vanilla Bedrock Dedicated Server (BDS)
+        pocketmine: [],
+        nukkitx: [],
+        powernukkitx: [],
+        waterdogpe: [],
     };
 
     // 1. Vanilla & Snapshots
@@ -93,6 +100,18 @@ async function fetchAllVersions() {
         result.magma.sort(compareVersions);
     } catch (e) {
         console.error('[VersionFetcher] Failed to fetch Magma versions:', e.message);
+    }
+
+    // 8. Bedrock software (GitHub releases — parallel, isolated failures)
+    try {
+        const [bds, pm, nk, pnk, wd] = await bedrockResolvers.getAll();
+        if (bds?.version)  result.bedrock       = [bds.version];   // Vanilla BDS
+        if (pm?.version)   result.pocketmine   = [pm.version];
+        if (nk?.version)   result.nukkitx      = [nk.version];
+        if (pnk?.version)  result.powernukkitx = [pnk.version];
+        if (wd?.version)   result.waterdogpe   = [wd.version];
+    } catch (e) {
+        console.error('[VersionFetcher] Failed to fetch Bedrock software versions:', e.message);
     }
 
     return result;

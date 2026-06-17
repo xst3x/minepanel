@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm } from '../../components/Toast.jsx';
 import { marked } from 'marked';
+import PocketMinePlugins from './PocketMinePlugins.jsx';
 
 // Configure marked — safe, no gfm alerts, open links in new tab
 marked.setOptions({ breaks: true, gfm: true });
@@ -13,7 +14,9 @@ renderer.image = (href, title, text) =>
   `<img src="${href}" alt="${text || ''}"${title ? ` title="${title}"` : ''} style="max-width:100%;border-radius:6px;" />`;
 marked.use({ renderer });
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 60;
+const ROWS = 10;
+const CARD_MIN_W = 170;
 
 const VENDORS = [
   { id: 'modrinth', label: 'Modrinth', icon: '' },
@@ -42,7 +45,16 @@ const bytes = (n) => {
 };
 
 export default function Content() {
-  const { serverId } = useOutletContext();
+  const { serverId, serverInfo } = useOutletContext();
+
+  // ── PocketMine gate ───────────────────────────────────────────────────────
+  // If this server runs PocketMine-MP, hand off to the dedicated Poggit UI.
+  // The Java plugin system (Modrinth / Hangar) must never be shown for PocketMine,
+  // and the PocketMine UI must never appear for Java servers.
+  const isPocketMine = serverInfo?.software?.toLowerCase() === 'pocketmine';
+  if (isPocketMine) {
+    return <PocketMinePlugins serverId={serverId} />;
+  }
 
   // ── Installed ──────────────────────────────────────────────────────────────
   const [installedItems, setInstalledItems]   = useState([]);
@@ -69,6 +81,36 @@ export default function Content() {
   const searchInputRef   = useRef(null);
   const currentQueryRef  = useRef('');
   const currentCatRef    = useRef('popular');
+  const gridRef          = useRef(null);
+  const containerRef     = useRef(null); // always-mounted container
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+
+  const calcPageSize = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const w = el.offsetWidth;
+    const gap = 11;
+    const cols = Math.max(1, Math.floor((w + gap) / (CARD_MIN_W + gap)));
+    const newSize = cols * ROWS;
+    setPageSize(prev => prev === newSize ? prev : newSize);
+  }, []);
+
+  // Observe the always-mounted discover card container
+  useEffect(() => {
+    const ro = new ResizeObserver(calcPageSize);
+    if (containerRef.current) ro.observe(containerRef.current);
+    // Fallback: also listen to window resize
+    window.addEventListener('resize', calcPageSize);
+    // Retry after paint in case ref wasn't ready
+    const t1 = setTimeout(calcPageSize, 0);
+    const t2 = setTimeout(calcPageSize, 200);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', calcPageSize);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [calcPageSize]);
 
   // ── Installed ──────────────────────────────────────────────────────────────
   const loadInstalled = useCallback(async () => {
@@ -103,10 +145,11 @@ export default function Content() {
 
 
   // ── Search / browse ────────────────────────────────────────────────────────
-  const doSearch = useCallback(async (q, cat, page, activeVendor) => {
+  const doSearch = useCallback(async (q, cat, page, activeVendor, ps) => {
+    const limit = ps || pageSize || PAGE_SIZE;
     currentQueryRef.current = q;
     currentCatRef.current   = cat;
-    const off = page * PAGE_SIZE;
+    const off = page * limit;
     setOffset(off);
     setSearchLoading(true);
     setIncompatMsg('');
@@ -114,7 +157,7 @@ export default function Content() {
       if (activeVendor === 'modrinth') {
         const catParam = cat !== 'popular' ? cat : '';
         const data = await api(
-          `/api/servers/${serverId}/plugins/modrinth/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(catParam)}&limit=${PAGE_SIZE}&offset=${off}`
+          `/api/servers/${serverId}/plugins/modrinth/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(catParam)}&limit=${limit}&offset=${off}`
         );
         const h = data.hits || [];
         setHits(h);
@@ -122,7 +165,7 @@ export default function Content() {
         setResultBar(`${q ? `"${q}"` : cat} — ${(data.totalHits || h.length).toLocaleString()} results`);
       } else {
         const data = await api(
-          `/api/servers/${serverId}/plugins/hangar/search?q=${encodeURIComponent(q)}&limit=${PAGE_SIZE}&offset=${off}`
+          `/api/servers/${serverId}/plugins/hangar/search?q=${encodeURIComponent(q)}&limit=${limit}&offset=${off}`
         );
         if (data.incompatible) {
           setHits([]); setTotal(0);
@@ -137,7 +180,7 @@ export default function Content() {
       }
     } catch (e) { toast(e.message, 'error'); }
     finally { setSearchLoading(false); }
-  }, [serverId]);
+  }, [serverId, pageSize]);
 
   const loadCategory = useCallback((cat, page = 0, v = vendor) => {
     setActiveCategory(cat);
@@ -168,6 +211,13 @@ export default function Content() {
   };
 
   useEffect(() => { loadCategory('popular', 0, 'modrinth'); }, []);
+
+  // Re-fetch page 0 whenever pageSize is recalculated (grid resized)
+  const pageSizeInitRef = useRef(false);
+  useEffect(() => {
+    if (!pageSizeInitRef.current) { pageSizeInitRef.current = true; return; }
+    doSearch(currentQueryRef.current, currentCatRef.current, 0, vendor, pageSize);
+  }, [pageSize]);
 
   // ── Install ────────────────────────────────────────────────────────────────
   const getInstalledForProject = (projectId) =>
@@ -246,8 +296,8 @@ export default function Content() {
     } catch (e) { toast(e.message, 'error'); }
   };
 
-  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
-  const totalPages  = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const currentPage = Math.floor(offset / pageSize) + 1;
+  const totalPages  = Math.max(1, Math.ceil(total / pageSize));
   const categories  = vendor === 'modrinth' ? MODRINTH_CATEGORIES : HANGAR_CATEGORIES;
   const activeVendorMeta = VENDORS.find(v => v.id === vendor);
 
@@ -284,7 +334,7 @@ export default function Content() {
       </div>
 
       {/* ── Discover ──────────────────────────────────────────────────────── */}
-      <div className="card">
+      <div className="card" ref={containerRef}>
 
         {/* Vendor switcher */}
         <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', marginBottom:'1.25rem', flexWrap:'wrap' }}>
@@ -351,7 +401,7 @@ export default function Content() {
             {searchLoading
               ? <p className="text-muted">Loading...</p>
               : (
-                <div className="plugins-grid">
+                <div className="plugins-grid" ref={gridRef}>
                   {!hits.length && !incompatMsg
                     ? <p className="text-muted">No results found.</p>
                     : hits.map(hit => {
