@@ -417,7 +417,14 @@ router.get('/me', authenticateToken, async (req, res) => {
             attributes: ['id', 'username', 'role', 'avatar_url']
         });
         if (!user) return sendError(res, E.USER_NOT_FOUND, 404);
-        res.json({ id: user.id, username: user.username, role: user.role, avatarUrl: user.avatar_url || null });
+        const globalPerms = await getEffectivePermissions(req.user.id, null);
+        res.json({
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            avatarUrl: user.avatar_url || null,
+            globalPermissions: globalPerms,
+        });
     } catch (err) {
         logger.error(`[userRoutes] GET /me error (User: ${req.user.id}):`, err);
         return sendError(res, E.INTERNAL_ERROR, 500);

@@ -456,10 +456,13 @@ const EyeOffIcon = ({ size = 16 }) => (
                 </>
               ) : (
                 <div style={{ padding: '1rem', background: 'var(--bg-input)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Registration URL:</p>
-                  <code style={{ fontSize: '0.85rem', wordBreak: 'break-all', display: 'block', color: 'var(--accent)' }}>
-                    {window.location.origin}/register?token={generatedToken}
+                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Invite Token:</p>
+                  <code style={{ fontSize: '0.9rem', wordBreak: 'break-all', display: 'block', color: 'var(--accent)', letterSpacing: '0.04em' }}>
+                    {generatedToken}
                   </code>
+                  <p style={{ margin: '0.75rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    Share this token with the user. They enter it on the login page under "Create account".
+                  </p>
                 </div>
               )}
             </div>
@@ -472,9 +475,9 @@ const EyeOffIcon = ({ size = 16 }) => (
               ) : (
                 <>
                   <button className="btn outline" onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/register?token=${generatedToken}`);
-                    toast('Token URL copied!', 'success');
-                  }}>Copy Link</button>
+                    navigator.clipboard.writeText(generatedToken);
+                    toast('Token copied!', 'success');
+                  }}>Copy Token</button>
                   <button className="btn primary" onClick={() => setActiveModal(null)}>Done</button>
                 </>
               )}

@@ -216,7 +216,12 @@ export default function Panel() {
     xhr.send(fd);
   };
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' ||
+    (Array.isArray(user?.globalPermissions) && (
+      user.globalPermissions.includes('*') ||
+      user.globalPermissions.includes('root') ||
+      user.globalPermissions.includes('panel.settings')
+    ));
 
   return (
     <div className="page" style={{ padding: '2.25rem' }}>

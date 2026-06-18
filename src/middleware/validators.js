@@ -7,7 +7,7 @@ const Joi = require('joi');
 // ─── Reusable primitives ─────────────────────────────────────────────────────
 
 const username = Joi.string().trim().min(3).max(32).pattern(/^[a-zA-Z0-9_-]+$/).message('Username may only contain letters, numbers, underscores, and hyphens').required();
-const password = Joi.string().min(8).max(128).pattern(/[0-9]/).message('Password must be at least 8 characters and contain at least one number').required();
+const password = Joi.string().min(6).max(128).pattern(/[0-9]/).message('Password must be at least 6 characters and contain at least one number').required();
 const port     = Joi.number().integer().min(1024).max(65535).required();
 const ram      = Joi.number().integer().min(512).max(16384).required();
 

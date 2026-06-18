@@ -29,6 +29,16 @@ export default function Login() {
   const [fpErr, setFpErr] = useState('');
   const [fpBusy, setFpBusy] = useState(false);
 
+  // Register state
+  const [regUsername, setRegUsername] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirm, setRegConfirm] = useState('');
+  const [regToken, setRegToken] = useState('');
+  const [showRegPass, setShowRegPass] = useState(false);
+  const [showRegConfirm, setShowRegConfirm] = useState(false);
+  const [regErr, setRegErr] = useState('');
+  const [regBusy, setRegBusy] = useState(false);
+
   useEffect(() => {
     if (need2fa) document.getElementById('twofa')?.focus();
   }, [need2fa]);
@@ -96,6 +106,27 @@ export default function Login() {
     setFpNewPass('');
     setFpErr('');
     setFpShowPass(false);
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setRegErr('');
+    if (!regUsername || !regPassword || !regConfirm || !regToken) return setRegErr('All fields are required.');
+    if (regPassword !== regConfirm) return setRegErr('Passwords do not match.');
+    setRegBusy(true);
+    try {
+      await api('/api/auth/register', {
+        method: 'POST',
+        body: { username: regUsername, password: regPassword, confirmPassword: regConfirm, token: regToken }
+      });
+      // Auto-login after register
+      await login(regUsername, regPassword);
+      navigate(dest, { replace: true });
+    } catch (e) {
+      setRegErr(e.message || 'Registration failed.');
+    } finally {
+      setRegBusy(false);
+    }
   };
 
   const eyeBtn = (show, toggle) => (
@@ -175,10 +206,65 @@ export default function Login() {
                   {busy ? 'Signing in…' : 'Login'}
                 </button>
 
-                <div style={{ textAlign: 'center' }}>
+                <div style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '1.25rem' }}>
                   <button type="button" onClick={() => { setScreen('forgot_username'); setFpErr(''); }}
                     style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12.5px', cursor: 'pointer', textDecoration: 'underline' }}>
                     Forgot password?
+                  </button>
+                  <button type="button" onClick={() => { setScreen('register'); setRegErr(''); }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12.5px', cursor: 'pointer', textDecoration: 'underline' }}>
+                    Create account
+                  </button>
+                </div>
+              </form>
+            </>)}
+
+            {/* ── REGISTER SCREEN ── */}
+            {screen === 'register' && (<>
+              <p className="subtitle">Create your account using an invite token</p>
+              <form onSubmit={handleRegister}>
+                <div className="input-group">
+                  <label htmlFor="reg-token">Invite Token</label>
+                  <input id="reg-token" type="text" required autoComplete="off"
+                    value={regToken} onChange={e => setRegToken(e.target.value)}
+                    placeholder="Paste your invite token" autoFocus />
+                </div>
+                <div className="input-group">
+                  <label htmlFor="reg-username">Username</label>
+                  <input id="reg-username" type="text" required autoComplete="off"
+                    value={regUsername} onChange={e => setRegUsername(e.target.value)}
+                    placeholder="Choose a username" />
+                </div>
+                <div className="input-group">
+                  <label htmlFor="reg-password">Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input id="reg-password" type={showRegPass ? 'text' : 'password'} required
+                      value={regPassword} onChange={e => setRegPassword(e.target.value)}
+                      placeholder="Choose a password"
+                      style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
+                    {eyeBtn(showRegPass, () => setShowRegPass(v => !v))}
+                  </div>
+                </div>
+                <div className="input-group">
+                  <label htmlFor="reg-confirm">Confirm Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input id="reg-confirm" type={showRegConfirm ? 'text' : 'password'} required
+                      value={regConfirm} onChange={e => setRegConfirm(e.target.value)}
+                      placeholder="Confirm your password"
+                      style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
+                    {eyeBtn(showRegConfirm, () => setShowRegConfirm(v => !v))}
+                  </div>
+                </div>
+
+                {regErr && <div className="form-error" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{regErr}</div>}
+
+                <button type="submit" disabled={regBusy} className="btn primary full-width" style={{ marginBottom: '0.75rem' }}>
+                  {regBusy ? 'Creating account…' : 'Create Account'}
+                </button>
+                <div style={{ textAlign: 'center' }}>
+                  <button type="button" onClick={() => setScreen('login')}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12.5px', cursor: 'pointer', textDecoration: 'underline' }}>
+                    Back to login
                   </button>
                 </div>
               </form>

@@ -123,7 +123,12 @@ export default function AppLayout() {
     document.documentElement.setAttribute('data-theme', themeMode);
   }, [themeMode]);
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' ||
+    (Array.isArray(user?.globalPermissions) && (
+      user.globalPermissions.includes('*') ||
+      user.globalPermissions.includes('root') ||
+      user.globalPermissions.includes('panel.settings')
+    ));
 
   const handleLogout = async () => {
     await logout();

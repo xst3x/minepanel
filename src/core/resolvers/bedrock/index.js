@@ -41,27 +41,27 @@ async function getAll() {
         waterdogResult,
     ] = await Promise.all([
         bedrock.getLatestVersion().catch(e => {
-            console.warn('[bedrock/index] Bedrock (vanilla) failed:', e.message);
+            if (process.env.NODE_ENV !== 'test') console.warn('[bedrock/index] Bedrock (vanilla) failed:', e.message);
             return null;
         }),
         bedrockPreview.getLatestVersion().catch(e => {
-            console.warn('[bedrock/index] Bedrock (preview) failed:', e.message);
+            if (process.env.NODE_ENV !== 'test') console.warn('[bedrock/index] Bedrock (preview) failed:', e.message);
             return null;
         }),
         pocketmine.getLatestRelease().catch(e => {
-            console.warn('[bedrock/index] PocketMine failed:', e.message);
+            if (process.env.NODE_ENV !== 'test') console.warn('[bedrock/index] PocketMine failed:', e.message);
             return null;
         }),
         nukkit.getLatestRelease().catch(e => {
-            console.warn('[bedrock/index] NukkitX failed:', e.message);
+            if (process.env.NODE_ENV !== 'test') console.warn('[bedrock/index] NukkitX failed:', e.message);
             return null;
         }),
         powerNukkit.getLatestRelease().catch(e => {
-            console.warn('[bedrock/index] PowerNukkitX failed:', e.message);
+            if (process.env.NODE_ENV !== 'test') console.warn('[bedrock/index] PowerNukkitX failed:', e.message);
             return null;
         }),
         waterdog.getLatestRelease().catch(e => {
-            console.warn('[bedrock/index] WaterdogPE failed:', e.message);
+            if (process.env.NODE_ENV !== 'test') console.warn('[bedrock/index] WaterdogPE failed:', e.message);
             return null;
         }),
     ]);
