@@ -151,8 +151,11 @@ export default function AppLayout() {
         </div>
         <div className="mobile-user-circle"
           onClick={() => setIsUserDropdownOpen(v => !v)}
-          onTouchEnd={e => { e.preventDefault(); setIsUserDropdownOpen(v => !v); }}>
-          {user?.username?.substring(0, 2).toUpperCase() || 'US'}
+          onTouchEnd={e => { e.preventDefault(); setIsUserDropdownOpen(v => !v); }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
         </div>
         {isUserDropdownOpen && (
           <>
@@ -200,7 +203,7 @@ export default function AppLayout() {
           </Link>
 
           {/* SERVERS */}
-          <div className="sidebar-section">
+          <div className="sidebar-section sidebar-section-servers">
             <div className="sidebar-section-title">
               <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <ellipse cx="12" cy="5" rx="9" ry="3"/>
@@ -230,23 +233,23 @@ export default function AppLayout() {
                 </Link>
               );
             })}
-            {isAdmin && (
-              <>
-                <Link to="/panel?action=create" className="sidebar-item sidebar-create" onClick={() => setIsMobileMenuOpen(false)}>
-                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
-                  </svg>
-                  Create Server
-                </Link>
-                <Link to="/panel?action=import" className="sidebar-item sidebar-add" onClick={() => setIsMobileMenuOpen(false)}>
-                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                  </svg>
-                  Import Server
-                </Link>
-              </>
-            )}
           </div>
+          {isAdmin && (
+            <div className="sidebar-section" style={{ borderTop: 'none', paddingTop: 0 }}>
+              <Link to="/panel?action=create" className="sidebar-item sidebar-create" onClick={() => setIsMobileMenuOpen(false)}>
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
+                Create Server
+              </Link>
+              <Link to="/panel?action=import" className="sidebar-item sidebar-add" onClick={() => setIsMobileMenuOpen(false)}>
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Import Server
+              </Link>
+            </div>
+          )}
 
           {/* GLOBAL */}
           <div className="sidebar-section">
@@ -290,7 +293,6 @@ export default function AppLayout() {
             </NavLink>
           </div>
 
-          <div style={{ flex: 1 }} />
 
           {/* Footer */}
           <div className="sidebar-footer">

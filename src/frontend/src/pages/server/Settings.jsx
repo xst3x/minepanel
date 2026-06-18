@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm, showPrompt } from '../../components/Toast.jsx';
+import Select from '../../components/Select.jsx';
 
 export default function ServerSettings() {
   const { serverId, serverInfo, status, hasPerm, reloadServerInfo } = useOutletContext();
@@ -207,10 +208,9 @@ export default function ServerSettings() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem', alignItems: 'flex-end' }}>
             <div className="form-group" style={{ margin: 0 }}>
               <label>New Engine Software</label>
-              <select
+              <Select
                 value={newSoftware}
                 onChange={(e) => { setNewSoftware(e.target.value); setNewVersion(''); }}
-                style={{ width: '100%', height: '38px', padding: '0 0.75rem' }}
               >
                 <option value="vanilla">Vanilla</option>
                 <option value="snapshots">Vanilla Snapshots</option>
@@ -221,21 +221,21 @@ export default function ServerSettings() {
                 <option value="quilt">Quilt</option>
                 <option value="magma">Magma</option>
                 <option value="bedrock">Bedrock (Native)</option>
-              </select>
+              </Select>
             </div>
             <div className="form-group" style={{ margin: 0 }}>
               <label>New Minecraft Version</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <select
+                <Select
                   value={newVersion}
                   onChange={(e) => setNewVersion(e.target.value)}
-                  style={{ flex: 1, height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
+                  style={{ flex: 1 }}
                 >
                   <option value="">Select version</option>
                   {availableVersions.map(v => (
                     <option key={v} value={v}>{v}</option>
                   ))}
-                </select>
+                </Select>
                 <button
                   type="button"
                   className="btn outline"

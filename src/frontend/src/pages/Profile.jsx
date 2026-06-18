@@ -1,7 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
+import { toast } from '../components/Toast.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function Profile() {
+  const { refresh } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -10,6 +13,13 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordUpdating, setPasswordUpdating] = useState(false);
+
+  // Username change form states
+  const [newUsername, setNewUsername] = useState('');
+  const [confirmUsername, setConfirmUsername] = useState('');
+  const [usernameUpdating, setUsernameUpdating] = useState(false);
+
+
 
   // 2FA states
   const [twoFaStatus, setTwoFaStatus] = useState({ configured: false, enabled: false });
@@ -31,8 +41,7 @@ export default function Profile() {
   const [regenStep, setRegenStep] = useState('input'); // 'input' | 'result'
   const [regenBackupCodes, setRegenBackupCodes] = useState([]);
 
-  // Avatar file upload
-  const fileInputRef = useRef(null);
+
 
   useEffect(() => {
     loadProfile();
@@ -60,8 +69,8 @@ export default function Profile() {
   };
 
   const handleUpdatePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) return alert('All fields are required');
-    if (newPassword !== confirmPassword) return alert("Passwords don't match");
+    if (!currentPassword || !newPassword || !confirmPassword) { toast('All fields are required', 'warning'); return; }
+    if (newPassword !== confirmPassword) { toast("Passwords don't match", 'warning'); return; }
 
     setPasswordUpdating(true);
     try {
@@ -69,54 +78,48 @@ export default function Profile() {
         method: 'POST',
         body: { currentPassword, newPassword }
       });
-      alert('Password updated successfully!');
+      toast('Password updated successfully!', 'success');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err) {
-      alert(err.message || 'Failed to update password');
+      toast(err.message || 'Failed to update password', 'error');
     } finally {
       setPasswordUpdating(false);
     }
   };
 
-  // Upload avatar photo
-  const handleUploadAvatar = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleUpdateUsername = async () => {
+    if (!newUsername || !confirmUsername) {
+      toast('All fields are required', 'warning');
+      return;
+    }
+    if (newUsername !== confirmUsername) {
+      toast("Usernames don't match", 'warning');
+      return;
+    }
 
-    const fd = new FormData();
-    fd.append('avatar', file);
-
+    setUsernameUpdating(true);
     try {
-      alert('Uploading avatar...');
-      await api('/api/users/me/avatar', {
+      await api('/api/users/me/username', {
         method: 'POST',
-        body: fd
+        body: { newUsername }
       });
-      alert('Avatar updated successfully!');
-      loadProfile();
-      // Force reload sidebar avatar
-      const navAvatar = document.getElementById('sidebar-user-avatar');
-      if (navAvatar) {
-        navAvatar.src = `${navAvatar.src.split('?')[0]}?t=${Date.now()}`;
-      }
+      toast('Username updated successfully!', 'success');
+      setNewUsername('');
+      setConfirmUsername('');
+      await refresh();
+      await loadProfile();
     } catch (err) {
-      alert('Avatar upload failed: ' + err.message);
+      toast(err.message || 'Failed to update username', 'error');
+    } finally {
+      setUsernameUpdating(false);
     }
   };
 
-  // Delete avatar
-  const handleDeleteAvatar = async () => {
-    if (!confirm('Delete profile photo?')) return;
-    try {
-      await api('/api/users/me/avatar', { method: 'DELETE' });
-      alert('Profile photo deleted.');
-      loadProfile();
-    } catch (err) {
-      alert('Failed to delete avatar: ' + err.message);
-    }
-  };
+
+
+
 
   // Open 2FA Setup
   const handleOpenSetup = async () => {
@@ -129,12 +132,12 @@ export default function Profile() {
       setSetupBackupCodes([]);
       setActiveModal('setup');
     } catch (err) {
-      alert(err.message);
+      toast(err.message, 'error');
     }
   };
 
   const handleVerifySetupCode = async () => {
-    if (!setupCode || setupCode.length !== 6) return alert('Enter the 6-digit code from your app');
+    if (!setupCode || setupCode.length !== 6) return toast('Enter the 6-digit code from your app', 'warning');
     setActionLoading(true);
     try {
       const d = await api('/api/auth/2fa/verify', {
@@ -144,9 +147,9 @@ export default function Profile() {
       setSetupBackupCodes(d.backupCodes || []);
       setSetupStep('backup');
       setTwoFaStatus({ configured: true, enabled: twoFaStatus.enabled });
-      alert('Authenticator configured successfully!');
+      toast('Authenticator configured successfully!', 'success');
     } catch (err) {
-      alert(err.message);
+      toast(err.message, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -159,9 +162,9 @@ export default function Profile() {
         body: { enable: checked }
       });
       setTwoFaStatus(prev => ({ ...prev, enabled: checked }));
-      alert(checked ? '2FA login protection enabled.' : '2FA login protection disabled.');
+      toast(checked ? '2FA login protection enabled.' : '2FA login protection disabled.', 'success');
     } catch (err) {
-      alert('Failed to toggle 2FA: ' + err.message);
+      toast('Failed to toggle 2FA: ' + err.message, 'error');
     }
   };
 
@@ -171,18 +174,18 @@ export default function Profile() {
   };
 
   const handleConfirmDisable = async () => {
-    if (!disablePassword) return alert('Password is required');
+    if (!disablePassword) { toast('Password is required', 'warning'); return; }
     setActionLoading(true);
     try {
       await api('/api/auth/2fa/disable', {
         method: 'POST',
         body: { password: disablePassword }
       });
-      alert('Authenticator removed.');
+      toast('Authenticator removed.', 'success');
       setTwoFaStatus({ configured: false, enabled: false });
       setActiveModal(null);
     } catch (err) {
-      alert('Failed to remove authenticator: ' + err.message);
+      toast('Failed to remove authenticator: ' + err.message, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -196,7 +199,7 @@ export default function Profile() {
   };
 
   const handleConfirmRegenCodes = async () => {
-    if (!regenTotpCode) return alert('Enter your authenticator code');
+    if (!regenTotpCode) return toast('Enter your authenticator code', 'warning');
     setActionLoading(true);
     try {
       const d = await api('/api/auth/2fa/regenerate-backup-codes', {
@@ -206,7 +209,7 @@ export default function Profile() {
       setRegenBackupCodes(d.backupCodes || []);
       setRegenStep('result');
     } catch (err) {
-      alert(err.message);
+      toast(err.message, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -214,7 +217,7 @@ export default function Profile() {
 
   const handleCopyCodes = (codes) => {
     navigator.clipboard.writeText(codes.join('\n'));
-    alert('Codes copied to clipboard!');
+    toast('Codes copied to clipboard!', 'success');
   };
 
   return (
@@ -226,42 +229,36 @@ export default function Profile() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
           
-          {/* Identity & Profile Photo */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <h3 style={{ margin: 0 }}>Profile Photo</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-              <img
-                src={profile?.avatar || ''}
-                alt=""
-                style={{ width: '80px', height: '80px', borderRadius: '50%', border: '3px solid var(--accent)', background: 'var(--bg-input)' }}
-                onError={(e) => {
-                  e.target.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><rect width='80' height='80' fill='%23333'><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='26' fill='%23aaa'>${(profile?.username || '?')[0].toUpperCase()}</text></rect></svg>`;
-                }}
+          {/* Change Username Card */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ margin: 0 }}>Change Username</h3>
+              <span className="rank-badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                Global Role: {profile?.role}
+              </span>
+            </div>
+            
+            <div className="form-group">
+              <label>New Username</label>
+              <input
+                type="text"
+                value={newUsername}
+                onChange={e => setNewUsername(e.target.value)}
+                placeholder="New username"
               />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <button className="btn outline small" onClick={() => fileInputRef.current?.click()}>Upload Photo</button>
-                {profile?.avatar && <button className="btn danger small" onClick={handleDeleteAvatar}>Delete Photo</button>}
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={handleUploadAvatar}
-                />
-              </div>
             </div>
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '0.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Username</span>
-                <strong>{profile?.username}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Global Role</span>
-                <span className="rank-badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                  {profile?.role}
-                </span>
-              </div>
+            <div className="form-group">
+              <label>Confirm New Username</label>
+              <input
+                type="text"
+                value={confirmUsername}
+                onChange={e => setConfirmUsername(e.target.value)}
+                placeholder="Confirm new username"
+              />
             </div>
+            <button className="btn primary full-width" onClick={handleUpdateUsername} disabled={usernameUpdating}>
+              {usernameUpdating ? 'Updating...' : 'Update Username'}
+            </button>
           </div>
 
           {/* Change Password Card */}

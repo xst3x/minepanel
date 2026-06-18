@@ -1,120 +1,163 @@
-# MinePanel Frontend (React + Vite + react-router-dom)
+# MinePanel Frontend (React + Vite)
 
-A pure React + Vite migration scaffold for the MinePanel frontend, designed to talk to your **existing Express backend** unchanged. No TanStack, no Lovable runtime — fully local, no vendor lock-in.
+**A modern, production‑ready React + Vite scaffold for the MinePanel UI**. It works out‑of‑the‑box with the existing Express backend and follows a clean, component‑driven architecture.
 
-## Run locally
+---
 
+## 📦 Prerequisites
+- **Node.js** ≥ 18 (recommended LTS)
+- **npm** (or `pnpm`/`yarn` if you prefer – the scripts are npm‑compatible)
+- The **MinePanel Express backend** running (default `http://localhost:8082`).
+
+---
+
+## 🚀 Quick start (development)
 ```bash
-# 1. Install
+# 1️⃣ Install dependencies
 npm install
 
-# 2. Start your existing Express backend (defaults to port 8082)
-#    cd ../   &&   node index.js
+# 2️⃣ Start the backend (from the project root)
+cd ../ && node index.js   # defaults to port 8082
 
-# 3. Start the React dev server
-npm run dev
-# Open http://localhost:5173
+# 3️⃣ Launch the Vite dev server
+npm run dev   # http://localhost:5173
 ```
-
-Vite proxies these paths to your Express backend (see `vite.config.js`):
+The dev server proxies the following paths to the backend (see `vite.config.js`):
 - `/api/*`
 - `/assets/*`
 - `/avatars/*`
 
-Override the backend URL if needed:
+If your backend runs on a different host/port, override the URL:
 ```bash
 BACKEND_URL=http://localhost:9000 npm run dev
 ```
 
-## Production build
+---
 
+## 📦 Production build
 ```bash
-npm run build
-# Output in dist/ — serve via your Express backend (e.g. app.use(express.static('dist')))
-# Make sure unknown routes fall back to dist/index.html so client-side routing works.
+npm run build   # bundles the app into the `dist/` folder
+```
+Serve the static files from your Express app, for example:
+```js
+const express = require('express');
+const path = require('path');
+const app = express();
+
+app.use(express.static('dist'));
+// SPA fallback – ensure client‑side routing works
+app.get('*', (req, res) =>
+  res.sendFile(path.join(__dirname, 'dist', 'index.html')));
 ```
 
-## Project layout
+---
 
+## 📁 Project layout
 ```
 src/
-  main.jsx                 # React entry, mounts <BrowserRouter><AuthProvider><App/></AuthProvider></BrowserRouter>
-  App.jsx                  # All routes (react-router-dom v6)
-  lib/api.js               # fetch wrapper + Bearer token storage (localStorage 'mp_token')
-  context/AuthContext.jsx  # login/logout/me, exposes useAuth()
+  main.jsx               # React entry – mounts <BrowserRouter> & <AuthProvider>
+  App.jsx                # Top‑level route definitions (react‑router‑dom v6)
+  lib/api.js             # Central fetch wrapper – injects Bearer token from localStorage (`mp_token`)
+  context/AuthContext.jsx# Auth flow – login, logout, token refresh, `useAuth()` hook
   components/
-    RequireAuth.jsx        # Redirects to /login if no session
-    AppLayout.jsx          # Sidebar + <Outlet/> for authenticated routes
-    ServerLayout.jsx       # Tabs for /server/:id/* with <Outlet/>
+    RequireAuth.jsx      # Guard – redirects to /login when unauthenticated
+    AppLayout.jsx        # Sidebar + <Outlet> for authenticated routes
+    ServerLayout.jsx     # Server‑tab layout – nested <Outlet> for /server/:id/*
+    Select.jsx           # Custom dropdown rendered via React Portal (prevents clipping)
   pages/
-    Login.jsx              # Fully ported (POST /api/auth/login, supports 2FA)
-    Panel.jsx Servers.jsx Users.jsx Ranks.jsx Settings.jsx
-    Discord.jsx Docs.jsx Profile.jsx
+    Login.jsx            # Login page with optional 2FA
+    Panel.jsx            # Dashboard overview
+    Servers.jsx          # Server list & creation
+    Users.jsx            # User management
+    Ranks.jsx            # Rank management
+    Settings.jsx         # Global settings
+    Discord.jsx          # Discord integration page
+    Docs.jsx             # Documentation page
+    Profile.jsx          # User profile page
     server/
-      Overview.jsx Console.jsx Files.jsx Content.jsx
-      Properties.jsx Backups.jsx Logs.jsx Settings.jsx Ftp.jsx
-  styles/style.css         # Original CSS, copied 1:1 — source of truth for design
-  legacy/                  # Original vanilla frontend, kept for reference
-    index.html             # Original markup — copy section HTML into pages as you port
-    js/*.js                # Original modules (~14k lines) — port logic into React pages
+      Overview.jsx
+      Console.jsx
+      Files.jsx
+      Content.jsx
+      Properties.jsx
+      Backups.jsx
+      Logs.jsx
+      Settings.jsx
+      Ftp.jsx
+  styles/style.css       # Design system – CSS variables, glass‑morphism, gradients, etc.
+  legacy/                # Original vanilla frontend (reference only)
 ```
 
-## Routes
+---
 
-| Path                          | Component                |
-| ----------------------------- | ------------------------ |
-| `/login`                      | `pages/Login.jsx`        |
-| `/panel`                      | `pages/Panel.jsx`        |
-| `/servers`                    | `pages/Servers.jsx`      |
-| `/users`                      | `pages/Users.jsx`        |
-| `/ranks`                      | `pages/Ranks.jsx`        |
-| `/settings`                   | `pages/Settings.jsx`     |
-| `/discord`                    | `pages/Discord.jsx`      |
-| `/docs`                       | `pages/Docs.jsx`         |
-| `/profile`                    | `pages/Profile.jsx`      |
-| `/server/:id/overview`        | `pages/server/Overview.jsx` |
-| `/server/:id/console`         | `pages/server/Console.jsx`  |
-| `/server/:id/files`           | `pages/server/Files.jsx`    |
-| `/server/:id/content`         | `pages/server/Content.jsx`  |
-| `/server/:id/properties`      | `pages/server/Properties.jsx` |
-| `/server/:id/backups`         | `pages/server/Backups.jsx`  |
-| `/server/:id/logs`            | `pages/server/Logs.jsx`     |
-| `/server/:id/settings`        | `pages/server/Settings.jsx` |
-| `/server/:id/ftp`             | `pages/server/Ftp.jsx`      |
+## 🔀 Routing table
+| Path | Component |
+|------|-----------|
+| `/login` | `pages/Login.jsx` |
+| `/panel` | `pages/Panel.jsx` |
+| `/servers` | `pages/Servers.jsx` |
+| `/users` | `pages/Users.jsx` |
+| `/ranks` | `pages/Ranks.jsx` |
+| `/settings` | `pages/Settings.jsx` |
+| `/discord` | `pages/Discord.jsx` |
+| `/docs` | `pages/Docs.jsx` |
+| `/profile` | `pages/Profile.jsx` |
+| `/server/:id/overview` | `pages/server/Overview.jsx` |
+| `/server/:id/console` | `pages/server/Console.jsx` |
+| `/server/:id/files` | `pages/server/Files.jsx` |
+| `/server/:id/content` | `pages/server/Content.jsx` |
+| `/server/:id/properties` | `pages/server/Properties.jsx` |
+| `/server/:id/backups` | `pages/server/Backups.jsx` |
+| `/server/:id/logs` | `pages/server/Logs.jsx` |
+| `/server/:id/settings` | `pages/server/Settings.jsx` |
+| `/server/:id/ftp` | `pages/server/Ftp.jsx` |
 
-## What's done
+---
 
-- ✅ Vite + React 18 + react-router-dom v6, no framework lock-in
-- ✅ Dev proxy to Express on `:8082`
-- ✅ Original `style.css` imported verbatim — visual design unchanged
-- ✅ Theme + accent bootstrap script preserved in `index.html`
-- ✅ Auth flow: login form, 2FA prompt, token stored, `/api/auth/me` hydration, logout
-- ✅ Route guard (`RequireAuth`) + sidebar layout + nested server-tab layout
-- ✅ All 9 top-level + 9 nested server routes registered as real React Router routes (replacing the old show/hide section pattern)
-- ✅ Original HTML and JS preserved under `src/legacy/` as your porting reference
+## ✅ Completed features
+- Vite + React 18 scaffold with react‑router‑dom v6 routing
+- Development proxy to the Express backend (`:8082` by default)
+- Full import of the original `style.css` – visual design unchanged
+- Theme & accent bootstrap script preserved in `index.html`
+- Authentication flow: login, optional 2FA, token storage, `/api/auth/me` hydration, logout
+- Route guard (`RequireAuth`) + persistent sidebar layout
+- Nested server‑tab layout (`ServerLayout.jsx`)
+- Legacy HTML/JS kept under `src/legacy/` for reference
 
-## What's left — the iterative work
+---
 
-Your old frontend is ~14,000 lines of vanilla JS across 9 modules tightly coupled to a single 1,900-line `index.html`. Faithfully porting every panel can't be done in one pass without risking regressions. Each page under `src/pages/` is currently a stub that points you at the legacy file to port.
+## 🛠️ Recent UI adjustments (for reference)
+- **Primary button** – gradient removed; now uses a solid `var(--accent)` background for a cleaner look.
+- **Dropdowns** – rendered through a React Portal to avoid clipping inside overflow‑hidden containers.
+- **Server Icon card** – the unused **“Choose Item”** button was removed; the card now only offers **Upload PNG** and **Remove** actions.
 
-**Recommended porting order** (each is a self-contained step):
+---
 
-1. **`Panel.jsx`** — dashboard stats. Grab the `#dashboard-view` section from `legacy/index.html`, convert to JSX, fetch from `/api/system/...` and `/api/stats/...` via `api()`.
-2. **`Servers.jsx`** — server list + create flow. Use `/api/servers`.
-3. **`server/Overview.jsx` + `server/Console.jsx`** — the console likely uses a WebSocket / SSE; reuse the same endpoint from `legacy/js/core.js`. WebSocket proxying is enabled (`ws: true` in vite.config.js).
-4. **`server/Files.jsx`** + **`Content.jsx`** + **`Properties.jsx`** — file manager and editors (CodeMirror is already linked in `index.html`).
-5. **`server/Backups.jsx` / `Logs.jsx` / `Ftp.jsx` / `Settings.jsx`** — straightforward CRUD against existing routes.
-6. **`Users.jsx` / `Ranks.jsx` / `Settings.jsx` / `Profile.jsx`** — admin pages; reuse `legacy/js/account2fa.js` logic for 2FA setup.
-7. **`Discord.jsx`** — port `legacy/js/discord.js` + `discord-bots.js`.
+## 📸 Screenshots
+
+![Server Icon Card](C:/Users/stefa/Desktop/MinePanel/github-assets/server-icon.png)
+
+![Primary Button Example](C:/Users/stefa/Desktop/MinePanel/github-assets/primary-button.png)
+
+## 📋 Migration roadmap – legacy to React
+The original vanilla frontend (~14 k lines) is kept in `src/legacy/`. Each page under `src/pages/` is a stub that references its legacy counterpart. Follow the steps below to incrementally replace legacy code with React components.
+
+### Recommended order (self‑contained steps)
+1. **`Panel.jsx`** – dashboard statistics. Extract the `#dashboard-view` markup from `legacy/index.html`, convert to JSX, and fetch data via `/api/system/...` and `/api/stats/...`.
+2. **`Servers.jsx`** – server list & creation flow (`/api/servers`).
+3. **`server/Overview.jsx` & `server/Console.jsx`** – console (WebSocket/SSE). Proxy support is already enabled in `vite.config.js`.
+4. **`server/Files.jsx`, `server/Content.jsx`, `server/Properties.jsx`** – file manager and editors (CodeMirror already linked).
+5. **`server/Backups.jsx`, `server/Logs.jsx`, `server/Ftp.jsx`, `server/Settings.jsx`** – straightforward CRUD against existing endpoints.
+6. **Admin pages** – `Users.jsx`, `Ranks.jsx`, `Settings.jsx`, `Profile.jsx`. Reuse the legacy 2FA logic where applicable.
+7. **`Discord.jsx`** – port legacy Discord bot integration.
 
 ### Porting pattern per page
-
 ```jsx
-// 1. Copy the relevant <div class="view"> from legacy/index.html into JSX
+// 1️⃣ Copy the relevant <div class="view"> from legacy/index.html into JSX
 //    (class → className, for → htmlFor, style="x: y" → style={{ x: 'y' }})
-// 2. Replace document.getElementById(...).addEventListener('click', ...) with React handlers
-// 3. Replace fetch('/api/...') with our api() helper (adds Bearer token automatically)
-// 4. Use useState/useEffect for state previously held in module-scope variables
+// 2️⃣ Replace direct DOM event listeners with React handlers.
+// 3️⃣ Swap raw `fetch('/api/...')` calls for the centralized `api()` helper (adds Bearer token automatically).
+// 4️⃣ Migrate module‑scoped state to `useState`/`useEffect` hooks.
 
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
@@ -122,19 +165,26 @@ import { api } from '../lib/api.js';
 export default function Servers() {
   const [servers, setServers] = useState([]);
   useEffect(() => { api('/api/servers').then(setServers); }, []);
-  return (/* JSX from legacy markup */);
+  return (/* JSX generated from legacy markup */);
 }
 ```
 
-### Backend tweaks you may need
+---
 
-- **CORS** during dev: the Vite proxy handles same-origin so you usually won't need any CORS changes.
-- **SPA fallback** in production: when serving `dist/` from Express, add a catch-all so client routes refresh correctly:
-  ```js
-  app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'index.html')));
-  ```
-- **`/api/auth/me`**: the AuthContext expects a GET endpoint that returns the current user from the bearer token. If your backend uses a different shape, adjust `AuthContext.jsx`.
+## 🗂️ Backend considerations
+- **CORS** – handled by Vite proxy during development; no changes required.
+- **SPA fallback** – in production, ensure Express serves `dist/index.html` for unknown routes (see the snippet above).
+- **`/api/auth/me`** – must return the current user based on the Bearer token; adjust `AuthContext.jsx` if the response shape differs.
 
-## Why this scaffold and not a "complete" port
+---
 
-A line-by-line conversion of 14k lines of imperative DOM-mutating code into idiomatic React isn't a single deliverable — it's a refactor that benefits from being done module-by-module with you reviewing each one against the live UI. This scaffold gives you the structural foundation (routing, auth, styling, API plumbing) so each feature port is a small, isolated change.
+## 🤝 Contributing
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feat/your-feature`).
+3. Follow the migration pattern when adding new pages.
+4. Run `npm run lint` and ensure tests (if any) pass.
+5. Open a pull request with a concise description of the change.
+
+---
+
+*This README is intended for developers working on the MinePanel frontend. It provides an overview of the scaffold, recent UI changes, and a clear migration path from the legacy codebase.*

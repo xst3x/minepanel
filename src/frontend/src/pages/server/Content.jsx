@@ -426,7 +426,7 @@ export default function Content() {
                               </div>
                             </div>
                           </div>
-                          <div className="plugin-desc">{hit.description}</div>
+                          <div className="markdown-body plugin-description"><div className="plugin-desc" dangerouslySetInnerHTML={{ __html: marked.parse(hit.description) }}></div></div>
                           <div className="plugin-card-meta">
                             <span>{(hit.downloads || 0).toLocaleString()} downloads</span>
                             <span>{hit.project_type || 'plugin'}</span>
@@ -522,13 +522,15 @@ export default function Content() {
 
                   <div className="plugin-detail-columns">
                     <section className="plugin-readme">
-                      {detailProject.body
-                        ? <div dangerouslySetInnerHTML={{
-                            __html: hit.source === 'hangar'
-                              ? marked.parse(detailProject.body)
-                              : detailProject.body.slice(0, 20000)
-                          }} />
-                        : <p className="text-muted">No description provided.</p>}
+                      <div className="markdown-body plugin-description">
+                        {detailProject.body
+                          ? <div dangerouslySetInnerHTML={{
+                              __html: hit.source === 'hangar'
+                                ? marked.parse(detailProject.body)
+                                : marked.parse(detailProject.body.slice(0, 20000))
+                            }} />
+                          : <p className="text-muted">No description provided.</p>}
+                      </div>
                     </section>
                     <aside className="plugin-versions">
                       <h3>Versions</h3>

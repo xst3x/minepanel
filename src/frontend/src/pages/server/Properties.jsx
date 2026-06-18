@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm } from '../../components/Toast.jsx';
+import Select from '../../components/Select.jsx';
 
 const MC_COLORS = [
   { code: '0', hex: '#000000', name: 'Black' },
@@ -366,17 +367,17 @@ export default function ServerProperties() {
       } else if (enumOpts) {
         const currentNorm = normalizeVal(v);
         inputEl = (
-          <select
+          <Select
             value={v}
             onChange={(e) => handlePropChange(k, e.target.value)}
-            style={{ width: '180px', padding: '6px 10px', fontSize: '13px', height: 'auto' }}
+            style={{ width: '180px' }}
           >
             {enumOpts.map(o => (
               <option key={o} value={o}>
                 {o.replace('minecraft:', '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
               </option>
             ))}
-          </select>
+          </Select>
         );
       } else if (!isNaN(v) && v !== '') {
         inputEl = (
@@ -415,7 +416,7 @@ export default function ServerProperties() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0 }}>Server Icon</h3>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button className="btn outline small" onClick={handleOpenItemPicker}>Choose Item</button>
+
             <button className="btn outline small" onClick={() => fileInputRef.current?.click()}>Upload PNG</button>
             {iconUrl && <button className="btn danger small" onClick={handleRemoveIcon}>Remove</button>}
           </div>

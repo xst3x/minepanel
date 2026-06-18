@@ -155,42 +155,9 @@ export default function ServerOverview() {
         </div>
       </div>
 
-      {/* ── Bottom row: Quick Actions + FTP ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: ftpInfo?.enabled ? '1fr 1fr' : '1fr', gap: '1.25rem' }}>
-
-        {/* Quick Actions */}
-        <div className="card">
-          <h3 style={{ marginBottom: '0.85rem' }}>Quick Actions</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
-            {hasPerm('server.console.read') && (
-              <button className="btn outline full-width" onClick={() => navigate('../console')}>
-                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-                Console
-              </button>
-            )}
-            {hasPerm('server.files.read') && (
-              <button className="btn outline full-width" onClick={() => navigate('../files')}>
-                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                Files
-              </button>
-            )}
-            {hasPerm('server.backups.read') && (
-              <button className="btn outline full-width" onClick={handleCreateBackup}>
-                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-                Backup
-              </button>
-            )}
-            {hasPerm('server.properties.read') && (
-              <button className="btn outline full-width" onClick={() => navigate('../properties')}>
-                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 4.6a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 .33 1.65 1.65 0 0 0 10 1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                Properties
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* FTP Access */}
-        {ftpInfo?.enabled && (
+      {/* ── Bottom row: FTP ── */}
+      {ftpInfo?.enabled && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.25rem' }}>
           <div className="card">
             <h3 style={{ marginBottom: '0.85rem' }}>FTP Access</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
@@ -210,8 +177,8 @@ export default function ServerOverview() {
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
     </div>
   );

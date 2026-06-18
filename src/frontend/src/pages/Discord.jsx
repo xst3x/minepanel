@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
+import { toast, showConfirm } from '../components/Toast.jsx';
 
 export default function Discord() {
   const [bots, setBots] = useState([]);
@@ -33,7 +34,7 @@ export default function Discord() {
       const srvs = await api('/api/discord/bots/servers');
       setServers(srvs || []);
     } catch (err) {
-      alert('Failed to load Discord bots: ' + err.message);
+      toast('Failed to load Discord bots: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -63,23 +64,23 @@ export default function Discord() {
         method: 'POST',
         body: { enabled: checked }
       });
-      alert(`Bot ${checked ? 'enabled' : 'disabled'}`);
+      toast(`Bot ${checked ? 'enabled' : 'disabled'}`, 'success');
       // Refresh list after brief delay
       setTimeout(loadBots, 1500);
     } catch (err) {
-      alert('Failed to toggle bot status: ' + err.message);
+      toast('Failed to toggle bot status: ' + err.message, 'error');
       loadBots(); // reload list
     }
   };
 
   const handleDeleteBot = async (bot) => {
-    if (!confirm(`Delete bot "${bot.username || 'Bot'}"? This will remove all its Discord channels and roles.`)) return;
+    if (!await showConfirm(`Delete bot "${bot.username || 'Bot'}"? This will remove all its Discord channels and roles.`)) return;
     try {
       await api(`/api/discord/bots/${bot.id}`, { method: 'DELETE' });
-      alert('Bot deleted.');
+      toast('Bot deleted.', 'success');
       loadBots();
     } catch (err) {
-      alert('Failed to delete bot: ' + err.message);
+      toast('Failed to delete bot: ' + err.message, 'error');
     }
   };
 
@@ -94,12 +95,12 @@ export default function Discord() {
       });
       if (res.valid && res.bot) {
         setValidatedBot(res.bot);
-        alert('Token is valid!');
+        toast('Token is valid!', 'success');
       } else {
-        alert('Invalid bot token: ' + (res.error || 'Check server logs'));
+        toast('Invalid bot token: ' + (res.error || 'Check server logs'), 'error');
       }
     } catch (err) {
-      alert('Validation failed: ' + err.message);
+      toast('Validation failed: ' + err.message, 'error');
     } finally {
       setValidating(false);
     }
@@ -122,19 +123,19 @@ export default function Discord() {
           method: 'PUT',
           body: payload
         });
-        alert('Bot updated successfully.');
+        toast('Bot updated successfully.', 'success');
       } else {
         // Create new bot
         await api('/api/discord/bots', {
           method: 'POST',
           body: { botToken, guildId, serverIds: selectedServerIds }
         });
-        alert('Bot added and started!');
+        toast('Bot added and started!', 'success');
       }
       setShowEditor(false);
       loadBots();
     } catch (err) {
-      alert('Failed to save bot: ' + err.message);
+      toast('Failed to save bot: ' + err.message, 'error');
     } finally {
       setActionLoading(false);
     }

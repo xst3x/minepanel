@@ -283,6 +283,18 @@ The frontend is a React 18 SPA using React Router 6 for client-side routing. Key
 
 ---
 
+## Screenshots
+
+Here are some UI screenshots of MinePanel:
+
+![Console](github-assets/console.png)
+![Content Overview](github-assets/content.png)
+![Editor](github-assets/editor.png)
+![Overview](github-assets/overview.png)
+![Panel Settings](github-assets/panel-settings.png)
+
+These images provide a visual overview of the panel's features and layout.
+
 ## Documentation
 
 Full docs are available in the [`docs/`](docs/) folder and inside the panel under **Docs** in the sidebar.

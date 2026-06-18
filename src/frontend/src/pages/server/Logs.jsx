@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
+import Select from '../../components/Select.jsx';
 
 function useIsLight() {
   const [isLight, setIsLight] = useState(
@@ -101,16 +102,11 @@ export default function ServerLogs() {
     <div className="card">
       <div className="logs-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
         <div className="logs-toolbar-left" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flex: 1, minWidth: '280px' }}>
-          <select
+          <Select
             value={selectedFile}
             onChange={handleFileChange}
             className="log-select"
             style={{
-              padding: '6px 12px',
-              background: 'var(--bg-input)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius)',
-              color: 'var(--text)',
               minWidth: '180px'
             }}
           >
@@ -120,7 +116,7 @@ export default function ServerLogs() {
                 {f.name} ({formatBytes(f.size)})
               </option>
             ))}
-          </select>
+          </Select>
           <input
             type="text"
             placeholder="Filter logs..."

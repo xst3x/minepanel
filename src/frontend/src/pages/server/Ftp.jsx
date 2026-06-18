@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
+import { toast } from '../../components/Toast.jsx';
 
 export default function ServerFtp() {
   const { serverId, hasPerm } = useOutletContext();
@@ -49,9 +50,9 @@ export default function ServerFtp() {
         enabled: data.enabled,
         running: data.running
       }));
-      alert(data.enabled ? 'FTP daemon enabled.' : 'FTP daemon disabled.');
+      toast(data.running ? 'FTP daemon started.' : 'FTP daemon stopped.', 'success');
     } catch (err) {
-      alert('Failed to toggle FTP: ' + err.message);
+      toast('Failed to toggle FTP: ' + err.message, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -59,7 +60,7 @@ export default function ServerFtp() {
 
   const handleSaveConfig = async () => {
     if (!username || !port) {
-      alert('Username and port are required.');
+      toast('Username and port are required.', 'error');
       return;
     }
     setActionLoading(true);
@@ -68,13 +69,13 @@ export default function ServerFtp() {
         method: 'POST',
         body: { username, password, port }
       });
-      alert('FTP configuration saved.');
+      toast('FTP configuration saved.', 'success');
       setPassword(''); // clear input password field
       setPlainPassword(''); // clear cached password reveal
       setRevealPass(false);
       loadFtpInfo();
     } catch (err) {
-      alert('Failed to save FTP config: ' + err.message);
+      toast('Failed to save FTP config: ' + err.message, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -163,7 +164,7 @@ export default function ServerFtp() {
                 onClick={handleToggleFtp}
                 disabled={actionLoading}
               >
-                {ftpInfo?.enabled ? 'Disable FTP' : 'Enable FTP'}
+                {ftpInfo?.running ? 'Stop FTP' : 'Start FTP'}
               </button>
             )}
             <p className="text-muted" style={{ fontSize: '0.78rem', marginTop: '0.75rem' }}>
@@ -236,7 +237,7 @@ export default function ServerFtp() {
         </p>
         <ol style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', paddingLeft: '1.25rem', lineHeight: 1.9, margin: '0 0 0.75rem' }}>
           <li>Set credentials &amp; port, click <strong>Save &amp; Apply</strong></li>
-          <li>Click <strong>Enable FTP</strong> to start the SFTP daemon</li>
+          <li>Click <strong>Start FTP</strong> to start the SFTP daemon</li>
           <li><strong>FileZilla:</strong> Site Manager &rarr; Protocol: <em>SFTP  SSH File Transfer Protocol</em></li>
           <li><strong>WinSCP:</strong> New Session &rarr; File Protocol: <em>SFTP</em></li>
           <li>Enter Host / Port / Username / Password from the Connection Info card</li>

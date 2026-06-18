@@ -1149,7 +1149,8 @@ router.post('/:serverId/ftp/toggle', authenticateToken, checkPermission('server.
         const sv = await dbGet('SELECT * FROM servers WHERE id = ?', [serverId]);
         if (!sv) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
-        const newEnabled = sv.ftp_enabled ? 0 : 1;
+        const currentlyRunning = isServerFtpRunning(serverId);
+        const newEnabled = currentlyRunning ? 0 : 1;
         await dbRun('UPDATE servers SET ftp_enabled = ? WHERE id = ?', [newEnabled, serverId]);
 
         if (newEnabled) {

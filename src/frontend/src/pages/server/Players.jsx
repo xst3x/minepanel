@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
-import { toast, showConfirm } from '../../components/Toast.jsx';
+import { toast, showConfirm, showPrompt } from '../../components/Toast.jsx';
+import Select from '../../components/Select.jsx';
 
 export default function Players() {
   const { serverId, status, hasPerm } = useOutletContext();
@@ -606,13 +607,14 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
               <ActionGroup title="Gamemode">
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <select value={gmValue} onChange={e => setGmValue(e.target.value)}
-                    style={{ flex: '1 1 160px', height: 36, padding: '0 0.5rem', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-primary)' }}>
-                    <option value="survival">Survival</option>
-                    <option value="creative">Creative</option>
-                    <option value="adventure">Adventure</option>
-                    <option value="spectator">Spectator</option>
-                  </select>
+                  <div style={{ flex: '1 1 160px' }}>
+                    <Select value={gmValue} onChange={e => setGmValue(e.target.value)}>
+                      <option value="survival">Survival</option>
+                      <option value="creative">Creative</option>
+                      <option value="adventure">Adventure</option>
+                      <option value="spectator">Spectator</option>
+                    </Select>
+                  </div>
                   <button className="btn primary small" onClick={() => cmd('gamemode', gmValue)}>Set Gamemode</button>
                 </div>
               </ActionGroup>
@@ -1003,12 +1005,12 @@ function OpsTab({ serverId }) {
         </div>
         <div className="form-group" style={{ width: 160, margin: 0 }}>
           <label>Permission Level</label>
-          <select value={level} onChange={e => setLevel(e.target.value)} style={{ width: '100%', height: 38, padding: '0 0.5rem', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-primary)' }}>
+          <Select value={level} onChange={e => setLevel(e.target.value)}>
             <option value="4">4 (Full Admin)</option>
             <option value="3">3 (Moderator)</option>
             <option value="2">2 (Game Master)</option>
             <option value="1">1 (No bypass)</option>
-          </select>
+          </Select>
         </div>
         <button className="btn primary" style={{ height: 38 }} onClick={add}>OP Player</button>
       </div>

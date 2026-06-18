@@ -1,23 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap');
 
 :root {
-    /* Cyber-Emerald & Deep Slate Theme */
-    --bg-base: hsl(0, 0%, 7%);           /* Ultra dark solid neutral background */
-    --bg-surface: hsl(0, 0%, 12%);       /* Dark slate panel card/sidebar background */
-    --bg-elevated: hsl(0, 0%, 16%);      /* Focus hover container background */
-    --bg-input: hsl(0, 0%, 9%);          /* Inset darker field base */
+    /* Cyber-Emerald & Deep Slate Glassmorphism Theme */
+    --bg-base: hsl(0, 0%, 5%);           /* Very dark solid background behind glass */
+    --bg-surface: hsla(0, 0%, 11%, 0.65); /* Glass translucent surface */
+    --bg-elevated: hsla(0, 0%, 15%, 0.8); /* Inset hover translucent background */
+    --bg-input: hsla(0, 0%, 5%, 0.5);     /* Translucent input fields base */
     
-    --accent: hsl(149, 100%, 47%);       /* Modern Modrinth Emerald Green #00f076 */
+    --accent: hsl(149, 100%, 47%);       /* Dynamic accent base - changed dynamically by JS */
     --accent-hover: hsl(149, 100%, 55%);
     --accent-glow: hsla(149, 100%, 47%, 0.15);
     --accent-subtle: hsla(149, 100%, 47%, 0.08);
     
-    --text-primary: hsl(0, 0%, 94%);     /* Crisp light text */
-    --text-secondary: hsl(0, 0%, 65%);   /* Medium secondary label text */
-    --text-muted: hsl(0, 0%, 45%);        /* Muted gray descriptors */
+    --text-primary: hsl(0, 0%, 95%);     /* Crisp light text */
+    --text-secondary: hsl(0, 0%, 70%);   /* Medium secondary label text */
+    --text-muted: hsl(0, 0%, 48%);        /* Muted gray descriptors */
     
-    --border: hsla(0, 0%, 100%, 0.05);   /* Fine-line borders */
-    --border-hover: hsla(0, 0%, 100%, 0.10);
+    --border: hsla(0, 0%, 100%, 0.08);   /* Fine-line glass borders */
+    --border-hover: hsla(0, 0%, 100%, 0.16);
     
     /* Semantic Colors */
     --green: hsl(149, 100%, 47%);
@@ -38,22 +38,26 @@
     
     --font-ui: 'Sora', system-ui, -apple-system, sans-serif;
     --font-mono: 'Fira Code', 'Cascadia Code', monospace;
-    --radius: 8px;
-    --radius-lg: 14px;
-    --radius-sm: 4px;
-    --transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    --radius: 10px;
+    --radius-lg: 16px;
+    --radius-sm: 6px;
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.5);
+
+    /* Glassmorphism blur effects */
+    --glass-blur: blur(16px);
+    --glass-blur-sm: blur(8px);
 }
 
 /* Light Theme Variables */
 html[data-theme="light"] {
-    --bg-base: hsl(220, 20%, 96%);
-    --bg-surface: hsl(0, 0%, 100%);
-    --bg-elevated: hsl(220, 15%, 91%);
-    --bg-input: hsl(220, 15%, 95%);
+    --bg-base: hsl(220, 20%, 95%);
+    --bg-surface: rgba(255, 255, 255, 0.65);
+    --bg-elevated: rgba(255, 255, 255, 0.85);
+    --bg-input: rgba(0, 0, 0, 0.04);
     
     --accent: hsl(149, 100%, 35%);
     --accent-hover: hsl(149, 100%, 30%);
@@ -61,20 +65,20 @@ html[data-theme="light"] {
     --accent-subtle: rgba(0, 180, 88, 0.08);
     
     --text-primary: hsl(220, 25%, 12%);
-    --text-secondary: hsl(220, 15%, 45%);
-    --text-muted: hsl(220, 10%, 65%);
+    --text-secondary: hsl(220, 15%, 42%);
+    --text-muted: hsl(220, 10%, 60%);
     
-    --border: hsl(220, 15%, 88%);
-    --border-hover: hsl(220, 15%, 80%);
+    --border: rgba(0, 0, 0, 0.07);
+    --border-hover: rgba(0, 0, 0, 0.14);
     
     --green: hsl(149, 100%, 35%);
     --red: hsl(355, 85%, 48%);
     --orange: hsl(28, 90%, 45%);
     --yellow: hsl(45, 90%, 42%);
     
-    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+    --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.12);
 }
 
 *, *::before, *::after { 
@@ -283,6 +287,23 @@ input:disabled, select:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* Custom Select Styling */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 14px;
+    padding-right: 38px;
+    cursor: pointer;
+}
+select option {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    padding: 10px;
+}
 .form-group.row { 
     display: flex; 
     gap: 1rem; 
@@ -329,10 +350,11 @@ input[type="color"].color-input {
     color: #ffffff; 
     border: none;
     box-shadow: 0 3px 12px var(--accent-glow);
+    transition: var(--transition), box-shadow 0.2s ease;
 }
 .btn.primary:hover { 
     background: var(--accent-hover);
-    box-shadow: 0 5px 18px var(--accent-glow);
+    box-shadow: 0 8px 22px var(--accent-glow), 0 0 6px var(--accent-glow);
 }
 html[data-theme="dark"] .btn.primary {
     color: #0b0b0b;
@@ -371,11 +393,13 @@ html[data-theme="light"] .btn.success {
     background: var(--bg-surface); 
     border: 1px solid var(--border-hover); 
     color: var(--text-primary); 
+    transition: var(--transition), border-color 0.2s ease, background 0.2s ease;
 }
 .btn.outline:hover { 
     border-color: var(--accent); 
     color: var(--accent); 
     background: var(--accent-subtle);
+    box-shadow: 0 0 6px var(--accent-glow);
 }
 .btn.small { 
     padding: 5px 11px; 
@@ -418,24 +442,19 @@ html[data-theme="light"] .btn.success {
 
 .sidebar {
     width: 240px;
-    background: var(--bg-surface);
+    background: var(--bg-surface) !important;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
     height: 100vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
+    overflow: hidden;
     transition: background-color 0.3s ease, border-color 0.3s ease;
     position: relative;
     z-index: 1;
-    background: var(--bg-surface) !important;
 }
-.sidebar::-webkit-scrollbar { width: 4px; }
-.sidebar::-webkit-scrollbar-track { background: transparent; }
-.sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .sidebar-brand {
     height: 64px;
@@ -467,6 +486,25 @@ html[data-theme="light"] .btn.success {
     flex-direction: column;
     gap: 0.25rem;
     flex-shrink: 0;
+}
+
+/* Servers section: only scrollable area in the sidebar */
+.sidebar-section-servers {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+.sidebar-section-servers::-webkit-scrollbar { width: 4px; }
+.sidebar-section-servers::-webkit-scrollbar-track { background: transparent; }
+.sidebar-section-servers::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}
+.sidebar-section-servers::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
 }
 
 .sidebar-section-title {
@@ -506,6 +544,7 @@ html[data-theme="light"] .btn.success {
     background: var(--accent-subtle);
     border-left: 3px solid var(--accent);
     padding-left: 11px; /* Maintain alignment */
+    box-shadow: inset 0 0 8px var(--accent-glow);
 }
 
 .sidebar-item.sidebar-create {
@@ -846,11 +885,13 @@ body {
     transition: var(--transition);
     animation: slideInUp 0.28s cubic-bezier(0.4, 0, 0.2, 1) backwards;
     box-shadow: var(--shadow-sm);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
 }
 .server-card:hover {
-    border-color: var(--accent);
+    border-color: var(--border-hover);
     transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-lg), 0 0 8px var(--accent-glow);
 }
 .server-card h4 {
     font-size: 1.15rem;
@@ -991,6 +1032,8 @@ body {
     display: flex;
     flex-wrap: nowrap;
     background: var(--bg-surface);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     margin-bottom: 1.5rem;
@@ -1036,6 +1079,7 @@ body {
     color: var(--accent);
     background: var(--accent-subtle);
     border: 1px solid var(--accent-glow);
+    box-shadow: 0 0 10px var(--accent-glow);
     animation: tabActivate 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 @keyframes tabActivate {
@@ -6049,3 +6093,53 @@ textarea {
     .doc-content table { font-size: 0.78rem; }
     .doc-content th, .doc-content td { padding: 4px 6px; }
 }
+
+/* Markdown plugin description styling */
+.plugin-description {
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.plugin-description h1,
+.plugin-description h2,
+.plugin-description h3,
+.plugin-description h4,
+.plugin-description h5,
+.plugin-description h6 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.plugin-description h1 { font-size: 1.5rem; }
+.plugin-description h2 { font-size: 1.35rem; }
+.plugin-description h3 { font-size: 1.2rem; }
+.plugin-description p { margin: 0.5rem 0; }
+.plugin-description ul,
+.plugin-description ol {
+  margin-left: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.plugin-description li { margin: 0.2rem 0; }
+.plugin-description table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin: 0.75rem 0;
+}
+.plugin-description th,
+.plugin-description td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.plugin-description th {
+  border-bottom: 2px solid var(--border);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: left;
+}
+.plugin-description img {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 0.5rem 0;
+}
+

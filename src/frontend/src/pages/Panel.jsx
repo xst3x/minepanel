@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { toast, showConfirm, toastProgress } from '../components/Toast.jsx';
+import Select from '../components/Select.jsx';
 
 export default function Panel() {
   const { user } = useAuth();
@@ -344,7 +345,7 @@ export default function Panel() {
                   <>
                     <div className="form-group">
                       <label>Software Engine</label>
-                      <select value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
+                      <Select value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
                         <option value="paper">Paper (Recommended)</option>
                         <option value="vanilla">Vanilla</option>
                         <option value="snapshots">Vanilla Snapshots</option>
@@ -353,13 +354,13 @@ export default function Panel() {
                         <option value="forge">Forge</option>
                         <option value="quilt">Quilt</option>
                         <option value="magma">Magma</option>
-                      </select>
+                      </Select>
                     </div>
                     <div className="form-group">
                       <label>Minecraft Version</label>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <select
-                          style={{ flex: 1, height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
+                        <Select
+                          style={{ flex: 1 }}
                           value={csVersion}
                           onChange={(e) => setCsVersion(e.target.value)}
                         >
@@ -369,7 +370,7 @@ export default function Panel() {
                           {(!versions || !versions[csSoftware]?.length) && (
                             <option value="">{syncingVersions ? 'Syncing...' : 'No versions available'}</option>
                           )}
-                        </select>
+                        </Select>
                         <button type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
                           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -401,17 +402,17 @@ export default function Panel() {
                     </div>
                     <div className="form-group">
                       <label>Software Engine</label>
-                      <select value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
+                      <Select value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
                         <option value="bedrock">Vanilla</option>
                         <option value="bedrock-preview">Vanilla (Preview/Snapshots)</option>
                         <option value="pocketmine">PocketMine-MP</option>
-                      </select>
+                      </Select>
                     </div>
                     <div className="form-group">
                       <label>Version</label>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <select
-                          style={{ flex: 1, height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
+                        <Select
+                          style={{ flex: 1 }}
                           value={csVersion}
                           onChange={(e) => setCsVersion(e.target.value)}
                         >
@@ -421,7 +422,7 @@ export default function Panel() {
                           {(!versions || !versions[csSoftware]?.length) && (
                             <option value="">{syncingVersions ? 'Syncing...' : 'No versions available'}</option>
                           )}
-                        </select>
+                        </Select>
                         <button type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
                           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -530,8 +531,7 @@ export default function Panel() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Software</label>
-                    <select 
-                      style={{ width: '100%', height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
+                    <Select 
                       value={impSoftware}
                       onChange={(e) => setImpSoftware(e.target.value)}
                     >
@@ -544,20 +544,20 @@ export default function Panel() {
                       <option value="quilt">Quilt</option>
                       <option value="magma">Magma</option>
                       <option value="bedrock">Bedrock (Native)</option>
-                    </select>
+                    </Select>
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Minecraft Version</label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <select 
-                        style={{ flex: 1, height: '38px', padding: '0 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
+                      <Select 
+                        style={{ flex: 1 }}
                         value={impVersion}
                         onChange={(e) => setImpVersion(e.target.value)}
                       >
                         {versions && versions[impSoftware]?.map(v => (
                           <option key={v} value={v}>{v}</option>
                         ))}
-                      </select>
+                      </Select>
                       <button 
                         type="button" 
                         className="btn outline" 

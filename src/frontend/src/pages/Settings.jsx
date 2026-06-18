@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { toast, showConfirm } from '../components/Toast.jsx';
+import Select from '../components/Select.jsx';
 // Exact presets from old frontend
 const ACCENT_PRESETS = [
   { id: 'emerald',       label: 'Emerald',       value: 'hsl(149,100%,47%)' },
@@ -356,14 +357,13 @@ export default function Settings() {
               <p className="text-muted" style={{ fontSize: '0.79rem', margin: '0.25rem 0 0.5rem' }}>
                 Applied when a user registers without an invite token.
               </p>
-              <select
+              <Select
                 value={defaultRankId}
                 onChange={e => setDefaultRankId(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value=""> No rank </option>
                 {ranks.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
+              </Select>
             </div>
           </div>
 
