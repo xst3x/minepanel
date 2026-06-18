@@ -19,6 +19,10 @@ const { makeCache } = require('./cache');
 const FALLBACK_VER = '1.26.23.1';
 const cache        = makeCache('bds', 2 * 60 * 60 * 1000); // 2 h
 
+// Official Mojang download-links API — same one minecraft.net itself calls
+// to populate the download buttons on minecraft.net/download/server/bedrock.
+const DOWNLOAD_LINKS_URL = 'https://net-secondary.web.minecraft-services.net/api/v1.0/download/links';
+
 const WIKI_REVISIONS_URL =
     'https://minecraft.wiki/api.php' +
     '?action=query' +
@@ -169,6 +173,18 @@ async function fetchFromParse() {
 
 class BedrockResolver {
     /**
+     * @param {string} channel - 'stable' (default) or 'preview'. Preview tracks
+     *   Mojang's Bedrock Preview builds (serverBedrockPreviewWindows/Linux),
+     *   a separate, faster-moving release channel from the stable BDS builds.
+     */
+    constructor(channel = 'stable') {
+        this.channel = channel === 'preview' ? 'preview' : 'stable';
+        // Each channel gets its own cache file/key so stable and preview
+        // never clobber each other's cached version/build info.
+        this._buildCache = makeCache(this.channel === 'preview' ? 'bds-preview-build' : 'bds-build', 2 * 60 * 60 * 1000);
+    }
+
+    /**
      * Returns:
      *   { version: string, source: 'minecraft-wiki'|'cache'|'fallback', lastUpdated: ISO }
      */
@@ -213,6 +229,67 @@ class BedrockResolver {
         console.warn(`[Bedrock] No cache available — returning hardcoded fallback ${FALLBACK_VER}`);
         return { version: FALLBACK_VER, source: 'fallback', lastUpdated: new Date().toISOString() };
     }
+
+    /**
+     * Resolves an installable build for BDS.
+     *
+     * Mojang's download-links API only ever serves the CURRENT latest build —
+     * there is no public archive of older BDS versions. So `version`/`build`
+     * are accepted for interface compatibility with the other resolvers, but
+     * the actual file returned is always whatever Mojang currently publishes.
+     * If the requested version doesn't match what's currently live, we still
+     * return the live build (and log a notice) rather than failing outright,
+     * since there is no alternative source to fall back to.
+     *
+     * @param {string} version - requested version (informational only)
+     * @param {string} build   - unused, kept for interface compatibility
+     * @returns {{type, version, build, url, provider, isZip}}
+     */
+    async resolveBuild(version, build = 'latest') {
+        const cached = this._buildCache.read();
+        if (this._buildCache.isFresh(cached)) {
+            if (cached.version !== version) {
+                console.warn(`[Bedrock:${this.channel}] Requested version ${version} differs from latest available (${cached.version}). Mojang only serves the current build for this channel — using ${cached.version}.`);
+            }
+            return { type: this.channel === 'preview' ? 'bedrock-preview' : 'bedrock', version: cached.version, build: 'latest', url: cached.url, provider: 'mojang', isZip: true };
+        }
+
+        const body = await fetchText(DOWNLOAD_LINKS_URL);
+        const json = JSON.parse(body);
+        const links = json?.result?.links;
+        if (!Array.isArray(links)) throw new Error('Unexpected response from Mojang download-links API');
+
+        const isWin = process.platform === 'win32';
+        const downloadType = this.channel === 'preview'
+            ? (isWin ? 'serverBedrockPreviewWindows' : 'serverBedrockPreviewLinux')
+            : (isWin ? 'serverBedrockWindows' : 'serverBedrockLinux');
+        const entry = links.find(l => l.downloadType === downloadType);
+        if (!entry?.downloadUrl) throw new Error(`No BDS download link found for ${downloadType}`);
+
+        const match = entry.downloadUrl.match(/bedrock-server-([\d.]+)\.zip/);
+        const liveVersion = match ? match[1] : null;
+        if (!liveVersion) throw new Error(`Could not parse version from BDS download URL: ${entry.downloadUrl}`);
+
+        if (version && version !== liveVersion) {
+            console.warn(`[Bedrock:${this.channel}] Requested version ${version} differs from latest available (${liveVersion}). Mojang only serves the current build for this channel — using ${liveVersion}.`);
+        }
+
+        this._buildCache.write({ version: liveVersion, url: entry.downloadUrl });
+
+        return {
+            type: this.channel === 'preview' ? 'bedrock-preview' : 'bedrock',
+            version: liveVersion,
+            build: 'latest',
+            url: entry.downloadUrl,
+            provider: 'mojang',
+            isZip: true
+        };
+    }
 }
 
-module.exports = new BedrockResolver();
+const stableResolver  = new BedrockResolver('stable');
+const previewResolver = new BedrockResolver('preview');
+
+// Default export is stable (backwards-compatible with all existing require('./Bedrock') callers)
+module.exports = stableResolver;
+module.exports.preview = previewResolver;

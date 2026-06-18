@@ -376,13 +376,17 @@ initDb().then(async () => {
                     try {
                         const { getServerDir } = require('./core/serverHelper');
                         const bedrockAdapter = require('./adapters/bedrock');
+                        const pocketmineAdapter = require('./adapters/pocketmine');
                         const srvId = srv.id.toString();
                         const serverDir = getServerDir(srv);
                         if (processManager.getStatus(srvId) === 'offline') {
                             logger.info(`[Autostart] Starting server: ${srv.name} (id=${srvId})`);
                             if (bedrockAdapter.isBedrock(srv.software)) {
                                 const desc = bedrockAdapter.getBedrockLaunchDescriptor(srv, serverDir);
-                                processManager.start(srvId, serverDir, [], desc.executable, srv.ram_mb, [], desc.executable, desc.env);
+                                processManager.start(srvId, serverDir, [], desc.executable, srv.ram_mb, [], desc.executable, desc.env, 'bedrock');
+                            } else if (pocketmineAdapter.isPocketMine(srv.software)) {
+                                const desc = pocketmineAdapter.getPocketMineLaunchDescriptor(srv, serverDir);
+                                processManager.start(srvId, serverDir, [], desc.jarFile, srv.ram_mb, desc.customArgs, desc.executable, desc.env, 'pocketmine');
                             } else {
                                 const jarFile = require('path').join(serverDir, 'server.jar');
                                 const javaManager = require('./core/javaManager');
@@ -404,6 +408,7 @@ initDb().then(async () => {
             logger.warn(`[CrashRestart] Server ${serverId} crashed. Restarting in 5s...`);
             const { getServerDir } = require('./core/serverHelper');
             const bedrockAdapter = require('./adapters/bedrock');
+            const pocketmineAdapter = require('./adapters/pocketmine');
             const serverDir = getServerDir(srv);
             const crashMsg = `\n[MinePanel] Server crashed (exit code ${info.code}). Auto-restarting in 5 seconds...\n`;
             processManager.appendHistory(serverId.toString(), crashMsg);
@@ -413,7 +418,10 @@ initDb().then(async () => {
                     if (processManager.getStatus(serverId.toString()) === 'offline') {
                         if (bedrockAdapter.isBedrock(srv.software)) {
                             const desc = bedrockAdapter.getBedrockLaunchDescriptor(srv, serverDir);
-                            processManager.start(serverId.toString(), serverDir, [], desc.executable, srv.ram_mb, [], desc.executable, desc.env);
+                            processManager.start(serverId.toString(), serverDir, [], desc.executable, srv.ram_mb, [], desc.executable, desc.env, 'bedrock');
+                        } else if (pocketmineAdapter.isPocketMine(srv.software)) {
+                            const desc = pocketmineAdapter.getPocketMineLaunchDescriptor(srv, serverDir);
+                            processManager.start(serverId.toString(), serverDir, [], desc.jarFile, srv.ram_mb, desc.customArgs, desc.executable, desc.env, 'pocketmine');
                         } else {
                             const jarFile = require('path').join(serverDir, 'server.jar');
                             const javaManager = require('./core/javaManager');

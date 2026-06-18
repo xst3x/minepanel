@@ -343,9 +343,9 @@ export default function ServerSettings() {
 
       {/* Danger Zone */}
       {hasPerm('account.manage') && (
-        <div className="card" style={{ border: '1px solid var(--danger)', background: 'rgba(239,68,68,0.8)' }}>
-          <h3 style={{ color: 'var(--danger)', marginTop: 0 }}>Delete Server</h3>
-          <p className="text-muted" style={{ marginBottom: '0.75rem' }}>
+        <div className="card" style={{ border: '1px solid var(--danger)', background: 'color-mix(in srgb, var(--bg-surface) 85%, var(--danger) 25%)' }}>
+          <h3 style={{ color: 'var(--text-primary)', marginTop: 0 }}>Delete Server</h3>
+          <p style={{ marginBottom: '1rem', fontSize: '13px', color: 'var(--text-secondary)' }}>
             Permanently delete this server, including all files, databases, and configurations. This action cannot be undone.
           </p>
           <button className="btn danger" onClick={handleDeleteServer}>Delete Server</button>

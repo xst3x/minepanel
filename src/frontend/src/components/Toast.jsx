@@ -7,12 +7,24 @@ export function useToast() {
 }
 
 let _toastFn = null;
+let _toastProgressFn = null;
 let _confirmFn = null;
 let _promptFn = null;
 
 export function toast(message, type = 'info') {
   if (_toastFn) _toastFn(message, type);
   else console.warn('[toast]', type, message);
+}
+
+/**
+ * Show a persistent toast with an animated progress bar.
+ * Returns a dismiss() function — call it when the operation finishes.
+ * Call dismiss('error message') to turn it into an error toast.
+ * Call dismiss(null, 'success message') to turn it into a success toast.
+ */
+export function toastProgress(message) {
+  if (_toastProgressFn) return _toastProgressFn(message);
+  return () => {};
 }
 
 export function showConfirm(message, title = 'Confirm') {
@@ -28,6 +40,7 @@ export function showPrompt(message, defaultValue = '', title = 'Input') {
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const [progressToasts, setProgressToasts] = useState([]); // { id, message }
   const [confirm, setConfirm] = useState(null);
   const [prompt, setPrompt] = useState(null);
   const [promptValue, setPromptValue] = useState('');
@@ -38,6 +51,17 @@ export function ToastProvider({ children }) {
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
   }, []);
+
+  const addProgressToast = useCallback((message) => {
+    const id = ++idRef.current;
+    setProgressToasts(prev => [...prev, { id, message }]);
+    // Returns a dismiss function
+    return (errorMsg, successMsg) => {
+      setProgressToasts(prev => prev.filter(t => t.id !== id));
+      if (errorMsg) addToast(errorMsg, 'error');
+      else if (successMsg) addToast(successMsg, 'success');
+    };
+  }, [addToast]);
 
   const openConfirm = useCallback((message, title) => {
     return new Promise(resolve => {
@@ -54,10 +78,11 @@ export function ToastProvider({ children }) {
 
   useEffect(() => {
     _toastFn = addToast;
+    _toastProgressFn = addProgressToast;
     _confirmFn = openConfirm;
     _promptFn = openPrompt;
-    return () => { _toastFn = null; _confirmFn = null; _promptFn = null; };
-  }, [addToast, openConfirm, openPrompt]);
+    return () => { _toastFn = null; _toastProgressFn = null; _confirmFn = null; _promptFn = null; };
+  }, [addToast, addProgressToast, openConfirm, openPrompt]);
 
   const handleConfirm = (result) => { if (confirm) confirm.resolve(result); setConfirm(null); };
   const handlePromptSubmit = () => { if (prompt) prompt.resolve(promptValue); setPrompt(null); };
@@ -82,6 +107,36 @@ export function ToastProvider({ children }) {
         zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.6rem',
         pointerEvents: 'none',
       }}>
+        {/* Progress toasts (persistent, with indeterminate bar) */}
+        {progressToasts.map(t => (
+          <div key={t.id} style={{
+            pointerEvents: 'auto',
+            display: 'flex', flexDirection: 'column', gap: '0.55rem',
+            padding: '0.85rem 1.35rem',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            borderLeft: '4px solid var(--accent)',
+            borderRadius: 'var(--radius)',
+            color: 'var(--text-primary)',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            fontFamily: 'var(--font-ui)',
+            boxShadow: 'var(--shadow-md)',
+            minWidth: 280, maxWidth: 420,
+            animation: 'toastIn 0.25s cubic-bezier(0.4,0,0.2,1)',
+          }}>
+            <span>{t.message}</span>
+            <div style={{ height: '3px', borderRadius: '2px', background: 'var(--bg-input)', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                background: 'var(--accent)',
+                borderRadius: '2px',
+                animation: 'progressSlide 1.6s ease-in-out infinite',
+              }} />
+            </div>
+          </div>
+        ))}
+        {/* Regular toasts */}
         {toasts.map(t => (
           <div key={t.id} style={{
             pointerEvents: 'auto',

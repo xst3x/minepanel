@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { toast, showConfirm } from '../components/Toast.jsx';
+import { toast, showConfirm, toastProgress } from '../components/Toast.jsx';
 
 export default function Panel() {
   const { user } = useAuth();
@@ -27,7 +27,6 @@ export default function Panel() {
   const [csVersion, setCsVersion] = useState('');
   const [csRam, setCsRam] = useState(2048);
   const [csPort, setCsPort] = useState(25565);
-  const [csBusy, setCsBusy] = useState(false);
 
   // Import Server Form State
   const [impFile, setImpFile] = useState(null);
@@ -106,19 +105,22 @@ export default function Panel() {
   const handleCreateServer = async (e) => {
     e.preventDefault();
     if (!csName || !csVersion) return toast('Name and version are required.', 'error');
-    setCsBusy(true);
+
+    // Close the modal instantly and reset its fields right away.
+    const name = csName, software = csSoftware, version = csVersion, ram = csRam, port = csPort;
+    setSearchParams({});
+    setCsName(''); setCsSoftware('paper'); setCsRam(2048); setCsPort(25565); setCsTab('java');
+
+    const dismiss = toastProgress(`Creating server "${name}"...`);
     try {
       await api('/api/servers/create', {
         method: 'POST',
-        body: { name: csName, software: csSoftware, version: csVersion, ram_mb: Number(csRam), port: Number(csPort) }
+        body: { name, software, version, ram_mb: Number(ram), port: Number(port) }
       });
-      setSearchParams({});
       loadServers();
-      setCsName(''); setCsSoftware('paper'); setCsRam(2048); setCsPort(25565); setCsTab('java');
+      dismiss(null, `Server "${name}" created successfully.`);
     } catch (err) {
-      toast(err.message || 'Server creation failed.', 'error');
-    } finally {
-      setCsBusy(false);
+      dismiss(err.message || 'Server creation failed.');
     }
   };
 
@@ -246,10 +248,11 @@ export default function Panel() {
         <p className="text-muted">No servers found.</p>
       ) : (
         <div className="servers-grid" id="servers-grid">
-          {servers.map((sv) => (
+          {servers.map((sv, i) => (
             <div 
               key={sv.id} 
               className="server-card"
+              style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }}
               onClick={() => navigate(`/server/${sv.id}/overview`)}
             >
               <h4>{sv.name}</h4>
@@ -270,7 +273,7 @@ export default function Panel() {
           <div className="modal">
             <div className="modal-header">
               <h3>Create new server</h3>
-              <button className="close-btn" onClick={() => { setSearchParams({}); setCsTab('java'); }} disabled={csBusy}>&times;</button>
+              <button className="close-btn" onClick={() => { setSearchParams({}); setCsTab('java'); }}>&times;</button>
             </div>
 
             {/* Tab bar */}
@@ -399,11 +402,9 @@ export default function Panel() {
                     <div className="form-group">
                       <label>Software Engine</label>
                       <select value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
-                        <option value="bedrock">Bedrock Dedicated Server (Official BDS)</option>
+                        <option value="bedrock">Vanilla</option>
+                        <option value="bedrock-preview">Vanilla (Preview/Snapshots)</option>
                         <option value="pocketmine">PocketMine-MP</option>
-                        <option value="nukkitx">NukkitX</option>
-                        <option value="powernukkitx">PowerNukkitX</option>
-                        <option value="waterdogpe">WaterdogPE (Proxy)</option>
                       </select>
                     </div>
                     <div className="form-group">
@@ -445,9 +446,9 @@ export default function Panel() {
                 )}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn outline" onClick={() => { setSearchParams({}); setCsTab('java'); }} disabled={csBusy}>Cancel</button>
-                <button type="submit" className="btn primary" disabled={csBusy}>
-                  {csBusy ? 'Creating...' : 'Create Server'}
+                <button type="button" className="btn outline" onClick={() => { setSearchParams({}); setCsTab('java'); }}>Cancel</button>
+                <button type="submit" className="btn primary">
+                  Create Server
                 </button>
               </div>
             </form>

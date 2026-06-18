@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const pidusage = require('pidusage');
 const { parseBedrockOutput } = require('../adapters/bedrock');
+const { parsePocketMineOutput } = require('../adapters/pocketmine');
 
 class ProcessManager extends EventEmitter {
     constructor() {
@@ -14,6 +15,7 @@ class ProcessManager extends EventEmitter {
         this._stopIntents = new Set(); // serverId intentionally stopped (not a crash)
         this._crashRestartTimers = new Map(); // serverId -> timer
         this._bedrockServers = new Set(); // serverId -> is bedrock (for output parsing)
+        this._pocketmineServers = new Set(); // serverId -> is pocketmine (for output parsing)
     }
 
     acquireLock(serverId, timeoutMs = 60000) {
@@ -48,7 +50,7 @@ class ProcessManager extends EventEmitter {
         return this.locks.has(serverId.toString());
     }
 
-    start(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs = null, javaPath = 'java', spawnEnv = null) {
+    start(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs = null, javaPath = 'java', spawnEnv = null, mode = 'java') {
         if (this.processes.has(serverId)) {
             throw new Error('Server is already running');
         }
@@ -61,22 +63,31 @@ class ProcessManager extends EventEmitter {
         // Clear stop intent  starting fresh
         this._stopIntents.delete(serverId);
 
-        // ── Bedrock native binary detection ──────────────────────────────────
-        // When isBedrock flag is set (via customArgs sentinel), we skip JVM args
-        // entirely and just run the binary directly with no arguments.
-        const isBedrock = Array.isArray(customArgs) && customArgs.length === 0 &&
-                          javaPath !== 'java' && javaPath === jarFile;
+        // ── Mode detection ────────────────────────────────────────────────────
+        // 'bedrock'    : native BDS binary, no JVM, no args
+        // 'pocketmine' : PHP PHAR, executable + customArgs, no JVM
+        // 'java'       : standard JVM launch (default)
+        const isBedrock    = mode === 'bedrock';
+        const isPocketMine = mode === 'pocketmine';
 
         if (isBedrock) {
             this._bedrockServers.add(serverId);
         } else {
             this._bedrockServers.delete(serverId);
         }
+        if (isPocketMine) {
+            this._pocketmineServers.add(serverId);
+        } else {
+            this._pocketmineServers.delete(serverId);
+        }
 
         let args;
         if (isBedrock) {
             // Bedrock Dedicated Server: run the binary with no arguments
             args = [];
+        } else if (isPocketMine) {
+            // PocketMine-MP: run executable (php or phar) with customArgs
+            args = customArgs || [];
         } else if (customArgs && customArgs.length > 0) {
             args = [
                 `-Xms${maxMemoryMb}M`,
@@ -115,15 +126,18 @@ class ProcessManager extends EventEmitter {
 
         child.stdout.on('data', (data) => {
             const raw = data.toString();
-            const output = this._bedrockServers.has(serverId) ? parseBedrockOutput(raw) : raw;
+            let output = raw;
+            if (this._bedrockServers.has(serverId))    output = parseBedrockOutput(raw);
+            else if (this._pocketmineServers.has(serverId)) output = parsePocketMineOutput(raw);
             this.appendHistory(serverId, output);
             this.emit('console', serverId, output);
         });
 
         child.stderr.on('data', (data) => {
             const raw = data.toString();
-            const isBed = this._bedrockServers.has(serverId);
-            let output = isBed ? parseBedrockOutput(raw) : raw;
+            let output = raw;
+            if (this._bedrockServers.has(serverId))    output = parseBedrockOutput(raw);
+            else if (this._pocketmineServers.has(serverId)) output = parsePocketMineOutput(raw);
 
             // Detect "Current Java is X but we require at least Y" from Forge bootstrap
             const javaVersionMatch = output.match(/Current Java is (\d+) but we require at least (\d+)/);
@@ -162,6 +176,7 @@ class ProcessManager extends EventEmitter {
             this.emit('console', serverId, msg);
             this.processes.delete(serverId);
             this._bedrockServers.delete(serverId);
+            this._pocketmineServers.delete(serverId);
             this.emit('status', serverId, 'offline');
 
             // Crash detection: if exit was NOT intentional (not /stop or kill)
@@ -179,7 +194,13 @@ class ProcessManager extends EventEmitter {
             console.error(`Server ${serverId} process error:`, err.message);
             let errMsg = err.message;
             if (err.code === 'ENOENT') {
-                errMsg = 'Java executable not found. Make sure Java is installed and in your system PATH.';
+                if (this._pocketmineServers.has(serverId)) {
+                    errMsg = 'PHP executable not found. PocketMine-MP requires PHP 8.x — install it from https://windows.php.net/download/ and add it to PATH.';
+                } else if (!this._bedrockServers.has(serverId)) {
+                    errMsg = 'Java executable not found. Make sure Java is installed and in your system PATH.';
+                } else {
+                    errMsg = `Server binary not found at: ${javaPath}`;
+                }
             }
             const msg = `\n[MinePanel] Server process failed to start: ${errMsg}\n`;
             this.appendHistory(serverId, msg);
@@ -253,7 +274,7 @@ class ProcessManager extends EventEmitter {
      * Graceful restart: stop, wait for exit, then start again.
      * Returns { graceful, started } indicating whether shutdown was clean and if restart succeeded.
      */
-    async restartGraceful(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, timeoutMs = 15000, customArgs = null, javaPath = 'java', spawnEnv = null) {
+    async restartGraceful(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, timeoutMs = 15000, customArgs = null, javaPath = 'java', spawnEnv = null, mode = 'java') {
         const stopResult = await this.gracefulStop(serverId, timeoutMs);
 
         if (!stopResult.graceful) {
@@ -264,7 +285,7 @@ class ProcessManager extends EventEmitter {
         await new Promise(r => setTimeout(r, 1500));
 
         try {
-            this.start(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs, javaPath, spawnEnv);
+            this.start(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs, javaPath, spawnEnv, mode);
             return { graceful: true, started: true };
         } catch (e) {
             return { graceful: true, started: false, message: e.message };

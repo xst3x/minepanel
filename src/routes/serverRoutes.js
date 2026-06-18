@@ -10,6 +10,7 @@ const processManager = require('../core/processManager');
 const executionManager = require('../core/executionManager'); // native-only wrapper
 const { SERVERS_DIR, sanitizeDirName, ensureUniqueDirName, getServer, getServerDir, createBackup } = require('../core/serverHelper');
 const bedrockAdapter = require('../adapters/bedrock');
+const pocketmineAdapter = require('../adapters/pocketmine');
 const { retryRename, retryDelete, retryUnlink, retryCopy } = require('../core/utils/fsRetry');
 const { startServerFtp, stopServerFtp, isServerFtpRunning, storePasswordCache, getPasswordCache } = require('../core/ftpServer');
 const bcrypt = require('bcryptjs');
@@ -51,6 +52,11 @@ function getStartInfo(server) {
     //  Bedrock: native binary, no JVM needed 
     if (bedrockAdapter.isBedrock(server.software)) {
         return bedrockAdapter.getBedrockLaunchDescriptor(server, serverDir);
+    }
+
+    //  PocketMine-MP: PHP PHAR, no JVM needed 
+    if (pocketmineAdapter.isPocketMine(server.software)) {
+        return pocketmineAdapter.getPocketMineLaunchDescriptor(server, serverDir);
     }
 
     //  Java servers (all other software types) 
@@ -236,10 +242,14 @@ router.post('/create', authenticateToken, validate(V.createServer), async (req, 
             const finalJarInfo = await downloadJar(jarInfo);
             const softwareLower = software.toLowerCase();
 
-            if (softwareLower === 'bedrock') {
-                // Bedrock: extract the ZIP and write default configs
+            if (softwareLower === 'bedrock' || softwareLower === 'bedrock-preview') {
+                // Bedrock (stable or preview): extract the ZIP and write default configs
                 await bedrockAdapter.installBedrock(finalJarInfo.localPath, serverDir, port);
                 logger.info(`Bedrock server ${serverId} (${dirName}) setup complete.`);
+            } else if (softwareLower === 'pocketmine') {
+                // PocketMine-MP: copy PHAR, write server.properties
+                await pocketmineAdapter.installPocketMine(finalJarInfo.localPath, serverDir, port);
+                logger.info(`PocketMine-MP server ${serverId} (${dirName}) setup complete.`);
             } else if (softwareLower === 'forge') {
                 const targetJar = path.join(serverDir, 'server.jar');
                 await runForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
@@ -312,13 +322,21 @@ router.post('/:serverId/change-version', authenticateToken, checkPermission('ser
             const finalJarInfo = await downloadJar(jarInfo);
 
             const serverDir = getServerDir(server);
-            const targetJar = path.join(serverDir, 'server.jar');
-            try { await retryUnlink(targetJar); } catch (_) {}
-            
-            if (server.software.toLowerCase() === 'forge') {
-                await runForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+            const softwareLower = server.software.toLowerCase();
+
+            if (softwareLower === 'bedrock' || softwareLower === 'bedrock-preview') {
+                await bedrockAdapter.installBedrock(finalJarInfo.localPath, serverDir, server.port);
+            } else if (softwareLower === 'pocketmine') {
+                await pocketmineAdapter.installPocketMine(finalJarInfo.localPath, serverDir, server.port);
             } else {
-                await retryCopy(finalJarInfo.localPath, targetJar);
+                const targetJar = path.join(serverDir, 'server.jar');
+                try { await retryUnlink(targetJar); } catch (_) {}
+
+                if (softwareLower === 'forge') {
+                    await runForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+                } else {
+                    await retryCopy(finalJarInfo.localPath, targetJar);
+                }
             }
 
             await dbRun('UPDATE servers SET version = ? WHERE id = ?', [version, serverId]);
@@ -450,13 +468,20 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
 
             // 4. Download and overwrite the jar synchronously
             const finalJarInfo = await downloadJar(jarInfo);
-            const targetJar = path.join(serverDir, 'server.jar');
-            try { await retryUnlink(targetJar); } catch (_) {}
 
-            if (newType === 'forge') {
-                await runForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+            if (newType === 'bedrock' || newType === 'bedrock-preview') {
+                await bedrockAdapter.installBedrock(finalJarInfo.localPath, serverDir, server.port);
+            } else if (newType === 'pocketmine') {
+                await pocketmineAdapter.installPocketMine(finalJarInfo.localPath, serverDir, server.port);
             } else {
-                await retryCopy(finalJarInfo.localPath, targetJar);
+                const targetJar = path.join(serverDir, 'server.jar');
+                try { await retryUnlink(targetJar); } catch (_) {}
+
+                if (newType === 'forge') {
+                    await runForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+                } else {
+                    await retryCopy(finalJarInfo.localPath, targetJar);
+                }
             }
 
             // 5. Update software & version in DB
@@ -487,12 +512,16 @@ router.post('/:serverId/start', authenticateToken, checkPermission('server.start
         const startInfo = getStartInfo(server);
         const { serverDir, jarFile, customArgs } = startInfo;
         const isBedrock = !!startInfo.isBedrock;
+        const isPocketMine = !!startInfo.isPocketMine;
 
-        if (!isBedrock && !fs.existsSync(jarFile) && !customArgs) {
+        if (!isBedrock && !isPocketMine && !fs.existsSync(jarFile) && !customArgs) {
             return sendError(res, E.BAD_REQUEST, 400, 'Server jar not found. May still be downloading.');
         }
         if (isBedrock && !fs.existsSync(startInfo.executable)) {
             return sendError(res, E.BAD_REQUEST, 400, 'Bedrock server binary not found. May still be installing.');
+        }
+        if (isPocketMine && !fs.existsSync(startInfo.jarFile)) {
+            return sendError(res, E.BAD_REQUEST, 400, 'PocketMine-MP.phar not found. May still be downloading.');
         }
 
         if (!processManager.acquireLock(serverId)) {
@@ -507,7 +536,13 @@ router.post('/:serverId/start', authenticateToken, checkPermission('server.start
                 processManager.start(
                     serverId.toString(), serverDir,
                     [], startInfo.executable, server.ram_mb,
-                    [], startInfo.executable, startInfo.env
+                    [], startInfo.executable, startInfo.env, 'bedrock'
+                );
+            } else if (isPocketMine) {
+                processManager.start(
+                    serverId.toString(), serverDir,
+                    [], startInfo.jarFile, server.ram_mb,
+                    startInfo.customArgs, startInfo.executable, startInfo.env, 'pocketmine'
                 );
             } else {
                 const javaPath = await javaManager.getJavaPath(server.java_path);
@@ -562,12 +597,16 @@ router.post('/:serverId/restart', authenticateToken, checkPermission('server.res
         const restartInfo = getStartInfo(server);
         const { serverDir, jarFile, customArgs } = restartInfo;
         const isBedrock = !!restartInfo.isBedrock;
+        const isPocketMine = !!restartInfo.isPocketMine;
 
-        if (!isBedrock && !fs.existsSync(jarFile) && !customArgs) {
+        if (!isBedrock && !isPocketMine && !fs.existsSync(jarFile) && !customArgs) {
             return sendError(res, E.BAD_REQUEST, 400, 'Server jar not found.');
         }
         if (isBedrock && !fs.existsSync(restartInfo.executable)) {
             return sendError(res, E.BAD_REQUEST, 400, 'Bedrock server binary not found.');
+        }
+        if (isPocketMine && !fs.existsSync(restartInfo.jarFile)) {
+            return sendError(res, E.BAD_REQUEST, 400, 'PocketMine-MP.phar not found.');
         }
 
         if (!processManager.acquireLock(serverId)) {
@@ -581,7 +620,13 @@ router.post('/:serverId/restart', authenticateToken, checkPermission('server.res
                 result = await processManager.restartGraceful(
                     serverId.toString(), serverDir,
                     [], restartInfo.executable, server.ram_mb, 15000,
-                    [], restartInfo.executable, restartInfo.env
+                    [], restartInfo.executable, restartInfo.env, 'bedrock'
+                );
+            } else if (isPocketMine) {
+                result = await processManager.restartGraceful(
+                    serverId.toString(), serverDir,
+                    [], restartInfo.jarFile, server.ram_mb, 15000,
+                    restartInfo.customArgs, restartInfo.executable, restartInfo.env, 'pocketmine'
                 );
             } else {
                 const javaPath = await javaManager.getJavaPath(server.java_path);

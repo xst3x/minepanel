@@ -36,7 +36,8 @@ async function fetchAllVersions() {
         quilt: [],
         magma: [],
         // Bedrock software (from GitHub releases via bedrock/ resolvers)
-        bedrock: [],       // Vanilla Bedrock Dedicated Server (BDS)
+        bedrock: [],          // Vanilla Bedrock Dedicated Server (BDS)
+        'bedrock-preview': [], // Bedrock Preview / Snapshots channel
         pocketmine: [],
         nukkitx: [],
         powernukkitx: [],
@@ -104,12 +105,13 @@ async function fetchAllVersions() {
 
     // 8. Bedrock software (GitHub releases — parallel, isolated failures)
     try {
-        const [bds, pm, nk, pnk, wd] = await bedrockResolvers.getAll();
-        if (bds?.version)  result.bedrock       = [bds.version];   // Vanilla BDS
-        if (pm?.version)   result.pocketmine   = [pm.version];
-        if (nk?.version)   result.nukkitx      = [nk.version];
-        if (pnk?.version)  result.powernukkitx = [pnk.version];
-        if (wd?.version)   result.waterdogpe   = [wd.version];
+        const [bds, bdsPrev, pm, nk, pnk, wd] = await bedrockResolvers.getAll();
+        if (bds?.version)     result.bedrock            = [bds.version];
+        if (bdsPrev?.version) result['bedrock-preview'] = [bdsPrev.version];
+        if (pm?.version)      result.pocketmine          = [pm.version];
+        if (nk?.version)      result.nukkitx             = [nk.version];
+        if (pnk?.version)     result.powernukkitx        = [pnk.version];
+        if (wd?.version)      result.waterdogpe          = [wd.version];
     } catch (e) {
         console.error('[VersionFetcher] Failed to fetch Bedrock software versions:', e.message);
     }

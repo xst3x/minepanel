@@ -37,8 +37,7 @@ export default function App() {
         <Route path="/ranks" element={<Ranks />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/discord" element={<Discord />} />
-        <Route path="/docs" element={<Docs />} />
-        <Route path="/docs/:category/:page" element={<Docs />} />
+        <Route path="/docs/:category?/:page?" element={<Docs />} />
         <Route path="/profile" element={<Profile />} />
 
         <Route path="/server/:id" element={<ServerLayout />}>

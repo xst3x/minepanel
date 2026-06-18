@@ -14,7 +14,9 @@
 
 'use strict';
 
-const bedrock     = require('./Bedrock');
+const bedrockMod  = require('./Bedrock');
+const bedrock         = bedrockMod;           // stable BDS
+const bedrockPreview  = bedrockMod.preview;   // preview/snapshot BDS channel
 const pocketmine  = require('./PocketMine');
 const nukkit      = require('./Nukkit');
 const powerNukkit = require('./PowerNukkit');
@@ -32,6 +34,7 @@ const waterdog    = require('./Waterdog');
 async function getAll() {
     const [
         bedrockResult,
+        bedrockPreviewResult,
         pocketmineResult,
         nukkitResult,
         powerNukkitResult,
@@ -39,6 +42,10 @@ async function getAll() {
     ] = await Promise.all([
         bedrock.getLatestVersion().catch(e => {
             console.warn('[bedrock/index] Bedrock (vanilla) failed:', e.message);
+            return null;
+        }),
+        bedrockPreview.getLatestVersion().catch(e => {
+            console.warn('[bedrock/index] Bedrock (preview) failed:', e.message);
             return null;
         }),
         pocketmine.getLatestRelease().catch(e => {
@@ -61,6 +68,7 @@ async function getAll() {
 
     return [
         bedrockResult,
+        bedrockPreviewResult,
         pocketmineResult,
         nukkitResult,
         powerNukkitResult,
@@ -70,8 +78,8 @@ async function getAll() {
 
 module.exports = {
     getAll,
-    // Named exports for callers that only need one resolver
     bedrock,
+    bedrockPreview,
     pocketmine,
     nukkit,
     powerNukkit,

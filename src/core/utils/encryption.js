@@ -80,9 +80,12 @@ function decryptAndDetect(encoded) {
         const key = getKey();
         return { decrypted: decryptWithKey(encoded, key), migrated: false };
     } catch (e) {
-        // Fallback to the default key
-        const defaultSecret = 'minepanel_super_secret_jwt_key_schimba_asta_in_productie_2024';
-        const fallbackKey = crypto.createHash('sha256').update(defaultSecret).digest();
+        // Fallback to the environment-configured fallback key (if provided)
+        const fallbackSecret = process.env.FALLBACK_JWT_SECRET;
+        if (!fallbackSecret) {
+            throw new Error('Failed to decrypt: invalid key and no FALLBACK_JWT_SECRET configured');
+        }
+        const fallbackKey = crypto.createHash('sha256').update(fallbackSecret).digest();
         try {
             return { decrypted: decryptWithKey(encoded, fallbackKey), migrated: true };
         } catch (err) {

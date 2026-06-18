@@ -219,11 +219,23 @@ class AppError extends Error {
     }
 }
 
-// Convenience: send an error response directly
-// Usage: sendError(res, E.SERVER_NOT_FOUND, 404)
-// Usage: sendError(res, E.VALIDATION_ERROR, 400, 'Field X is required')
+// Centralized logging import to avoid circular dependencies
+let logger;
+try {
+    logger = require('./utils/logger');
+} catch (_) {
+    logger = console;
+}
+
 function sendError(res, code, status = 500, detail = null) {
-    const err = new AppError(code, status, detail);
+    let responseDetail = detail;
+    if (status === 500 || code === E.INTERNAL_ERROR) {
+        if (detail) {
+            logger.error(`[ErrorShield] Internal error shielded: ${detail.stack || detail}`);
+        }
+        responseDetail = null;
+    }
+    const err = new AppError(code, status, responseDetail);
     return res.status(status).json(err.toResponse());
 }
 

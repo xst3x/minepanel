@@ -182,10 +182,13 @@ function getBedrockLaunchDescriptor(server, serverDir) {
 }
 
 /**
- * Returns true when server.software is bedrock (case-insensitive).
+ * Returns true when server.software is a native Bedrock binary type
+ * (bedrock or bedrock-preview), case-insensitive.
  */
 function isBedrock(software) {
-    return typeof software === 'string' && software.toLowerCase() === 'bedrock';
+    if (typeof software !== 'string') return false;
+    const s = software.toLowerCase();
+    return s === 'bedrock' || s === 'bedrock-preview';
 }
 
 // ─── Exports ─────────────────────────────────────────────────────────────────
