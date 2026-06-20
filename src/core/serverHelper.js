@@ -1,6 +1,7 @@
 const { dbRun, dbGet, dbAll } = require('../db/database');
 const path = require('path');
 const fs = require('fs');
+const net = require('net');
 const { ZipArchive: _ZipArchive } = require('archiver');
 const WebhookManager = require('./webhookManager');
 // archiver v8 replaced archiver('zip', opts) factory with new ZipArchive(opts)
@@ -152,4 +153,66 @@ async function migrateServerDirectories() {
     }
 }
 
-module.exports = { SERVERS_DIR, sanitizeDirName, ensureUniqueDirName, getServer, getServerDir, createBackup, migrateServerDirectories };
+// Check if port is available (not in use and not in DB)
+async function isPortAvailable(port, protocol = 'tcp') {
+    try {
+        // Check DB: any server using this port?
+        const existing = await dbGet('SELECT id FROM servers WHERE port = ?', [port]);
+        if (existing) return false;
+
+        // Check if port is in use (TCP for Java, UDP for Bedrock)
+        return new Promise((resolve) => {
+            if (protocol === 'tcp') {
+                const server = net.createServer();
+                server.once('error', () => resolve(false));
+                server.once('listening', () => {
+                    server.close();
+                    resolve(true);
+                });
+                server.listen(port, '127.0.0.1');
+            } else if (protocol === 'udp') {
+                const dgram = require('dgram');
+                const socket = dgram.createSocket('udp4');
+                socket.once('error', () => {
+                    socket.close();
+                    resolve(false);
+                });
+                socket.once('listening', () => {
+                    socket.close();
+                    resolve(true);
+                });
+                socket.bind(port, '127.0.0.1');
+            } else {
+                resolve(false);
+            }
+        });
+    } catch (e) {
+        return false;
+    }
+}
+
+// Find available port starting from basePort
+async function findAvailablePort(basePort = 25565, software = 'paper', maxAttempts = 100) {
+    // Java servers use TCP, Bedrock uses UDP
+    const protocol = (software === 'bedrock' || software === 'nukkit' || software === 'powernukkit') ? 'udp' : 'tcp';
+    
+    for (let i = 0; i < maxAttempts; i++) {
+        const port = basePort + i;
+        const available = await isPortAvailable(port, protocol);
+        if (available) return port;
+    }
+    
+    throw new Error(`No available ports found starting from ${basePort}`);
+}
+
+module.exports = { 
+    SERVERS_DIR, 
+    sanitizeDirName, 
+    ensureUniqueDirName, 
+    getServer, 
+    getServerDir, 
+    createBackup, 
+    migrateServerDirectories,
+    findAvailablePort,
+    isPortAvailable
+};

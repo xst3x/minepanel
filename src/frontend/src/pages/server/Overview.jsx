@@ -43,6 +43,8 @@ export default function ServerOverview() {
     loadFtp();
   }, [serverId]);
 
+
+
   // Chart
   const drawChart = () => {
     const canvas = canvasRef.current;
@@ -179,7 +181,6 @@ export default function ServerOverview() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

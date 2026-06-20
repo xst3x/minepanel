@@ -4,6 +4,30 @@ import { api } from '../../lib/api.js';
 import { toast, showConfirm, showPrompt } from '../../components/Toast.jsx';
 import Select from '../../components/Select.jsx';
 
+// ─── Tiny inline icon helpers ─────────────────────────────────────────────────
+const IconRefresh = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+  </svg>
+);
+const IconPlay = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="5 3 19 12 5 21 5 3"/>
+  </svg>
+);
+const IconUndo = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/>
+  </svg>
+);
+const IconShield = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+  </svg>
+);
+
+
+
 export default function ServerSettings() {
   const { serverId, serverInfo, status, hasPerm, reloadServerInfo } = useOutletContext();
   const navigate = useNavigate();
@@ -26,10 +50,147 @@ export default function ServerSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // ── Auto-Update state ──────────────────────────────────────────────────────
+  const [upd, setUpd] = useState({
+    auto_update_software: false,
+    auto_update_content: false,
+    force_incompatible_updates: false,
+    auto_backup_before_update: true,
+    ignored_plugins: [],
+    update_interval_hours: 12,
+    last_update_check: null,
+    last_update_run: null,
+    _updateState: { status: 'idle', message: null },
+  });
+  const [updSaving, setUpdSaving] = useState(false);
+  const [updChecking, setUpdChecking] = useState(false);
+  const [updRunning, setUpdRunning] = useState(false);
+  const [updCheckResult, setUpdCheckResult] = useState(null);
+  const [ignoredInput, setIgnoredInput] = useState('');
+
   useEffect(() => {
     loadSettings();
     loadVersions();
+    loadUpdateSettings();
   }, [serverId]);
+
+  const loadUpdateSettings = async () => {
+    try {
+      const data = await api(`/api/servers/${serverId}/update/settings`);
+      if (data) {
+        setUpd({
+          auto_update_software:       !!data.auto_update_software,
+          auto_update_content:        !!data.auto_update_content,
+          force_incompatible_updates: !!data.force_incompatible_updates,
+          auto_backup_before_update:  data.auto_backup_before_update !== false,
+          ignored_plugins:            Array.isArray(data.ignored_plugins) ? data.ignored_plugins : [],
+          update_interval_hours:      data.update_interval_hours || 12,
+          last_update_check:          data.last_update_check || null,
+          last_update_run:            data.last_update_run || null,
+          _updateState:               data._updateState || { status: 'idle', message: null },
+        });
+      }
+    } catch (_) {}
+  };
+
+  const handleSaveUpdateSettings = async () => {
+    setUpdSaving(true);
+    try {
+      await api(`/api/servers/${serverId}/update/settings`, {
+        method: 'PATCH',
+        body: {
+          auto_update_software:       upd.auto_update_software,
+          auto_update_content:        upd.auto_update_content,
+          force_incompatible_updates: upd.force_incompatible_updates,
+          auto_backup_before_update:  upd.auto_backup_before_update,
+          ignored_plugins:            upd.ignored_plugins,
+          update_interval_hours:      Number(upd.update_interval_hours),
+        },
+      });
+      toast('Auto-update settings saved.', 'success');
+    } catch (err) {
+      toast('Failed to save update settings: ' + err.message, 'error');
+    } finally {
+      setUpdSaving(false);
+    }
+  };
+
+  const handleCheckUpdate = async () => {
+    setUpdChecking(true);
+    setUpdCheckResult(null);
+    try {
+      const result = await api(`/api/servers/${serverId}/update/check`, { method: 'POST' });
+      setUpdCheckResult(result);
+      if (result.available) {
+        toast(`Update available: ${result.currentVersion} → ${result.latestVersion}`, 'info');
+      } else {
+        toast('Server is up to date.', 'success');
+      }
+    } catch (err) {
+      toast('Check failed: ' + err.message, 'error');
+    } finally {
+      setUpdChecking(false);
+    }
+  };
+
+  const handleRunUpdate = async () => {
+    if (updCheckResult?.available && !updCheckResult.compatible && !upd.force_incompatible_updates) {
+      toast('Update is incompatible. Enable "Force incompatible updates" to proceed.', 'error');
+      return;
+    }
+    if (!updCheckResult?.available) {
+      const ok = await showConfirm('No update was detected. Force run anyway?', 'Run Update');
+      if (!ok) return;
+    } else {
+      const ok = await showConfirm(
+        `Update ${updCheckResult.currentVersion} → ${updCheckResult.latestVersion}?\n\nThe server will be stopped, backed up, and the new jar installed.`,
+        'Confirm Update'
+      );
+      if (!ok) return;
+    }
+    setUpdRunning(true);
+    try {
+      const result = await api(`/api/servers/${serverId}/update/run`, { method: 'POST', body: {} });
+      toast(`Update complete! New version: ${result.newVersion}`, 'success');
+      setUpdCheckResult(null);
+      loadUpdateSettings();
+      reloadServerInfo();
+    } catch (err) {
+      toast('Update failed: ' + err.message, 'error');
+    } finally {
+      setUpdRunning(false);
+    }
+  };
+
+  const handleRollback = async () => {
+    const ok = await showConfirm(
+      'Roll back to the most recent pre-update backup? The server will be stopped.',
+      'Confirm Rollback'
+    );
+    if (!ok) return;
+    try {
+      const result = await api(`/api/servers/${serverId}/update/rollback`, { method: 'POST' });
+      toast(`Rolled back from ${result.restoredFrom}`, 'success');
+      loadUpdateSettings();
+      reloadServerInfo();
+    } catch (err) {
+      toast('Rollback failed: ' + err.message, 'error');
+    }
+  };
+
+  const addIgnoredPlugin = () => {
+    const trimmed = ignoredInput.trim().toLowerCase();
+    if (!trimmed) return;
+    if (upd.ignored_plugins.includes(trimmed)) { setIgnoredInput(''); return; }
+    setUpd(prev => ({ ...prev, ignored_plugins: [...prev.ignored_plugins, trimmed] }));
+    setIgnoredInput('');
+  };
+
+  const removeIgnoredPlugin = (p) => {
+    setUpd(prev => ({ ...prev, ignored_plugins: prev.ignored_plugins.filter(x => x !== p) }));
+  };
+
+
 
   const loadSettings = async () => {
     setLoading(true);
@@ -341,7 +502,213 @@ export default function ServerSettings() {
         )}
       </div>
 
+      {/* ── Auto-Update Settings ── */}
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+          <h3 style={{ margin: 0 }}>Auto-Update Settings</h3>
+          {upd._updateState?.status && upd._updateState.status !== 'idle' && (
+            <span style={{
+              fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
+              padding: '0.2rem 0.6rem', borderRadius: '999px',
+              background: upd._updateState.status === 'error' ? 'color-mix(in srgb, var(--bg-surface) 80%, var(--danger) 20%)' : 'color-mix(in srgb, var(--bg-surface) 80%, var(--accent) 20%)',
+              color: upd._updateState.status === 'error' ? 'var(--danger)' : 'var(--accent)',
+              border: `1px solid ${upd._updateState.status === 'error' ? 'var(--danger)' : 'var(--accent)'}`,
+            }}>
+              {upd._updateState.status}
+            </span>
+          )}
+        </div>
+        <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '1.25rem' }}>
+          Automatically check and install software updates on a schedule. Always creates a backup before applying.
+        </p>
+
+        {/* Update available banner */}
+        {updCheckResult?.available && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem',
+            background: 'color-mix(in srgb, var(--bg-surface) 80%, var(--accent) 20%)',
+            border: '1px solid var(--accent)', borderRadius: 'var(--radius)', padding: '0.75rem 1rem',
+            marginBottom: '1rem', fontSize: '0.85rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontWeight: 600 }}>
+              <IconShield />
+              Update available: <code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{updCheckResult.currentVersion}</code>
+              &nbsp;→&nbsp;
+              <code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{updCheckResult.latestVersion}</code>
+              {!updCheckResult.compatible && (
+                <span style={{ color: 'var(--warning)', fontSize: '0.75rem', fontWeight: 400 }}>
+                  ⚠ Incompatible – {updCheckResult.compatibilityReason}
+                </span>
+              )}
+            </div>
+            <button
+              className="btn primary"
+              onClick={handleRunUpdate}
+              disabled={updRunning}
+              style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              <IconPlay /> {updRunning ? 'Updating…' : 'Apply Update'}
+            </button>
+          </div>
+        )}
+
+        {/* Toggle rows */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginBottom: '1.25rem' }}>
+          {[
+            {
+              key: 'auto_update_software',
+              label: 'Auto-update software',
+              desc: 'Automatically download and install server jar updates on the configured schedule.',
+            },
+            {
+              key: 'auto_update_content',
+              label: 'Auto-update content (plugins)',
+              desc: 'Also check and update plugins/mods. Respects the ignored plugins list.',
+            },
+            {
+              key: 'force_incompatible_updates',
+              label: 'Force incompatible updates',
+              desc: 'Allow cross-minor-version updates (e.g. 1.20 → 1.21). High risk – ensure plugin compatibility first.',
+              warn: true,
+            },
+            {
+              key: 'auto_backup_before_update',
+              label: 'Backup before every update',
+              desc: 'Create a full server backup before applying any update. Strongly recommended.',
+              locked: upd.force_incompatible_updates,
+            },
+          ].map(({ key, label, desc, warn, locked }) => (
+            <label key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: locked ? 'default' : 'pointer', gap: '1rem' }}>
+              <div>
+                <div style={{ fontWeight: 500, color: warn ? 'var(--warning)' : 'var(--text-primary)', fontSize: '0.88rem' }}>{label}</div>
+                <div className="text-muted" style={{ fontSize: '0.78rem', marginTop: '0.12rem' }}>{desc}</div>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={locked ? true : upd[key]}
+                  disabled={locked}
+                  onChange={locked ? undefined : (e) => setUpd(prev => ({ ...prev, [key]: e.target.checked }))}
+                />
+                <span className="toggle-slider" />
+              </label>
+            </label>
+          ))}
+        </div>
+
+        {/* Interval picker */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Check interval (hours)</label>
+            <input
+              type="number"
+              min="1" max="168"
+              value={upd.update_interval_hours}
+              onChange={(e) => setUpd(prev => ({ ...prev, update_interval_hours: e.target.value }))}
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Last check</label>
+            <input
+              type="text"
+              readOnly
+              value={upd.last_update_check ? new Date(upd.last_update_check).toLocaleString() : 'Never'}
+              style={{ color: 'var(--text-muted)', cursor: 'default' }}
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Last update applied</label>
+            <input
+              type="text"
+              readOnly
+              value={upd.last_update_run ? new Date(upd.last_update_run).toLocaleString() : 'Never'}
+              style={{ color: 'var(--text-muted)', cursor: 'default' }}
+            />
+          </div>
+        </div>
+
+        {/* Ignored plugins */}
+        <div style={{ marginBottom: '1.25rem' }}>
+          <label style={{ display: 'block', fontWeight: 500, fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+            Ignored plugins (skip content updates for these)
+          </label>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <input
+              type="text"
+              placeholder="e.g. essentialsx"
+              value={ignoredInput}
+              onChange={(e) => setIgnoredInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addIgnoredPlugin(); } }}
+              style={{ flex: 1, height: '36px' }}
+            />
+            <button className="btn outline" onClick={addIgnoredPlugin} style={{ height: '36px', padding: '0 0.75rem', fontSize: '0.82rem' }}>
+              Add
+            </button>
+          </div>
+          {upd.ignored_plugins.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+              {upd.ignored_plugins.map(p => (
+                <span key={p} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+                  borderRadius: '999px', padding: '0.15rem 0.6rem', fontSize: '0.78rem', fontFamily: 'var(--font-mono)',
+                }}>
+                  {p}
+                  <button
+                    onClick={() => removeIgnoredPlugin(p)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, lineHeight: 1, fontSize: '0.9rem' }}
+                    aria-label={`Remove ${p}`}
+                  >×</button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+          <button
+            id="update-check-btn"
+            className="btn outline"
+            onClick={handleCheckUpdate}
+            disabled={updChecking}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.83rem' }}
+          >
+            <IconRefresh /> {updChecking ? 'Checking…' : 'Check Now'}
+          </button>
+          <button
+            id="update-run-btn"
+            className="btn outline"
+            onClick={handleRunUpdate}
+            disabled={updRunning}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.83rem' }}
+          >
+            <IconPlay /> {updRunning ? 'Updating…' : 'Update Now'}
+          </button>
+          <button
+            id="update-rollback-btn"
+            className="btn outline"
+            onClick={handleRollback}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.83rem', color: 'var(--warning)', borderColor: 'var(--warning)' }}
+          >
+            <IconUndo /> Rollback
+          </button>
+          {hasPerm('server.properties.write') && (
+            <button
+              id="update-save-btn"
+              className="btn primary"
+              onClick={handleSaveUpdateSettings}
+              disabled={updSaving}
+              style={{ marginLeft: 'auto', fontSize: '0.83rem' }}
+            >
+              {updSaving ? 'Saving…' : 'Save Update Settings'}
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Danger Zone */}
+
       {hasPerm('account.manage') && (
         <div className="card" style={{ border: '1px solid var(--danger)', background: 'color-mix(in srgb, var(--bg-surface) 85%, var(--danger) 25%)' }}>
           <h3 style={{ color: 'var(--text-primary)', marginTop: 0 }}>Delete Server</h3>

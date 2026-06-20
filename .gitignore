@@ -12,6 +12,8 @@ logs/
 .DS_Store
 Thumbs.db
 core-rules.md
-runtime
-.antigravity
-.agent
+runtime/
+.antigravity/
+.agent/
+stats.json
+**/Desktop.ini

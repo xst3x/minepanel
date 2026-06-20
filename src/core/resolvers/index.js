@@ -57,8 +57,47 @@ const getProvider = (software) => {
     }
 };
 
+function compareVersions(a, b) {
+    const pa = String(a).split('-')[0].split('.').map(num => parseInt(num, 10) || 0);
+    const pb = String(b).split('-')[0].split('.').map(num => parseInt(num, 10) || 0);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const na = pa[i] || 0;
+        const nb = pb[i] || 0;
+        if (na !== nb) return nb - na;
+    }
+    return 0;
+}
+
 const resolveJar = async (software, version, build = 'latest') => {
     const provider = getProvider(software);
+
+    if (version === 'latest') {
+        if (typeof provider.getLatestVersion === 'function') {
+            const res = await provider.getLatestVersion();
+            version = res.version;
+        } else if (typeof provider.listVersions === 'function') {
+            let versions = await provider.listVersions();
+            if (versions && typeof versions === 'object' && !Array.isArray(versions)) {
+                versions = versions.versions;
+            }
+            if (Array.isArray(versions) && versions.length > 0) {
+                if (software.toLowerCase() === 'vanilla' || software.toLowerCase() === 'snapshots') {
+                    const type = software.toLowerCase() === 'snapshots' ? 'snapshot' : 'release';
+                    const found = versions.find(v => v.type === type);
+                    if (found) version = found.version;
+                } else {
+                    const first = versions[0];
+                    if (typeof first === 'string') {
+                        const sorted = versions.filter(v => typeof v === 'string').sort(compareVersions);
+                        version = sorted[0];
+                    } else if (first && typeof first === 'object' && first.version) {
+                        version = first.version;
+                    }
+                }
+            }
+        }
+    }
+
     return await provider.resolveBuild(version, build);
 };
 

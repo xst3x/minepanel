@@ -690,6 +690,7 @@ class DiscordManager {
         let client = this.clients.get(bid);
         let tempClient = null;
 
+        const bot = await dbGet('SELECT * FROM discord_bots WHERE id = ?', [botId]);
         if (bot && (!client || !client.isReady())) {
             try {
                 const token = decrypt(bot.bot_token_encrypted);

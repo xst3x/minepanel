@@ -8,7 +8,7 @@ const V = require('../middleware/validators');
 const { resolveJar, downloadJar } = require('../core/resolvers');
 const processManager = require('../core/processManager');
 const executionManager = require('../core/executionManager'); // native-only wrapper
-const { SERVERS_DIR, sanitizeDirName, ensureUniqueDirName, getServer, getServerDir, createBackup } = require('../core/serverHelper');
+const { SERVERS_DIR, sanitizeDirName, ensureUniqueDirName, getServer, getServerDir, createBackup, findAvailablePort } = require('../core/serverHelper');
 const bedrockAdapter = require('../adapters/bedrock');
 const pocketmineAdapter = require('../adapters/pocketmine');
 const { retryRename, retryDelete, retryUnlink, retryCopy } = require('../core/utils/fsRetry');
@@ -177,6 +177,20 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
+//  Get next available port for a software type
+router.get('/suggest-port/:software', authenticateToken, async (req, res) => {
+    try {
+        const { software } = req.params;
+        const basePort = software === 'bedrock' || software === 'bedrock-preview' || software === 'nukkit' || software === 'powernukkit' ? 19132 : 25565;
+        
+        const availablePort = await findAvailablePort(basePort, software);
+        res.json({ port: availablePort, suggested: true });
+    } catch (e) {
+        logger.error(`[serverRoutes] GET /suggest-port error:`, e);
+        return sendError(res, { error: 'NO_PORT_AVAILABLE', message: 'Could not find available port' }, 503);
+    }
+});
+
 //  Get single server details 
 router.get('/:serverId', authenticateToken, async (req, res) => {
     try {
@@ -205,6 +219,7 @@ router.get('/:serverId/my-permissions', authenticateToken, async (req, res) => {
 });
 
 
+//  Get next available port for a software type
 //  Create a server (admin only) 
 router.post('/create', authenticateToken, validate(V.createServer), async (req, res) => {
     const { name, software, version, ram_mb, port } = req.body;
@@ -1312,4 +1327,172 @@ router.post('/:serverId/settings', authenticateToken, checkPermission('server.pr
     }
 });
 
+// ─── Auto-Update routes ───────────────────────────────────────────────────────
+const UpdateManager = require('../core/update/UpdateManager');
+
+// GET /:serverId/update/settings  — read current update config + live state
+router.get('/:serverId/update/settings', authenticateToken, checkPermission('server.properties.read'), async (req, res) => {
+    const { serverId } = req.params;
+    try {
+        let row;
+        try {
+            row = await dbGet(
+                `SELECT auto_update_software, auto_update_content, force_incompatible_updates,
+                        auto_backup_before_update, ignored_plugins, update_interval_hours,
+                        last_update_check, last_update_run
+                 FROM servers WHERE id = ?`,
+                [serverId]
+            );
+        } catch (dbErr) {
+            logger.error(`[serverRoutes] GET update/settings DB error (Server: ${serverId}): ${dbErr.message}`);
+            if (dbErr.message && dbErr.message.includes('no column named')) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database schema is out of date. Restart the server to apply the latest migrations.',
+                });
+            }
+            return res.status(500).json({ success: false, error: `Database error: ${dbErr.message}` });
+        }
+
+        if (!row) return sendError(res, E.SERVER_NOT_FOUND, 404);
+
+        // Parse ignored_plugins JSON safely — stored as TEXT '[]' in SQLite
+        let ignoredPlugins = [];
+        try {
+            const raw = row.ignored_plugins;
+            ignoredPlugins = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
+        } catch (_) {}
+
+        res.json({
+            ...row,
+            ignored_plugins:            ignoredPlugins,
+            auto_update_software:       !!row.auto_update_software,
+            auto_update_content:        !!row.auto_update_content,
+            force_incompatible_updates: !!row.force_incompatible_updates,
+            auto_backup_before_update:  !!row.auto_backup_before_update,
+            _updateState: UpdateManager.getState(serverId),
+        });
+    } catch (e) {
+        logger.error(`[serverRoutes] GET update/settings error (Server: ${serverId}): ${e.message}`);
+        return res.status(500).json({ success: false, error: e.message || 'Failed to load update settings' });
+    }
+});
+
+// PATCH /:serverId/update/settings  — persist update config
+router.patch('/:serverId/update/settings', authenticateToken, checkPermission('server.properties.write'), validate(V.updateSettings), async (req, res) => {
+    const { serverId } = req.params;
+    logger.info(`[serverRoutes] PATCH update/settings (Server: ${serverId}) body: ${JSON.stringify(req.body)}`);
+    try {
+        const server = await getServer(serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+
+        const fields = [];
+        const values = [];
+
+        const boolMap = {
+            auto_update_software:       req.body.auto_update_software,
+            auto_update_content:        req.body.auto_update_content,
+            force_incompatible_updates: req.body.force_incompatible_updates,
+            auto_backup_before_update:  req.body.auto_backup_before_update,
+        };
+        for (const [col, val] of Object.entries(boolMap)) {
+            if (val !== undefined) {
+                fields.push(`${col} = ?`);
+                values.push(val ? 1 : 0);
+            }
+        }
+
+        if (req.body.update_interval_hours !== undefined) {
+            fields.push('update_interval_hours = ?');
+            values.push(req.body.update_interval_hours);
+        }
+
+        if (req.body.ignored_plugins !== undefined) {
+            // Always treat as array — defensive guard in case Joi coercion produces a non-array
+            const raw = Array.isArray(req.body.ignored_plugins) ? req.body.ignored_plugins : [];
+            // Normalize: lowercase, trim, deduplicate
+            const normalized = [...new Set(
+                raw.map(p => String(p).trim().toLowerCase()).filter(Boolean)
+            )];
+            fields.push('ignored_plugins = ?');
+            values.push(JSON.stringify(normalized));
+        }
+
+        if (fields.length === 0) {
+            return res.status(400).json({ success: false, error: 'No valid fields provided' });
+        }
+
+        values.push(serverId);
+
+        // Separate try/catch so the real DB error (e.g. missing column) is surfaced
+        try {
+            await dbRun(`UPDATE servers SET ${fields.join(', ')} WHERE id = ?`, values);
+        } catch (dbErr) {
+            logger.error(`[serverRoutes] PATCH update/settings DB error (Server: ${serverId}): ${dbErr.message}`);
+            // Missing column means migration v15 was never applied — give an actionable message
+            if (dbErr.message && dbErr.message.includes('no column named')) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database schema is out of date. Restart the server to apply the latest migrations.',
+                });
+            }
+            return res.status(500).json({ success: false, error: `Database error: ${dbErr.message}` });
+        }
+
+        res.json({ success: true, message: 'Update settings saved' });
+    } catch (e) {
+        logger.error(`[serverRoutes] PATCH update/settings error (Server: ${serverId}, body: ${JSON.stringify(req.body)}):`, e.message);
+        return res.status(500).json({ success: false, error: e.message || 'Failed to save update settings' });
+    }
+});
+
+// POST /:serverId/update/check  — manual check for a newer version
+router.post('/:serverId/update/check', authenticateToken, checkPermission('server.properties.read'), async (req, res) => {
+    const { serverId } = req.params;
+    try {
+        const server = await getServer(serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+
+        const result = await UpdateManager.checkForUpdate(serverId);
+        res.json(result);
+    } catch (e) {
+        logger.error(`[serverRoutes] POST update/check error (Server: ${serverId}):`, e);
+        return sendError(res, E.BAD_REQUEST, 400, e.message || null);
+    }
+});
+
+// POST /:serverId/update/run  — manually trigger update now
+router.post('/:serverId/update/run', authenticateToken, checkPermission('server.properties.write'), validate(V.updateRun), async (req, res) => {
+    const { serverId } = req.params;
+    try {
+        const server = await getServer(serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+
+        const { targetVersion = 'latest', skipBackup = false } = req.body;
+
+        const result = await UpdateManager.runUpdate(serverId, { targetVersion, skipBackup });
+        res.json(result);
+    } catch (e) {
+        logger.error(`[serverRoutes] POST update/run error (Server: ${serverId}):`, e);
+        // Expose the message — it's user-actionable (compat check, backup fail, etc.)
+        return sendError(res, E.BAD_REQUEST, 400, e.message || null);
+    }
+});
+
+// POST /:serverId/update/rollback  — roll back to last pre-update backup
+router.post('/:serverId/update/rollback', authenticateToken, checkPermission('server.properties.write'), async (req, res) => {
+    const { serverId } = req.params;
+    try {
+        const server = await getServer(serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+
+        const result = await UpdateManager.rollback(serverId);
+        res.json(result);
+    } catch (e) {
+        logger.error(`[serverRoutes] POST update/rollback error (Server: ${serverId}):`, e);
+        return sendError(res, E.BAD_REQUEST, 400, e.message || null);
+    }
+});
+
 module.exports = router;
+

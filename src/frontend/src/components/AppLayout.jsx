@@ -218,7 +218,8 @@ export default function AppLayout() {
               <span>SERVERS</span>
             </div>
             {servers.map(sv => {
-              const active = location.pathname.startsWith(`/server/${sv.id}`);
+              const pathSegment = `/server/${sv.id}/`;
+              const active = location.pathname.startsWith(pathSegment);
               const status = sv.status || 'offline';
               return (
                 <Link key={sv.id} to={`/server/${sv.id}/overview`}

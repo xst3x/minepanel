@@ -16,11 +16,12 @@ const DEFAULTS = {
     quilt: ['1.21.1', '1.21', '1.20.6', '1.20.4', '1.20.2', '1.20.1', '1.19.4', '1.18.2', '1.16.5'],
     magma: ['1.20.4', '1.20.2', '1.20.1', '1.19.4', '1.19.3', '1.18.2', '1.12.2'],
     // Bedrock software — these are single-version (latest release) fetched from GitHub
-    bedrock:      ['1.21.2.02'],
-    pocketmine:   ['5.23.1'],
-    nukkitx:      ['1.0.0'],
-    powernukkitx: ['1.21.50'],
-    waterdogpe:   ['1.0.0'],
+    bedrock:          ['1.21.2.02'],
+    'bedrock-preview': ['1.21.2.02'],
+    pocketmine:       ['5.23.1'],
+    nukkitx:          ['1.0.0'],
+    powernukkitx:     ['1.21.50'],
+    waterdogpe:       ['1.0.0'],
 };
 
 let cachedVersions = { ...DEFAULTS };

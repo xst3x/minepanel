@@ -60,6 +60,8 @@ const generateToken = Joi.object({
     ranks: Joi.array().items(Joi.number().integer()).required(),
 });
 
+const version  = Joi.string().trim().min(1).max(32).pattern(/^[a-zA-Z0-9._-]+$/).message('Version contains invalid characters').required();
+
 // ─── Server ──────────────────────────────────────────────────────────────────
 
 const SOFTWARE_VALUES = ['vanilla', 'snapshots', 'paper', 'purpur', 'fabric', 'forge', 'quilt', 'magma', 'spigot', 'bungeecord', 'waterfall', 'velocity', 'bedrock', 'bedrock-preview', 'pocketmine', 'nukkitx', 'powernukkitx', 'waterdogpe'];
@@ -67,7 +69,7 @@ const SOFTWARE_VALUES = ['vanilla', 'snapshots', 'paper', 'purpur', 'fabric', 'f
 const createServer = Joi.object({
     name:     Joi.string().min(1).max(64).required(),
     software: Joi.string().trim().lowercase().valid(...SOFTWARE_VALUES).required(),
-    version:  Joi.string().min(1).max(32).required(),
+    version,
     ram_mb:   ram,
     port,
 });
@@ -84,12 +86,12 @@ const serverSettings = Joi.object({
 });
 
 const changeVersion = Joi.object({
-    version: Joi.string().min(1).max(32).required(),
+    version,
 });
 
 const switchSoftware = Joi.object({
     software: Joi.string().trim().lowercase().valid(...SOFTWARE_VALUES).required(),
-    version:  Joi.string().min(1).max(32).required(),
+    version,
     confirm:  Joi.boolean().optional(),
 });
 
@@ -141,6 +143,22 @@ const updateRank = Joi.object({
     color:   Joi.string().pattern(/^#[0-9a-fA-F]{6}$/).optional(),
     global:  Joi.array().items(Joi.string()).required(),
     servers: Joi.object().pattern(Joi.string(), Joi.array().items(Joi.string())).required(),
+});
+
+// ─── Auto-Update ────────────────────────────────────────────────────────────
+
+const updateSettings = Joi.object({
+    auto_update_software:      Joi.boolean().optional(),
+    auto_update_content:       Joi.boolean().optional(),
+    force_incompatible_updates: Joi.boolean().optional(),
+    auto_backup_before_update: Joi.boolean().optional(),
+    ignored_plugins:           Joi.array().items(Joi.string().trim().max(64)).optional().default([]),
+    update_interval_hours:     Joi.number().integer().min(1).max(168).optional(),
+}).min(1);
+
+const updateRun = Joi.object({
+    targetVersion: Joi.string().trim().min(1).max(32).pattern(/^[a-zA-Z0-9._-]+$/).optional().default('latest'),
+    skipBackup:    Joi.boolean().optional().default(false),
 });
 
 // ─── System ──────────────────────────────────────────────────────────────────
@@ -261,6 +279,8 @@ module.exports = {
     accentColor, customAccentCreate, setUserRank, userPermissions,
     // Server
     createServer, serverSettings, changeVersion, switchSoftware, backupConfig, sendCommand,
+    // Auto-Update
+    updateSettings, updateRun,
     // Files
     filePath, fileWrite, fileRename, fileMove, mkdir,
     fileDelete, fileCreate, mkdirSimple, fileRenameBody,

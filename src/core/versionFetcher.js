@@ -97,7 +97,17 @@ async function fetchAllVersions() {
 
     // 7. Magma
     try {
-        result.magma = await magmaResolver.listVersions();
+        const magmaRes = await magmaResolver.listVersions();
+        if (Array.isArray(magmaRes)) {
+            result.magma = magmaRes;
+        } else if (magmaRes && Array.isArray(magmaRes.versions)) {
+            result.magma = magmaRes.versions;
+            if (magmaRes.source === 'fallback') {
+                console.warn('[VersionFetcher] Magma API is down. Using safe fallback version list.');
+            }
+        } else {
+            result.magma = [];
+        }
         result.magma.sort(compareVersions);
     } catch (e) {
         console.error('[VersionFetcher] Failed to fetch Magma versions:', e.message);

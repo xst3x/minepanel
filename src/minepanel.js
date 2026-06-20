@@ -1,4 +1,4 @@
-﻿require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 require('./core/utils/envHelper').sanitizeSecrets();
 
 // --- Launcher Process Logic (must be the absolute first thing) ---
@@ -366,6 +366,10 @@ initDb().then(async () => {
     const discordManager = require('./core/discord/discordManager');
     try { await discordManager.startAll(); } catch (e) { logger.warn('[Discord] Init warning: ' + e.message); }
 
+    // ── Auto-Update Scheduler ─────────────────────────────────────────────────
+    const UpdateScheduler = require('./core/update/UpdateScheduler');
+    try { UpdateScheduler.start(); } catch (e) { logger.warn('[UpdateScheduler] Failed to start: ' + e.message); }
+
     const { dbAll: dbAllForAutostart } = require('./db/database');
     try {
         const autostartServers = await dbAllForAutostart(`SELECT * FROM servers WHERE autostart = 1`);
@@ -466,6 +470,7 @@ module.exports = { app, server };
 const gracefulShutdown = async (signal) => {
     logger.info(`[${signal}] Shutting down...`);
     statsCollector.stop();
+    try { require('./core/update/UpdateScheduler').stop(); } catch (_) {}
     try { await require('./core/discord/discordManager').destroyAll(); } catch (_) {}
     process.exit(0);
 };

@@ -100,18 +100,29 @@ describe('Servers API', () => {
         pm.stop = () => {};
         pm.gracefulStop = () => Promise.resolve({ graceful: true, wasRunning: false });
         
-        // Acquire lock
-        expect(pm.acquireLock(serverId)).toBe(true);
+        const fs = require('fs');
+        const originalExistsSync = fs.existsSync;
+        fs.existsSync = (p) => {
+            if (p && (p.endsWith('server.jar') || p.endsWith('server.properties'))) return true;
+            return originalExistsSync(p);
+        };
 
-        // Try starting while locked
-        const res = await request(app)
-            .post(`/api/servers/${serverId}/start`)
-            .set('Authorization', `Bearer ${token}`);
-        
-        expect(res.status).toBe(409);
-        expect(res.body.code).toBe('SERVER_LOCKED');
+        try {
+            // Acquire lock
+            expect(pm.acquireLock(serverId)).toBe(true);
 
-        // Release lock
-        pm.releaseLock(serverId);
+            // Try starting while locked
+            const res = await request(app)
+                .post(`/api/servers/${serverId}/start`)
+                .set('Authorization', `Bearer ${token}`);
+            
+            expect(res.status).toBe(409);
+            expect(res.body.code).toBe('SERVER_LOCKED');
+
+            // Release lock
+            pm.releaseLock(serverId);
+        } finally {
+            fs.existsSync = originalExistsSync;
+        }
     });
 });

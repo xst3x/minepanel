@@ -124,22 +124,21 @@ MinePanel is a lightweight, self-hosted web panel for managing Minecraft servers
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Runtime | Node.js 18+ |
-| Web framework | Express 4 |
-| Frontend | React 18 + React Router 6 |
-| Frontend build | Vite 5 (built automatically on startup) |
-| Real-time | `ws` (WebSocket) |
-| Database | SQLite 3 (via Sequelize) |
-| Auth | `jsonwebtoken` + `argon2` / `bcryptjs` |
-| 2FA | `otplib` + `qrcode` |
-| File uploads | Multer |
-| Archiving | Archiver, adm-zip |
-| FTP | ftp-srv |
-| NBT parsing | prismarine-nbt |
-| Process stats | pidusage |
-| Discord integration | discord.js |
+| Layer               | Technology                             |
+| ------------------- | -------------------------------------- |
+| Runtime             | Node.js 18+                            |
+| Web framework       | Express 4                              |
+| Frontend            | React 18 + React Router 6              |
+| Frontend build      | Vite 5                                 |
+| Real-time           | `ws` (WebSocket)                       |
+| Database            | SQLite 3 (via Sequelize)               |
+| Auth                | `jsonwebtoken` + `argon2` / `bcryptjs` |
+| 2FA                 | `otplib` + `qrcode`                    |
+| File uploads        | Multer                                 |
+| Archiving           | Archiver, adm-zip                      |
+| FTP                 | ftp-srv                                |
+| Process stats       | pidusage                               |
+| Discord integration | discord.js                             |
 
 The frontend is a React SPA built with Vite. It is compiled automatically on first run and served as static files — no separate build step required.
 
@@ -231,22 +230,22 @@ MinePanel/
 
 All routes are under `/api/`. Most require `Authorization: Bearer <jwt>`.
 
-| Prefix | Description |
-|---|---|
-| `POST /api/auth/login` | Obtain a JWT token (supports 2FA via `totpCode` field) |
-| `POST /api/auth/forgot-check` | Check if a username has 2FA enabled (for password reset flow) |
-| `POST /api/auth/password-reset-with-totp` | Reset password using a TOTP or backup code |
-| `GET/POST /api/auth/2fa/*` | 2FA setup, verify, toggle, disable, backup codes |
-| `/api/servers` | CRUD + lifecycle (start/stop/restart/kill) + version/software change + import |
-| `/api/servers/:id/files` | File manager |
-| `/api/servers/:id/plugins` | Plugin/mod management |
-| `/api/servers/:id/backups` | Backup management |
-| `/api/servers/:id/players` | Player list + kick/ban/op |
-| `/api/servers/:id/properties` | server.properties + server icon |
-| `/api/servers/:id/ftp` | Per-server FTP |
-| `/api/users` | User management |
-| `/api/ranks` | Rank management |
-| `/api/system` | System info + panel settings |
+| Prefix                                    | Description                                                                   |
+| ----------------------------------------- | ----------------------------------------------------------------------------- |
+| `POST /api/auth/login`                    | Obtain a JWT token (supports 2FA via `totpCode` field)                        |
+| `POST /api/auth/forgot-check`             | Check if a username has 2FA enabled (for password reset flow)                 |
+| `POST /api/auth/password-reset-with-totp` | Reset password using a TOTP or backup code                                    |
+| `GET/POST /api/auth/2fa/*`                | 2FA setup, verify, toggle, disable, backup codes                              |
+| `/api/servers`                            | CRUD + lifecycle (start/stop/restart/kill) + version/software change + import |
+| `/api/servers/:id/files`                  | File manager                                                                  |
+| `/api/servers/:id/plugins`                | Plugin/mod management                                                         |
+| `/api/servers/:id/backups`                | Backup management                                                             |
+| `/api/servers/:id/players`                | Player list + kick/ban/op                                                     |
+| `/api/servers/:id/properties`             | server.properties + server icon                                               |
+| `/api/servers/:id/ftp`                    | Per-server FTP                                                                |
+| `/api/users`                              | User management                                                               |
+| `/api/ranks`                              | Rank management                                                               |
+| `/api/system`                             | System info + panel settings                                                  |
 
 WebSocket: `ws://<host>:<port>/ws?serverId=<id>` (send `{"type":"auth","token":"<jwt>"}` as first message)
 
@@ -254,19 +253,19 @@ WebSocket: `ws://<host>:<port>/ws?serverId=<id>` (send `{"type":"auth","token":"
 
 ## Permissions Reference
 
-| Key | Group |
-|---|---|
-| `server.start` / `stop` / `restart` / `kill` | Lifecycle |
-| `server.console.read` / `write` | Console |
-| `server.files.read` / `write` / `delete` | Files |
-| `server.players.read` / `kick` / `ban` / `op` | Players |
-| `server.plugins.read` / `manage` | Plugins |
-| `server.backups.read` / `create` / `restore` / `delete` | Backups |
-| `server.properties.read` / `write` | Properties |
-| `server.logs.read` | Logs |
-| `server.ftp.access` / `manage` | FTP |
-| `account.manage` | Global |
-| `panel.settings` | Global |
+| Key                                                     | Group      |
+| ------------------------------------------------------- | ---------- |
+| `server.start` / `stop` / `restart` / `kill`            | Lifecycle  |
+| `server.console.read` / `write`                         | Console    |
+| `server.files.read` / `write` / `delete`                | Files      |
+| `server.players.read` / `kick` / `ban` / `op`           | Players    |
+| `server.plugins.read` / `manage`                        | Plugins    |
+| `server.backups.read` / `create` / `restore` / `delete` | Backups    |
+| `server.properties.read` / `write`                      | Properties |
+| `server.logs.read`                                      | Logs       |
+| `server.ftp.access` / `manage`                          | FTP        |
+| `account.manage`                                        | Global     |
+| `panel.settings`                                        | Global     |
 
 ---
 
