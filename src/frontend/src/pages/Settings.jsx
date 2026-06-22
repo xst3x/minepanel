@@ -57,6 +57,7 @@ export default function Settings() {
   const [ftpEnabled, setFtpEnabled] = useState(false);
   const [requireInviteToken, setRequireInviteToken] = useState(true);
   const [defaultRankId, setDefaultRankId] = useState('');
+  const [defaultJavaPath, setDefaultJavaPath] = useState('java');
   const [systemPort, setSystemPort] = useState('');
   const [switchingPort, setSwitchingPort] = useState(false);
 
@@ -76,6 +77,7 @@ export default function Settings() {
       setFtpEnabled(!!s.ftpEnabled);
       setRequireInviteToken(s.requireInviteTokenToCreateAccount !== false);
       setDefaultRankId(s.defaultRankId || '');
+      setDefaultJavaPath(s.defaultJavaPath || 'java');
       const ranksData = await api('/api/ranks');
       setRanks(ranksData || []);
       setSystemPort(window.location.port || (window.location.protocol === 'https:' ? '443' : '80'));
@@ -101,7 +103,8 @@ export default function Settings() {
           defaultPort: Number(defaultPort),
           maxRam: Number(maxRam),
           requireInviteTokenToCreateAccount: requireInviteToken,
-          defaultRankId: defaultRankId ? Number(defaultRankId) : null
+          defaultRankId: defaultRankId ? Number(defaultRankId) : null,
+          defaultJavaPath: defaultJavaPath.trim() || 'java'
         }
       });
       toast(res.message || 'System settings saved.', 'success');
@@ -334,6 +337,13 @@ export default function Settings() {
             <div className="form-group">
               <label>Max RAM allocation per Server (MB)</label>
               <input type="number" value={maxRam} onChange={e => setMaxRam(e.target.value)} placeholder="16384" />
+            </div>
+            <div className="form-group">
+              <label>Default Java Path</label>
+              <input type="text" value={defaultJavaPath} onChange={e => setDefaultJavaPath(e.target.value)} placeholder="java" />
+              <p className="text-muted" style={{ fontSize: '0.79rem', margin: '0.5rem 0 0' }}>
+                Used for new servers and any server without its own custom Java path set. Leave as "java" to use the system PATH (or the auto-managed Java runtime as fallback).
+              </p>
             </div>
           </div>
 

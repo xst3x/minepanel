@@ -81,6 +81,8 @@ const userRoutes = require('./routes/userRoutes');
 const rankRoutes = require('./routes/rankRoutes');
 const { statsRouter, statsConfigRouter } = require('./routes/statsRoutes');
 const docsRoutes = require('./routes/docsRoutes');
+const automationRoutes = require('./routes/automationRoutes');
+const automationEngine = require('./core/automationEngine');
 const statsCollector = require('./core/statsCollector');
 const processManager = require('./core/processManager');
 const { initFtpServer } = require('./core/ftpServer');
@@ -266,6 +268,7 @@ app.use('/api/discord/bots', discordBotsRoutes);
 app.use('/api/servers/:serverId/stats', statsRouter);
 app.use('/api/stats/config', statsConfigRouter);
 app.use('/api/docs', docsRoutes);
+app.use('/api/servers/:serverId/automation', automationRoutes);
 
 // SPA catch-all — trimite index.html pentru orice rută non-API (React Router)
 app.get(/^(?!\/api\/).*$/, (req, res) => {
@@ -289,7 +292,7 @@ wss.on('connection', (ws, req) => {
     let canWrite = false;
     let authTimeout = setTimeout(() => { if (!authenticated) ws.close(4002, 'Authentication timeout'); }, 5000);
     let statsInterval = null;
-    let consoleListener = null, statusListener = null, clearConsoleListener = null;
+    let consoleListener = null, statusListener = null, clearConsoleListener = null, automationLogListener = null;
 
     ws.on('message', async (message) => {
         try {
@@ -311,9 +314,16 @@ wss.on('connection', (ws, req) => {
                             consoleListener = (sid, output) => { if (sid === serverId) ws.send(JSON.stringify({ type: 'console', data: output })); };
                             statusListener = (sid, status) => { if (sid === serverId) ws.send(JSON.stringify({ type: 'status', data: status })); };
                             clearConsoleListener = (sid) => { if (sid === serverId) ws.send(JSON.stringify({ type: 'clear_console' })); };
+                            automationLogListener = (sid, logLine) => {
+                                if (sid.toString() === serverId.toString()) {
+                                    ws.send(JSON.stringify({ type: 'automation_log', data: logLine }));
+                                }
+                            };
+                            
                             processManager.on('console', consoleListener);
                             processManager.on('status', statusListener);
                             processManager.on('clear_console', clearConsoleListener);
+                            automationEngine.on('log', automationLogListener);
 
                             statsInterval = setInterval(async () => {
                                 if (ws.readyState !== 1) return;
@@ -340,6 +350,7 @@ wss.on('connection', (ws, req) => {
         if (consoleListener) processManager.removeListener('console', consoleListener);
         if (statusListener) processManager.removeListener('status', statusListener);
         if (clearConsoleListener) processManager.removeListener('clear_console', clearConsoleListener);
+        if (automationLogListener) automationEngine.removeListener('log', automationLogListener);
     });
 });
 
@@ -461,6 +472,7 @@ initDb().then(async () => {
             server.timeout = 0;
             server.keepAliveTimeout = 0;
             server.headersTimeout = 0;
+            automationEngine.start(PORT, CONFIG.HTTPS_ENABLED);
         });
     }
 }).catch(err => { console.error('Failed to initialize database:', err); process.exit(1); });
@@ -470,6 +482,7 @@ module.exports = { app, server };
 const gracefulShutdown = async (signal) => {
     logger.info(`[${signal}] Shutting down...`);
     statsCollector.stop();
+    automationEngine.stop();
     try { require('./core/update/UpdateScheduler').stop(); } catch (_) {}
     try { await require('./core/discord/discordManager').destroyAll(); } catch (_) {}
     process.exit(0);

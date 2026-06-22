@@ -9,5 +9,5 @@
   "maxRam": 16384,
   "requireInviteTokenToCreateAccount": true,
   "defaultRankId": 5,
-  "dockerMode": true
+  "defaultJavaPath": "C:\\Program Files\\Java\\jdk-26.0.1\\bin\\java"
 }

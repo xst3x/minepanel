@@ -41,10 +41,20 @@ if (isWorker || isTest) {
     function loadRunningServers() {
         try {
             if (fs.existsSync(runningServersFile)) {
-                return JSON.parse(fs.readFileSync(runningServersFile, 'utf8'));
+                const raw = fs.readFileSync(runningServersFile, 'utf8');
+                if (!raw || !raw.trim()) {
+                    // Empty file (e.g. left over from a hard crash mid-write) — treat as no running servers
+                    return [];
+                }
+                return JSON.parse(raw);
             }
         } catch (e) {
-            console.error('[ProcessManager] Failed to load running servers:', e);
+            console.error('[ProcessManager] Failed to load running servers (corrupt file, resetting to empty):', e);
+            try {
+                fs.writeFileSync(runningServersFile, '[]', 'utf8');
+            } catch (writeErr) {
+                console.error('[ProcessManager] Failed to reset corrupt running servers file:', writeErr);
+            }
         }
         return [];
     }

@@ -5,6 +5,15 @@ const fabricResolver = require('./resolvers/fabric');
 const forgeResolver = require('./resolvers/forge');
 const quiltResolver = require('./resolvers/quilt');
 const magmaResolver = require('./resolvers/magma');
+const foliaResolver = require('./resolvers/folia');
+const velocityResolver = require('./resolvers/velocity');
+const waterfallResolver = require('./resolvers/waterfall');
+const leavesResolver = require('./resolvers/leaves');
+const pufferfishResolver = require('./resolvers/pufferfish');
+const arclightResolver = require('./resolvers/arclight');
+const mohistResolver = require('./resolvers/mohist');
+const spongevanillaResolver = require('./resolvers/spongevanilla');
+const neoforgeResolver = require('./resolvers/neoforge');
 const bedrockResolvers = require('./resolvers/bedrock');
 
 const paperResolver = new PaperResolver('paper');
@@ -33,11 +42,20 @@ async function fetchAllVersions() {
         purpur: [],
         fabric: [],
         forge: [],
+	neoforge: [],
         quilt: [],
         magma: [],
+        folia: [],
+        velocity: [],
+        waterfall: [],
+        leaves: [],
+        pufferfish: [],
+        arclight: [],
+        mohist: [],
+        spongevanilla: [],
         // Bedrock software (from GitHub releases via bedrock/ resolvers)
-        bedrock: [],          // Vanilla Bedrock Dedicated Server (BDS)
-        'bedrock-preview': [], // Bedrock Preview / Snapshots channel
+        bedrock: [],
+        'bedrock-preview': [],
         pocketmine: [],
         nukkitx: [],
         powernukkitx: [],
@@ -113,7 +131,59 @@ async function fetchAllVersions() {
         console.error('[VersionFetcher] Failed to fetch Magma versions:', e.message);
     }
 
-    // 8. Bedrock software (GitHub releases — parallel, isolated failures)
+    // 8. PaperMC forks: Folia, Velocity, Waterfall
+    const paperForks = [
+        { key: 'folia', resolver: foliaResolver },
+        { key: 'velocity', resolver: velocityResolver },
+        { key: 'waterfall', resolver: waterfallResolver },
+    ];
+    for (const { key, resolver } of paperForks) {
+        try {
+            result[key] = await resolver.listVersions();
+            result[key].sort(compareVersions);
+        } catch (e) {
+            console.error(`[VersionFetcher] Failed to fetch ${key} versions:`, e.message);
+        }
+    }
+
+    // 9. GitHub-based Java resolvers: Leaves, Pufferfish, Arclight
+    const githubForks = [
+        { key: 'leaves', resolver: leavesResolver },
+        { key: 'pufferfish', resolver: pufferfishResolver },
+        { key: 'arclight', resolver: arclightResolver },
+    ];
+    for (const { key, resolver } of githubForks) {
+        try {
+            result[key] = await resolver.listVersions();
+        } catch (e) {
+            console.error(`[VersionFetcher] Failed to fetch ${key} versions:`, e.message);
+        }
+    }
+
+    // 10. Mohist
+    try {
+        result.mohist = await mohistResolver.listVersions();
+        result.mohist.sort(compareVersions);
+    } catch (e) {
+        console.error('[VersionFetcher] Failed to fetch Mohist versions:', e.message);
+    }
+
+    // 11. SpongeVanilla
+    try {
+        result.spongevanilla = await spongevanillaResolver.listVersions();
+    } catch (e) {
+        console.error('[VersionFetcher] Failed to fetch SpongeVanilla versions:', e.message);
+    }
+
+    // 11b. NeoForge
+    try {
+        result.neoforge = await neoforgeResolver.listVersions();
+        result.neoforge.sort(compareVersions);
+    } catch (e) {
+        console.error('[VersionFetcher] Failed to fetch NeoForge versions:', e.message);
+    }
+
+    // 12. Bedrock software (GitHub releases — parallel, isolated failures)
     try {
         const [bds, bdsPrev, pm, nk, pnk, wd] = await bedrockResolvers.getAll();
         if (bds?.version)     result.bedrock            = [bds.version];

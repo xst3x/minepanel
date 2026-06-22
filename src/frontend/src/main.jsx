@@ -5,6 +5,7 @@ import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ToastProvider } from './components/Toast.jsx';
 import './styles/style.css';
+import './styles/automation-visual.css';
 
 // Apply saved accent color on boot
 (function() {

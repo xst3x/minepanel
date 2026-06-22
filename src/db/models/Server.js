@@ -108,6 +108,10 @@ const Server = sequelize.define('Server', {
     autostart_on_crash: {
         type: DataTypes.INTEGER,
         defaultValue: 0
+    },
+    automation_enabled: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
     }
 }, {
     tableName: 'servers'

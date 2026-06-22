@@ -23,6 +23,7 @@ import ServerLogs from './pages/server/Logs.jsx';
 import ServerSettings from './pages/server/Settings.jsx';
 import ServerFtp from './pages/server/Ftp.jsx';
 import ServerPlayers from './pages/server/Players.jsx';
+import ServerAutomation from './pages/server/Automation.jsx';
 
 export default function App() {
   return (
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="settings" element={<ServerSettings />} />
           <Route path="ftp" element={<ServerFtp />} />
           <Route path="players" element={<ServerPlayers />} />
+          <Route path="automation" element={<ServerAutomation />} />
         </Route>
       </Route>
 

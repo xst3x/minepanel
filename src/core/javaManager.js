@@ -171,11 +171,29 @@ async function ensureJava26() {
 
 /**
  * Returns the java path for a server.
- * If server has a custom java_path set (not 'java'), use that.
- * Otherwise use the managed Java 26 install.
+ * Priority:
+ *   1. server.java_path (if set and not 'java') — per-server override
+ *   2. panel settings defaultJavaPath (if set and not 'java') — panel-wide default
+ *   3. managed Java 26 (downloaded automatically)
  */
 async function getJavaPath(serverJavaPath) {
+    // Per-server override takes priority
     if (serverJavaPath && serverJavaPath !== 'java') return serverJavaPath;
+
+    // Panel-wide default (read from settings.json)
+    try {
+        const fsp = require('fs').promises;
+        const settingsPath = process.env.DATA_DIR
+            ? require('path').join(process.env.DATA_DIR, 'settings.json')
+            : require('path').resolve(__dirname, '../../settings.json');
+        const raw = await fsp.readFile(settingsPath, 'utf8').catch(() => '{}');
+        const settings = JSON.parse(raw);
+        if (settings.defaultJavaPath && settings.defaultJavaPath !== 'java') {
+            return settings.defaultJavaPath;
+        }
+    } catch (_) {}
+
+    // Fallback: managed Java 26
     return ensureJava26();
 }
 

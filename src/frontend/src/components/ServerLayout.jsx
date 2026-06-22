@@ -13,6 +13,7 @@ const TAB_ICONS = {
   backups:    <svg className="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>,
   logs:       <svg className="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
   ftp:        <svg className="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+  automation: <svg className="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3"/><path d="M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>,
   settings:   <svg className="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
 };
 
@@ -26,6 +27,7 @@ const tabs = [
   ['backups',    'Backups'],
   ['logs',       'Logs'],
   ['ftp',        'FTP'],
+  ['automation', 'Automation'],
   ['settings',   'Settings'],
 ];
 
@@ -89,8 +91,22 @@ export default function ServerLayout() {
         if (!await showConfirm('Force-kill the server process? This may cause data loss.', 'Force Kill')) return;
       }
       setConsoleLines(lines => [...lines, `> [Panel] Sending ${action} command...\n`]);
+
+      // Optimistic status update — don't wait for WS event
+      if (action === 'start') {
+        setStatus('starting');
+        window.dispatchEvent(new CustomEvent('mp:server-status-changed'));
+        window.dispatchEvent(new CustomEvent('mp:server-status-override', { detail: { id, status: 'starting' } }));
+      } else if (action === 'stop' || action === 'kill') {
+        setStatus('stopping');
+        window.dispatchEvent(new CustomEvent('mp:server-status-changed'));
+        window.dispatchEvent(new CustomEvent('mp:server-status-override', { detail: { id, status: 'stopping' } }));
+      }
+
       await api(`/api/servers/${id}/${action}`, { method: 'POST' });
     } catch (e) {
+      // Revert optimistic update on error
+      setStatus(prev => (prev === 'starting' || prev === 'stopping') ? 'offline' : prev);
       toast(e.message || 'Command failed.', 'error');
     }
   };
@@ -134,6 +150,8 @@ export default function ServerLayout() {
         setStatus(msg.data);
         // Notify the sidebar immediately so it can refresh server status
         window.dispatchEvent(new CustomEvent('mp:server-status-changed'));
+        // Clear any transient override now that we have the real status from WS
+        window.dispatchEvent(new CustomEvent('mp:server-status-override', { detail: { id, status: msg.data } }));
       } else if (msg.type === 'stats') {
         const ramMb = Math.round(msg.data.ram / 1024 / 1024);
         setMetrics(m => ({
@@ -141,6 +159,8 @@ export default function ServerLayout() {
           cpu: Math.min(100, msg.data.cpu),
           ram: ramMb
         }));
+      } else if (msg.type === 'automation_log') {
+        window.dispatchEvent(new CustomEvent(`mp:automation-log:${id}`, { detail: msg.data }));
       }
     };
 
@@ -211,7 +231,8 @@ export default function ServerLayout() {
     backups: 'server.backups.read',
     logs: 'server.logs.read',
     settings: 'account.manage',
-    ftp: 'server.ftp.access'
+    ftp: 'server.ftp.access',
+    automation: 'server.automation.read'
   };
 
   const isBedrock = serverInfo?.software?.toLowerCase() === 'bedrock';
@@ -261,10 +282,10 @@ export default function ServerLayout() {
             </div>
           </div>
           <div className="sh-actions" style={{ flexWrap: 'nowrap', gap: '0.4rem' }}>
-            {hasPerm('server.start') && <button className="btn success" onClick={() => sendControl('start')}>Start</button>}
-            {hasPerm('server.stop') && <button className="btn danger" onClick={() => sendControl('stop')}>Stop</button>}
-            {hasPerm('server.stop') && <button className="btn outline" onClick={() => sendControl('restart')}>Restart</button>}
-            {hasPerm('server.stop') && <button className="btn danger" onClick={() => sendControl('kill')} title="Force-kill process">Kill</button>}
+            {hasPerm('server.start') && <button className="btn success" onClick={() => sendControl('start')} disabled={status === 'online' || status === 'starting' || status === 'stopping'}>Start</button>}
+            {hasPerm('server.stop') && <button className="btn danger" onClick={() => sendControl('stop')} disabled={status === 'offline' || status === 'stopping'}>Stop</button>}
+            {hasPerm('server.stop') && <button className="btn outline" onClick={() => sendControl('restart')} disabled={status === 'offline' || status === 'starting' || status === 'stopping'}>Restart</button>}
+            {hasPerm('server.stop') && <button className="btn danger" onClick={() => sendControl('kill')} title="Force-kill process" disabled={status === 'offline'}>Kill</button>}
           </div>
         </div>
 

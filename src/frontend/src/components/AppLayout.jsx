@@ -3,6 +3,8 @@ import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-do
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import BgCanvas from './BgCanvas.jsx';
+import { ServerModalsProvider, useServerModals } from '../context/ServerModalsContext.jsx';
+import GlobalServerModals from './GlobalServerModals.jsx';
 
 // Logo SVG Components
 const LogoIcon = () => (
@@ -67,15 +69,17 @@ function useInjectFavicon() {
   }, []);
 }
 
-export default function AppLayout() {
+function AppLayoutInner() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { openCreate, openImport } = useServerModals();
   const [servers, setServers] = useState([]);
   const [metrics, setMetrics] = useState({ cpu: '0%', mem: '0%', temp: '--°C' });
   const [themeMode, setThemeMode] = useState(localStorage.getItem('mp_theme') || 'dark');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [serverStatusOverrides, setServerStatusOverrides] = useState({});
 
   useInjectFavicon();
 
@@ -105,10 +109,19 @@ export default function AppLayout() {
     const s = setInterval(loadServers, 15000);
     const m = setInterval(loadMetrics, 30000);
     window.addEventListener('mp:server-status-changed', loadServers);
+
+    const handleStatusOverride = (e) => {
+      const { id, status } = e.detail || {};
+      if (!id) return;
+      setServerStatusOverrides(prev => ({ ...prev, [String(id)]: status }));
+    };
+    window.addEventListener('mp:server-status-override', handleStatusOverride);
+
     return () => {
       clearInterval(s);
       clearInterval(m);
       window.removeEventListener('mp:server-status-changed', loadServers);
+      window.removeEventListener('mp:server-status-override', handleStatusOverride);
     };
   }, []);
 
@@ -220,7 +233,7 @@ export default function AppLayout() {
             {servers.map(sv => {
               const pathSegment = `/server/${sv.id}/`;
               const active = location.pathname.startsWith(pathSegment);
-              const status = sv.status || 'offline';
+              const status = serverStatusOverrides[String(sv.id)] || sv.status || 'offline';
               return (
                 <Link key={sv.id} to={`/server/${sv.id}/overview`}
                   className={`sidebar-item sidebar-server-item${active ? ' active' : ''}`}
@@ -242,18 +255,18 @@ export default function AppLayout() {
           </div>
           {isAdmin && (
             <div className="sidebar-section" style={{ borderTop: 'none', paddingTop: 0 }}>
-              <Link to="/panel?action=create" className="sidebar-item sidebar-create" onClick={() => setIsMobileMenuOpen(false)}>
+              <button className="sidebar-item sidebar-create" onClick={() => { setIsMobileMenuOpen(false); openCreate(); }}>
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
                 </svg>
                 Create Server
-              </Link>
-              <Link to="/panel?action=import" className="sidebar-item sidebar-add" onClick={() => setIsMobileMenuOpen(false)}>
+              </button>
+              <button className="sidebar-item sidebar-add" onClick={() => { setIsMobileMenuOpen(false); openImport(); }}>
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
                 Import Server
-              </Link>
+              </button>
             </div>
           )}
 
@@ -348,6 +361,16 @@ export default function AppLayout() {
           </div>
         </main>
       </div>
+
+      <GlobalServerModals />
     </div>
+  );
+}
+
+export default function AppLayout() {
+  return (
+    <ServerModalsProvider>
+      <AppLayoutInner />
+    </ServerModalsProvider>
   );
 }

@@ -70,6 +70,10 @@ const authenticateToken = (req, res, next) => {
         }
 
         try {
+            if (decoded.internal === true) {
+                req.user = decoded;
+                return next();
+            }
             const User = getUser();
             const dbUser = await User.findByPk(decoded.id, {
                 attributes: ['disabled', 'valid_tokens_from', 'totp_enabled']

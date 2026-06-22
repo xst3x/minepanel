@@ -28,6 +28,8 @@ const AVAILABLE_PERMISSIONS = [
     { key: 'server.stats.read', label: 'View Statistics', group: 'Statistics' },
     { key: 'server.ftp.access', label: 'FTP Access', group: 'FTP' },
     { key: 'server.ftp.manage', label: 'Manage FTP Settings', group: 'FTP' },
+    { key: 'server.automation.read', label: 'View Automation Rules', group: 'Automation' },
+    { key: 'server.automation.write', label: 'Create / Edit Automation Rules', group: 'Automation' },
     { key: 'account.manage', label: 'Manage Accounts', group: 'Administration', globalOnly: true },
     { key: 'panel.settings', label: 'Manage Panel Settings', group: 'Administration', globalOnly: true }
 ];
@@ -80,6 +82,9 @@ const checkPermission = (requiredPermission) => {
         }
 
         try {
+            if (req.user && req.user.internal === true) {
+                return next();
+            }
             const perms = await getEffectivePermissions(userId, serverId);
             if (perms.includes('*') || perms.includes('root') || perms.includes(requiredPermission)) {
                 return next();

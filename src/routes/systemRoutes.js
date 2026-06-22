@@ -28,7 +28,8 @@ const getSettings = async () => {
         defaultPort: 25565,
         maxRam: 16384,
         requireInviteTokenToCreateAccount: true,
-        defaultRankId: null
+        defaultRankId: null,
+        defaultJavaPath: 'java'
     };
     try {
         if (await fsp.access(SETTINGS_FILE).then(() => true).catch(() => false)) {
@@ -166,7 +167,10 @@ router.post('/settings', authenticateToken, validate(V.panelSettings), async (re
                 : current.requireInviteTokenToCreateAccount,
             defaultRankId: payload.defaultRankId !== undefined
                 ? (payload.defaultRankId === null ? null : Number(payload.defaultRankId))
-                : current.defaultRankId
+                : current.defaultRankId,
+            defaultJavaPath: payload.defaultJavaPath !== undefined && String(payload.defaultJavaPath).trim() !== ''
+                ? String(payload.defaultJavaPath).trim()
+                : current.defaultJavaPath
         };
         await saveSettings(updated);
         const ftpRunning = isFtpRunning();

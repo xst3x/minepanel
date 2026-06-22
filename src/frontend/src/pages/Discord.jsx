@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { toast, showConfirm } from '../components/Toast.jsx';
 
 export default function Discord() {
+  const navigate = useNavigate();
   const [bots, setBots] = useState([]);
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -162,6 +164,13 @@ export default function Discord() {
 
   return (
     <div className="page" style={{ padding: '2.25rem' }}>
+      <button className="back-btn" onClick={() => navigate('/panel')} style={{ marginBottom: '1rem' }}>
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
+        </svg>
+        Back to Servers
+      </button>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ marginTop: 0, marginBottom: 0 }}>Discord Integration</h2>
         <button className="btn primary" onClick={handleOpenCreate}>+ Add Bot</button>

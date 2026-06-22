@@ -15,6 +15,15 @@ const DEFAULTS = {
     forge: ['1.21.1', '1.21', '1.20.1', '1.19.4', '1.19.2', '1.18.2', '1.16.5', '1.12.2'],
     quilt: ['1.21.1', '1.21', '1.20.6', '1.20.4', '1.20.2', '1.20.1', '1.19.4', '1.18.2', '1.16.5'],
     magma: ['1.20.4', '1.20.2', '1.20.1', '1.19.4', '1.19.3', '1.18.2', '1.12.2'],
+    folia: ['1.21.1', '1.21', '1.20.6', '1.20.4', '1.20.1'],
+    velocity: ['3.3.0', '3.2.0', '3.1.2'],
+    waterfall: ['1.20', '1.19', '1.18'],
+    leaves: ['1.21.1', '1.21', '1.20.4'],
+    pufferfish: ['1.21', '1.20.6', '1.20.4', '1.20.1'],
+    arclight: ['1.21', '1.20.1', '1.19.4', '1.18.2'],
+    mohist: ['1.20.1', '1.19.4', '1.18.2', '1.16.5', '1.12.2'],
+    spongevanilla: ['1.21.1-12.0.0', '1.20.6-12.0.0'],
+    neoforge: ['1.21.4', '1.21.3', '1.21.1', '1.21'],
     // Bedrock software — these are single-version (latest release) fetched from GitHub
     bedrock:          ['1.21.2.02'],
     'bedrock-preview': ['1.21.2.02'],
@@ -34,12 +43,15 @@ function loadCache() {
             const data = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
             // Validate structure
             if (data && typeof data === 'object' && data.vanilla) {
-                cachedVersions = data;
+                // Merge with DEFAULTS so newly-added software keys appear in
+                // the API immediately even when an older cache file exists.
+                cachedVersions = { ...DEFAULTS, ...data };
+                const missingKeys = Object.keys(DEFAULTS).filter(key => !Array.isArray(data[key]));
                 // If it contains only the default fallback list, force fetch by setting lastFetchTime to 0
                 const isDefaultList = data.vanilla.length === DEFAULTS.vanilla.length && data.vanilla[0] === DEFAULTS.vanilla[0];
-                if (isDefaultList) {
+                if (isDefaultList || missingKeys.length > 0) {
                     lastFetchTime = 0;
-                    logger.info('[VersionManager] Loaded default versions list. Will fetch updates.');
+                    logger.info('[VersionManager] Loaded incomplete/default versions list. Will fetch updates.');
                 } else {
                     const stats = fs.statSync(CACHE_FILE);
                     lastFetchTime = stats.mtimeMs;

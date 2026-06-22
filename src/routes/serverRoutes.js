@@ -272,6 +272,12 @@ router.post('/create', authenticateToken, validate(V.createServer), async (req, 
                 if (!fs.existsSync(path.join(serverDir, 'server.properties'))) {
                     fs.writeFileSync(path.join(serverDir, 'server.properties'), `server-port=${port}\n`);
                 }
+            } else if (softwareLower === 'neoforge') {
+                await runNeoForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+                fs.writeFileSync(path.join(serverDir, 'eula.txt'), 'eula=true\n');
+                if (!fs.existsSync(path.join(serverDir, 'server.properties'))) {
+                    fs.writeFileSync(path.join(serverDir, 'server.properties'), `server-port=${port}\n`);
+                }
             } else {
                 const targetJar = path.join(serverDir, 'server.jar');
                 fs.copyFileSync(finalJarInfo.localPath, targetJar);
@@ -349,6 +355,8 @@ router.post('/:serverId/change-version', authenticateToken, checkPermission('ser
 
                 if (softwareLower === 'forge') {
                     await runForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+                } else if (softwareLower === 'neoforge') {
+                    await runNeoForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
                 } else {
                     await retryCopy(finalJarInfo.localPath, targetJar);
                 }
@@ -392,8 +400,8 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
         const newType = software.toLowerCase();
 
         // Determine engine categories
-        const isModded = (t) => ['fabric', 'forge', 'quilt', 'magma'].includes(t);
-        const isPluginBased = (t) => ['paper', 'purpur', 'magma'].includes(t);
+        const isModded = (t) => ['fabric', 'forge', 'neoforge', 'quilt', 'magma', 'mohist', 'arclight', 'spongevanilla'].includes(t);
+        const isPluginBased = (t) => ['paper', 'purpur', 'folia', 'leaves', 'pufferfish', 'magma', 'mohist', 'arclight', 'waterfall', 'velocity'].includes(t);
 
         // Check compatibility warnings
         const warnings = [];
@@ -494,6 +502,8 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
 
                 if (newType === 'forge') {
                     await runForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+                } else if (newType === 'neoforge') {
+                    await runNeoForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
                 } else {
                     await retryCopy(finalJarInfo.localPath, targetJar);
                 }
@@ -695,7 +705,28 @@ router.post('/:serverId/clear-console', authenticateToken, checkPermission('serv
         res.json({ message: 'Console history cleared' });
     } catch (e) {
         logger.error(`[serverRoutes] Clear-console error (Server: ${serverId}, User: ${req.user.id}):`, e);
-        return sendError(res, E.INTERNAL_ERROR, 500);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// ==========================================
+//  Send command to server console
+// ==========================================
+router.post('/:serverId/command', authenticateToken, checkPermission('server.console.write'), async (req, res) => {
+    try {
+        const { serverId } = req.params;
+        const { command } = req.body;
+        
+        if (!command || typeof command !== 'string') {
+            return res.status(400).json({ error: 'Command is required' });
+        }
+
+        const pm = require('../core/processManager');
+        pm.sendCommand(serverId, command);
+        res.json({ message: 'Command sent' });
+    } catch (e) {
+        logger.error(`[serverRoutes] Send command error (Server: ${req.params.serverId}):`, e);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -1079,6 +1110,133 @@ function findForgeJarRecursive(dir) {
                 const found = findForgeJarRecursive(fullPath);
                 if (found) return found;
             } else if (entry.name.match(/^forge-.*-server\.jar$/) || entry.name.match(/^forge-.*-universal\.jar$/)) {
+                return fullPath;
+            }
+        }
+    } catch (_) {}
+    return null;
+}
+
+/**
+ * Run the NeoForge installer jar in --installServer mode.
+ * NeoForge uses the same installer mechanism as modern Forge (1.17+):
+ *   - Generates run.bat / run.sh + libraries/ folder
+ *   - No standalone server.jar; launched via run scripts
+ * After install, locates the neoforge jar in libraries/ and copies it as server.jar.
+ */
+async function runNeoForgeInstaller(installerPath, serverDir, serverId) {
+    const { spawn } = require('child_process');
+    const logFile = path.join(serverDir, 'install.log');
+
+    logger.info(`[NeoForge] Running installer for server ${serverId} in ${serverDir}`);
+    fs.appendFileSync(logFile, `[${new Date().toISOString()}] Starting NeoForge installation...\n`);
+
+    try {
+        // Copy installer to server directory
+        const installerDest = path.join(serverDir, 'neoforge-installer.jar');
+        fs.copyFileSync(installerPath, installerDest);
+
+        // Run the installer
+        await new Promise((resolvePromise, rejectPromise) => {
+            const child = spawn('java', ['-jar', 'neoforge-installer.jar', '--installServer'], {
+                cwd: serverDir
+            });
+
+            const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+            child.stdout.pipe(logStream);
+            child.stderr.pipe(logStream);
+
+            const timeoutId = setTimeout(() => {
+                child.kill('SIGKILL');
+                rejectPromise(new Error('NeoForge installation timed out after 120 seconds'));
+            }, 120000);
+
+            child.on('close', (code) => {
+                clearTimeout(timeoutId);
+                logStream.end();
+                if (code !== 0) {
+                    rejectPromise(new Error(`NeoForge installer exited with non-zero code: ${code}`));
+                } else {
+                    resolvePromise();
+                }
+            });
+
+            child.on('error', (err) => {
+                clearTimeout(timeoutId);
+                logStream.end();
+                rejectPromise(err);
+            });
+        });
+
+        logger.info(`[NeoForge] Installer completed successfully for server ${serverId}`);
+
+        // NeoForge (like modern Forge) generates run.bat/run.sh + libraries/ folder.
+        // Locate the neoforge server jar inside libraries/.
+        const serverJarTarget = path.join(serverDir, 'server.jar');
+        const files = fs.readdirSync(serverDir);
+
+        let neoforgeJar = null;
+
+        // Search libraries/ recursively for neoforge jar
+        const libDir = path.join(serverDir, 'libraries');
+        if (fs.existsSync(libDir)) {
+            neoforgeJar = findNeoForgeJarRecursive(libDir);
+        }
+
+        // Fallback: direct neoforge jar in root (shouldn't happen but safe)
+        if (!neoforgeJar) {
+            const direct = files.find(f => f.match(/^neoforge-.*\.jar$/) && !f.includes('installer'));
+            if (direct) neoforgeJar = path.join(serverDir, direct);
+        }
+
+        // Fallback: parse run.bat for the jar reference
+        if (!neoforgeJar) {
+            const runBat = path.join(serverDir, process.platform === 'win32' ? 'run.bat' : 'run.sh');
+            if (fs.existsSync(runBat)) {
+                const runContent = fs.readFileSync(runBat, 'utf8');
+                const jarMatch = runContent.match(/@(libraries[\\/][^\s]+\.jar)/);
+                if (jarMatch) {
+                    const libJarPath = path.join(serverDir, jarMatch[1].replace(/\//g, path.sep));
+                    if (fs.existsSync(libJarPath)) neoforgeJar = libJarPath;
+                }
+            }
+        }
+
+        if (neoforgeJar) {
+            fs.copyFileSync(neoforgeJar, serverJarTarget);
+            fs.appendFileSync(logFile, `[${new Date().toISOString()}] Found NeoForge server jar: ${neoforgeJar}\n`);
+        } else {
+            const errMsg = 'NeoForge installation completed but no server jar was found. Check install.log for details.';
+            fs.appendFileSync(logFile, `[${new Date().toISOString()}] ERROR: ${errMsg}\n`);
+            fs.appendFileSync(logFile, `[${new Date().toISOString()}] Files in server dir: ${files.join(', ')}\n`);
+            logger.error(`[NeoForge] ${errMsg}`);
+        }
+
+        fs.appendFileSync(logFile, `[${new Date().toISOString()}] NeoForge installation successful. server.jar ready.\n`);
+
+        // Clean up installer
+        try { await retryUnlink(installerDest); } catch (_) {}
+
+    } catch (err) {
+        const errMsg = `NeoForge installer failed: ${err.message}`;
+        fs.appendFileSync(logFile, `[${new Date().toISOString()}] ERROR: ${errMsg}\n`);
+        logger.error(`[NeoForge] ${errMsg}`);
+        throw new Error(errMsg);
+    }
+}
+
+/**
+ * Recursively search for a neoforge server jar inside the libraries directory.
+ */
+function findNeoForgeJarRecursive(dir) {
+    try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                const found = findNeoForgeJarRecursive(fullPath);
+                if (found) return found;
+            } else if (entry.name.match(/^neoforge-.*-server\.jar$/) || entry.name.match(/^neoforge-.*-universal\.jar$/) || entry.name.match(/^neoforge-.*\.jar$/) && !entry.name.includes('installer')) {
                 return fullPath;
             }
         }
@@ -1495,4 +1653,3 @@ router.post('/:serverId/update/rollback', authenticateToken, checkPermission('se
 });
 
 module.exports = router;
-

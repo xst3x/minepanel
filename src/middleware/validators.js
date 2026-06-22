@@ -60,11 +60,18 @@ const generateToken = Joi.object({
     ranks: Joi.array().items(Joi.number().integer()).required(),
 });
 
-const version  = Joi.string().trim().min(1).max(32).pattern(/^[a-zA-Z0-9._-]+$/).message('Version contains invalid characters').required();
+const version  = Joi.string().trim().min(1).max(64).pattern(/^[a-zA-Z0-9._/-]+$/).message('Version contains invalid characters').required();
 
 // ─── Server ──────────────────────────────────────────────────────────────────
 
-const SOFTWARE_VALUES = ['vanilla', 'snapshots', 'paper', 'purpur', 'fabric', 'forge', 'quilt', 'magma', 'spigot', 'bungeecord', 'waterfall', 'velocity', 'bedrock', 'bedrock-preview', 'pocketmine', 'nukkitx', 'powernukkitx', 'waterdogpe'];
+const SOFTWARE_VALUES = [
+    'vanilla', 'snapshots',
+    'paper', 'purpur', 'folia', 'leaves', 'pufferfish',
+    'fabric', 'forge', 'neoforge', 'quilt',
+    'magma', 'mohist', 'arclight', 'spongevanilla',
+    'spigot', 'bungeecord', 'waterfall', 'velocity',
+    'bedrock', 'bedrock-preview', 'pocketmine', 'nukkitx', 'powernukkitx', 'waterdogpe'
+];
 
 const createServer = Joi.object({
     name:     Joi.string().min(1).max(64).required(),
@@ -157,7 +164,7 @@ const updateSettings = Joi.object({
 }).min(1);
 
 const updateRun = Joi.object({
-    targetVersion: Joi.string().trim().min(1).max(32).pattern(/^[a-zA-Z0-9._-]+$/).optional().default('latest'),
+    targetVersion: Joi.string().trim().min(1).max(64).pattern(/^[a-zA-Z0-9._/-]+$/).optional().default('latest'),
     skipBackup:    Joi.boolean().optional().default(false),
 });
 
@@ -174,6 +181,7 @@ const panelSettings = Joi.object({
     maxRam:                           Joi.number().integer().min(512).max(65536).optional(),
     requireInviteTokenToCreateAccount: Joi.boolean().optional(),
     defaultRankId: Joi.number().integer().allow(null).optional(),
+    defaultJavaPath:                  Joi.string().min(1).max(512).optional(),
 }).min(1);
 
 const changePort = Joi.object({

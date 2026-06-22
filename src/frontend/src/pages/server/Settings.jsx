@@ -345,6 +345,38 @@ export default function ServerSettings() {
 
   const availableVersions = versions ? versions[newSoftware] || [] : [];
 
+  const BEDROCK_SOFTWARES = ['bedrock', 'bedrock-preview', 'pocketmine', 'nukkitx', 'powernukkitx', 'waterdogpe'];
+  const currentIsBedrock = BEDROCK_SOFTWARES.includes(serverInfo?.software?.toLowerCase());
+
+  const javaSoftwareOptions = [
+    { value: 'vanilla',   label: 'Vanilla' },
+    { value: 'snapshots', label: 'Vanilla Snapshots' },
+    { value: 'paper',     label: 'Paper' },
+    { value: 'purpur',    label: 'Purpur' },
+    { value: 'fabric',    label: 'Fabric' },
+    { value: 'forge',     label: 'Forge' },
+    { value: 'neoforge',  label: 'NeoForge' },
+    { value: 'quilt',     label: 'Quilt' },
+    { value: 'magma',     label: 'Magma' },
+    { value: 'folia',     label: 'Folia' },
+    { value: 'velocity',  label: 'Velocity' },
+    { value: 'waterfall', label: 'Waterfall' },
+    { value: 'leaves',    label: 'Leaves' },
+    { value: 'pufferfish',label: 'Pufferfish' },
+    { value: 'arclight',  label: 'Arclight' },
+    { value: 'mohist',    label: 'Mohist' },
+    { value: 'spongevanilla', label: 'SpongeVanilla' },
+  ];
+  const bedrockSoftwareOptions = [
+    { value: 'bedrock',       label: 'Vanilla' },
+    { value: 'bedrock-preview', label: 'Vanilla (Preview/Snapshots)' },
+    { value: 'pocketmine',    label: 'PocketMine-MP' },
+    { value: 'nukkitx',       label: 'NukkitX' },
+    { value: 'powernukkitx',  label: 'PowerNukkitX' },
+    { value: 'waterdogpe',    label: 'WaterdogPE (Proxy)' },
+  ];
+  const softwareOptions = currentIsBedrock ? bedrockSoftwareOptions : javaSoftwareOptions;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
@@ -373,15 +405,9 @@ export default function ServerSettings() {
                 value={newSoftware}
                 onChange={(e) => { setNewSoftware(e.target.value); setNewVersion(''); }}
               >
-                <option value="vanilla">Vanilla</option>
-                <option value="snapshots">Vanilla Snapshots</option>
-                <option value="paper">Paper</option>
-                <option value="purpur">Purpur</option>
-                <option value="fabric">Fabric</option>
-                <option value="forge">Forge</option>
-                <option value="quilt">Quilt</option>
-                <option value="magma">Magma</option>
-                <option value="bedrock">Bedrock (Native)</option>
+                {softwareOptions.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </Select>
             </div>
             <div className="form-group" style={{ margin: 0 }}>

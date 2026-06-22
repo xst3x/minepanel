@@ -111,6 +111,13 @@ export default function Docs() {
 
   return (
     <div className="page" style={{ padding: '2.25rem' }}>
+      <button className="back-btn" onClick={() => navigate('/panel')} style={{ marginBottom: '1rem' }}>
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
+        </svg>
+        Back to Servers
+      </button>
       <div style={{ marginBottom: '1.5rem' }}>
         <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Docs</h2>
         <p className="text-muted" style={{ margin: 0 }}>Comprehensive documentation for MinePanel features</p>
