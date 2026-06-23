@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { api, getToken } from '../lib/api.js';
 import { toast, showConfirm } from './Toast.jsx';
+import '../styles/components/ServerLayout.css';
 
 const TAB_ICONS = {
   overview:   <svg className="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>,

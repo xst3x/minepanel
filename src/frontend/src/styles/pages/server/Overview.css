@@ -1,0 +1,333 @@
+.quick-actions-grid {
+flex-wrap: wrap;
+}
+
+.overview-grid {
+display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 1.5rem;
+}
+
+.quick-actions-grid {
+display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.stats-grid {
+display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.stat-box {
+background: var(--bg-input);
+    padding: 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.stat-box label {
+color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    display: block;
+    margin-bottom: 0.35rem;
+}
+
+.stat-val {
+font-size: 1.4rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+}
+
+.ov-stats-row {
+display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.ov-stat-card {
+background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px 12px;
+    animation: slideInUp 0.26s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.ov-stat-card:hover {
+border-color: var(--border-hover);
+}
+
+.ov-stat-icon {
+width: 38px; height: 38px;
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+
+.ov-stat-cpu {
+background: hsla(149,100%,47%,0.1); color: var(--accent);
+}
+
+.ov-stat-ram {
+background: hsla(230,60%,55%,0.1);  color: hsl(230,60%,65%);
+}
+
+.ov-stat-players {
+background: hsla(28,95%,55%,0.1);   color: var(--orange);
+}
+
+.ov-stat-temp {
+background: hsla(355,90%,60%,0.1);  color: var(--red);
+}
+
+.ov-stat-info {
+display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0;
+}
+
+.ov-stat-label {
+font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--text-muted);
+}
+
+.ov-stat-val {
+font-size: 1.15rem; font-weight: 700;
+    font-family: var(--font-mono); color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.ov-stat-bar-wrap {
+position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px; background: var(--bg-elevated);
+}
+
+.ov-stat-bar {
+height: 100%; background: var(--accent);
+    border-radius: 0 2px 2px 0;
+    transition: width 0.6s ease;
+}
+
+.ov-bar-temp {
+background: var(--red);
+}
+
+.ov-main-grid {
+display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.ov-card-header {
+display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.9rem;
+}
+
+.ov-card-header h3 {
+margin: 0; font-size: 0.9rem; font-weight: 700;
+}
+
+.ov-chart-card, .ov-players-card, .ov-activity-card {
+margin-bottom: 0;
+}
+
+.ov-players-list {
+display: flex; flex-direction: column; gap: 6px;
+    max-height: 200px; overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+
+.ov-player-row {
+display: flex; align-items: center; gap: 10px;
+    padding: 6px 8px; border-radius: var(--radius);
+    background: var(--bg-input); border: 1px solid var(--border);
+    font-size: 0.85rem; font-weight: 600;
+    animation: fadeIn 0.2s ease;
+}
+
+.ov-player-avatar {
+width: 24px; height: 24px;
+    border-radius: 4px; image-rendering: pixelated;
+    background: var(--bg-elevated); flex-shrink: 0;
+}
+
+.ov-player-count-badge {
+background: var(--accent-subtle); color: var(--accent);
+    border: 1px solid var(--accent-glow);
+    font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px;
+    font-family: var(--font-mono);
+}
+
+.ov-activity-feed {
+display: flex; flex-direction: column; gap: 5px;
+    max-height: 200px; overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+
+.ov-activity-item {
+display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px 8px; border-radius: var(--radius);
+    font-size: 0.8rem; line-height: 1.4;
+    border-left: 2px solid var(--border);
+    background: var(--bg-input);
+    animation: fadeIn 0.2s ease;
+}
+
+.ov-activity-item.ev-join {
+border-left-color: var(--green);
+}
+
+.ov-activity-item.ev-leave {
+border-left-color: var(--text-muted);
+}
+
+.ov-activity-item.ev-start {
+border-left-color: var(--accent);
+}
+
+.ov-activity-item.ev-stop {
+border-left-color: var(--orange);
+}
+
+.ov-activity-item.ev-crash {
+border-left-color: var(--red);
+}
+
+.ov-activity-item.ev-chat {
+border-left-color: hsl(230,60%,65%);
+}
+
+.ov-activity-time {
+font-size: 0.7rem; color: var(--text-muted);
+    font-family: var(--font-mono); flex-shrink: 0; padding-top: 1px;
+}
+
+.ov-activity-msg {
+color: var(--text-secondary);
+}
+
+.ov-activity-msg strong {
+color: var(--text-primary);
+}
+
+.ov-bottom-grid {
+display: grid;
+    grid-template-columns: 1.8fr 1fr;
+    gap: 1rem;
+}
+
+.ov-backups-card, .ov-ftp-card-new {
+margin-bottom: 0;
+}
+
+.ov-backups-list {
+display: flex; flex-direction: column; gap: 6px;
+}
+
+.ov-backup-row {
+display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px; border-radius: var(--radius);
+    background: var(--bg-input); border: 1px solid var(--border);
+    font-size: 0.82rem;
+    transition: var(--transition);
+}
+
+.ov-backup-row:hover {
+border-color: var(--border-hover);
+}
+
+.ov-backup-icon {
+color: var(--accent); flex-shrink: 0; opacity: 0.8;
+}
+
+.ov-backup-name {
+flex: 1; font-weight: 600; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary);
+}
+
+.ov-backup-meta {
+color: var(--text-muted); font-size: 0.75rem; flex-shrink: 0;
+}
+
+.ov-ftp-grid {
+display: flex; flex-direction: column; gap: 6px;
+}
+
+.ov-ftp-row {
+display: flex; align-items: center; gap: 8px;
+    font-size: 0.83rem;
+}
+
+.ov-ftp-key {
+color: var(--text-muted); font-weight: 700;
+    text-transform: uppercase; font-size: 0.7rem;
+    letter-spacing: 0.06em; width: 36px; flex-shrink: 0;
+}
+
+.ov-ftp-val {
+font-family: var(--font-mono); font-size: 0.82rem;
+    color: var(--text-primary); background: var(--bg-input);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 2px 7px;
+}
+
+.ov-empty-state {
+display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 6px; padding: 20px 0;
+    color: var(--text-muted); font-size: 0.82rem;
+}
+
+.ov-stat-card:nth-child(1) {
+animation: mp-slideInUp 0.32s 0.05s ease both;
+}
+
+.ov-stat-card:nth-child(2) {
+animation: mp-slideInUp 0.32s 0.10s ease both;
+}
+
+.ov-stat-card:nth-child(3) {
+animation: mp-slideInUp 0.32s 0.15s ease both;
+}
+
+.ov-stat-card:nth-child(4) {
+animation: mp-slideInUp 0.32s 0.20s ease both;
+}
+
+.ov-stat-card:hover {
+transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-hover);
+}
+
+.ov-backup-row {
+transition: border-color var(--transition), background var(--transition), transform 0.15s ease;
+}
+
+.ov-backup-row:hover {
+transform: translateX(2px);
+}
+
+.ov-stat-card {
+box-sizing: border-box !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+}
+
+.ov-stat-cards {
+grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr)) !important;
+}

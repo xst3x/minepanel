@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { toast, showConfirm } from '../components/Toast.jsx';
+import '../styles/pages/Ranks.css';
 
 export default function Ranks() {
   const navigate = useNavigate();

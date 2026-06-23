@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast } from '../../components/Toast.jsx';
+import '../../styles/pages/server/Overview.css';
 
 export default function ServerOverview() {
   const { serverId, status, metrics, hasPerm } = useOutletContext();

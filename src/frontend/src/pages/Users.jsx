@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { toast, showConfirm } from '../components/Toast.jsx';
+import '../styles/pages/Users.css';
 
 export default function Users() {
   const navigate = useNavigate();

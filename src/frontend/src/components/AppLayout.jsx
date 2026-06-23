@@ -5,6 +5,7 @@ import { api } from '../lib/api.js';
 import BgCanvas from './BgCanvas.jsx';
 import { ServerModalsProvider, useServerModals } from '../context/ServerModalsContext.jsx';
 import GlobalServerModals from './GlobalServerModals.jsx';
+import '../styles/components/AppLayout.css';
 
 // Logo SVG Components
 const LogoIcon = () => (

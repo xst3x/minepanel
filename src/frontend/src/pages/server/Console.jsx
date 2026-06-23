@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import '../../styles/pages/server/Console.css';
 
 // Strip ANSI escape codes
 function stripAnsi(str) {

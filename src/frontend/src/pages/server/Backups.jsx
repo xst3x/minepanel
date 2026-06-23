@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import '../../styles/pages/server/Backups.css';
 import { api } from '../../lib/api.js';
 
 export default function ServerBackups() {

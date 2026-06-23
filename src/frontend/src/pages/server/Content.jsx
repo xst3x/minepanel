@@ -4,6 +4,7 @@ import { api } from '../../lib/api.js';
 import { toast, showConfirm } from '../../components/Toast.jsx';
 import { marked } from 'marked';
 import PocketMinePlugins from './PocketMinePlugins.jsx';
+import '../../styles/pages/server/Content.css';
 
 // Configure marked — safe, no gfm alerts, open links in new tab
 marked.setOptions({ breaks: true, gfm: true });

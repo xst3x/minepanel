@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm, showPrompt } from '../../components/Toast.jsx';
 import CodeEditor from '../../components/CodeEditor.jsx';
+import '../../styles/pages/server/Files.css';
 
 const FOLDER_SVG = (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent)" strokeWidth="2">

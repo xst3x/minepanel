@@ -16,6 +16,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm } from '../../components/Toast.jsx';
+import '../../styles/pages/server/PocketMinePlugins.css';
 
 const PAGE_SIZE = 24;
 

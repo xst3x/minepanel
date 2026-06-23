@@ -1,0 +1,122 @@
+.file-manager {
+background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.fm-toolbar {
+display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-input);
+}
+
+.fm-breadcrumb {
+font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.fm-actions {
+display: flex;
+    gap: 0.5rem;
+}
+
+.fm-list-header {
+display: flex;
+    padding: 0.7rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    background: var(--bg-base);
+}
+
+.fm-col {
+flex: 1;
+}
+
+.fm-col.name {
+flex: 3.5; display: flex; align-items: center; gap: 0.65rem;
+}
+
+.fm-col.actions {
+flex: 0.75; text-align: right;
+}
+
+.fm-list {
+min-height: 240px;
+}
+
+.fm-item {
+display: flex;
+    padding: 0.85rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.85rem;
+}
+
+.fm-item:hover {
+background: var(--bg-elevated);
+}
+
+.fm-item:last-child {
+border-bottom: none;
+}
+
+.fm-icon {
+width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.fm-item-name {
+overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.fm-item {
+transition: background var(--transition), transform 0.15s ease;
+}
+
+.fm-item:hover {
+transform: translateX(2px);
+}
+
+.fm-item, .list-item, .server-card, .plugin-card {
+touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.fm-list {
+max-width: 100% !important;
+    overflow-x: hidden !important;
+}
+
+.fm-item {
+max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+}
+
+.fm-col.name {
+min-width: 0 !important;
+    flex: 1 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}

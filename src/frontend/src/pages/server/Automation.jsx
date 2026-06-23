@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm, showPrompt } from '../../components/Toast.jsx';
 import CodeEditor from '../../components/CodeEditor.jsx';
+import '../../styles/pages/server/Automation.css';
 
 export default function Automation() {
   const { serverId, hasPerm } = useOutletContext();
@@ -203,7 +204,7 @@ export default function Automation() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {/* Toggle Server-wide state & description */}
-        <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+        <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 style={{ margin: 0, color: 'var(--text)' }}>Minecraft Automation IDE</h3>
             <p className="text-muted" style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem' }}>
@@ -226,7 +227,7 @@ export default function Automation() {
         </div>
 
         {/* List of rules */}
-        <div className="card" style={{ padding: 0, background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+        <div className="card" style={{ padding: 0, background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
           <div className="list-header" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-color)', fontWeight: '600', color: 'var(--text-secondary)', background: 'var(--bg-secondary)' }}>
             <div>Script Name</div>
             <div>Status</div>
@@ -293,7 +294,7 @@ export default function Automation() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '80vh' }}>
       {/* Editor Toolbar */}
-      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1.25rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)' }}>
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1.25rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <button className="btn outline small" onClick={() => setView('dashboard')}>
             ← Dashboard

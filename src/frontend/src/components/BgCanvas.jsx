@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 
 // Geometric floating shapes background — ported from legacy vanilla JS
 // Triangles, hexagons and quads drift and rotate, connected by faint lines
+import '../styles/components/BgCanvas.css';
+
 export default function BgCanvas() {
   const canvasRef = useRef(null);
 

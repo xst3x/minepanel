@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import BgCanvas from '../components/BgCanvas.jsx';
+import '../styles/pages/Login.css';
 
 // ── Screens: 'login' | 'forgot_username' | 'forgot_2fa' | 'forgot_no2fa' | 'forgot_done'
 export default function Login() {

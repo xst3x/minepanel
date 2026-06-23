@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast } from '../../components/Toast.jsx';
+import '../../styles/pages/server/Ftp.css';
 
 export default function ServerFtp() {
   const { serverId, hasPerm } = useOutletContext();

@@ -1,0 +1,316 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap');
+
+/* ============================================
+ * MinePanel — Shared Utility Styles
+ * Buttons, Cards, Inputs, Badges, Layout Columns
+ * ============================================ */
+
+.btn {
+flex-shrink: 0;
+    max-width: 100%;
+}
+
+.status-badge, .rank-badge {
+max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.blob-top-left {
+top: -10%; left: -10%;
+}
+
+.blob-bottom-right {
+bottom: -10%; right: -10%;
+}
+
+.blob-center {
+top: 30%; left: 40%; width: 250px; height: 250px; opacity: 0.05;
+}
+
+input, select, textarea {
+width: 100%;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    font-size: inherit;
+    outline: none;
+    transition: var(--transition);
+}
+
+input, textarea {
+padding: 10px 14px;
+}
+
+input[type="color"].color-input {
+width: 100%;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    padding: 4px;
+    cursor: pointer;
+}
+
+.btn {
+display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 9px 16px;
+    font-size: 13px; 
+    font-weight: 600; 
+    border-radius: var(--radius); 
+    border: 1px solid transparent;
+    cursor: pointer; 
+    font-family: var(--font-ui); 
+    transition: var(--transition); 
+    gap: 0.45rem; 
+    white-space: nowrap;
+}
+
+.btn:hover {
+transform: translateY(-1px);
+}
+
+.btn:active {
+transform: scale(0.96);
+}
+
+.btn.primary {
+background: var(--accent); 
+    color: #ffffff; 
+    border: none;
+    box-shadow: 0 3px 12px var(--accent-glow);
+    transition: var(--transition), box-shadow 0.2s ease;
+}
+
+.btn.primary:hover {
+background: var(--accent-hover);
+    box-shadow: 0 8px 22px var(--accent-glow), 0 0 6px var(--accent-glow);
+}
+
+.btn.success {
+background: var(--green); 
+    color: #ffffff; 
+    border: none;
+    box-shadow: 0 3px 12px var(--accent-glow);
+}
+
+.btn.success:hover {
+background: var(--accent-hover);
+    box-shadow: 0 5px 18px var(--accent-glow);
+}
+
+.btn.danger {
+background: var(--red);
+    color: #ffffff; 
+    border: none;
+}
+
+.btn.danger:hover {
+filter: brightness(1.1);
+}
+
+.btn.outline {
+background: var(--bg-surface); 
+    border: 1px solid var(--border-hover); 
+    color: var(--text-primary); 
+    transition: var(--transition), border-color 0.2s ease, background 0.2s ease;
+}
+
+.btn.outline:hover {
+border-color: var(--accent); 
+    color: var(--accent); 
+    background: var(--accent-subtle);
+    box-shadow: 0 0 6px var(--accent-glow);
+}
+
+.btn.small {
+padding: 5px 11px; 
+    font-size: 11.5px; 
+    font-weight: 500;
+}
+
+.btn.full-width {
+width: 100%;
+}
+
+.status-badge {
+display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: var(--bg-input);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid var(--border);
+}
+
+.status-badge::before {
+content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.status-badge.online {
+background: rgba(34, 197, 94, 0.25);
+    border: 1px solid rgba(34, 197, 94, 0.55);
+    color: #22c55e !important;
+}
+
+.status-badge.online::before {
+background: #22c55e !important;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.65) !important;
+    animation: pulse 1.8s infinite ease-in-out;
+}
+
+.status-badge.offline {
+background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.45);
+    color: #ef4444 !important;
+}
+
+.status-badge.offline::before {
+background: #ef4444 !important;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.55) !important;
+}
+
+.status-badge.starting {
+background: rgba(234, 179, 8, 0.25);
+    border: 1px solid rgba(234, 179, 8, 0.55);
+    color: #eab308 !important;
+}
+
+.status-badge.starting::before {
+background: #eab308 !important;
+    box-shadow: 0 0 6px rgba(234, 179, 8, 0.55) !important;
+    animation: pulse 1.2s infinite ease-in-out;
+}
+
+.status-badge.stopping {
+background: rgba(249, 115, 22, 0.25);
+    border: 1px solid rgba(249, 115, 22, 0.55);
+    color: #f97316 !important;
+}
+
+.status-badge.stopping::before {
+background: #f97316 !important;
+    box-shadow: 0 0 6px rgba(249, 115, 22, 0.55) !important;
+    animation: pulse 1.2s infinite ease-in-out;
+}
+
+.card {
+background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    animation: fadeIn 0.24s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+
+.card h3 {
+margin-bottom: 1.25rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.col {
+flex: 1; min-width: 0; padding: 0 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.col.col-wide {
+flex: 3; min-width: 0;
+}
+
+.col.col-rank {
+flex: 0 0 120px;
+}
+
+.col.col-status {
+flex: 0 0 90px;
+}
+
+.col.col-created {
+flex: 0 0 110px;
+}
+
+.col.actions {
+display: flex;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+    justify-content: flex-end;
+    align-items: center;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding-right: 0;
+}
+
+.btn-group-wrap {
+display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.btn {
+flex-shrink: 0;
+}
+
+.card {
+min-width: 0;
+    overflow: hidden;
+}
+
+.col.actions {
+display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: flex-end;
+    align-items: center;
+    flex-shrink: 0;
+    min-width: 0;
+}
+
+.col.actions .btn {
+flex-shrink: 0;
+}
+
+.card {
+transition: box-shadow 0.22s ease, border-color 0.22s ease, transform 0.22s ease;
+}
+
+.card:hover {
+box-shadow: var(--shadow-md);
+}
+
+.btn.success {
+background: #22c55e !important;
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 3px 12px rgba(34, 197, 94, 0.3) !important;
+}
+
+.btn.success:hover {
+background: #16a34a !important;
+    box-shadow: 0 5px 18px rgba(34, 197, 94, 0.4) !important;
+    color: #ffffff !important;
+}
+
+.btn-xs {
+font-size: 0.72rem; padding: 0.2rem 0.5rem;
+}
+
+.btn-sm {
+font-size: 0.8rem; padding: 0.3rem 0.7rem;
+}

@@ -7,13 +7,36 @@ tests/Roaming/
 certs/
 Plans-and-internal-stuff/
 .claude/
-*.log
-logs/
-.DS_Store
-Thumbs.db
-core-rules.md
-runtime/
 .antigravity/
 .agent/
-stats.json
+venv
+
+# AI / aider / history junk
+.aider.*
+*.history*
+*.chat.history*
+*.input.history*
+*.tags.cache*
+.aider.tags.cache.v4
+
+# logs
+*.log
+logs/
+
+# system
+.DS_Store
+Thumbs.db
 **/Desktop.ini
+
+# runtime / temp
+runtime/
+tmp/
+temp/
+
+# misc local junk
+stats.json
+core-rules.md
+stats.json
+nul
+_fix_regex.js
+split_css.py

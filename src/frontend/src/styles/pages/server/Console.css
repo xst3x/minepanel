@@ -1,0 +1,74 @@
+.terminal-container {
+background: hsl(0, 0%, 5%);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 560px;
+    box-shadow: var(--shadow-sm);
+}
+
+#terminal-output {
+flex: 1;
+    padding: 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: hsl(0, 0%, 90%);
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.6;
+    background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 3px, 3px 100%;
+}
+
+#terminal-output::-webkit-scrollbar {
+width: 6px;
+}
+
+#terminal-output::-webkit-scrollbar-track {
+background: transparent;
+}
+
+#terminal-output::-webkit-scrollbar-thumb {
+background: var(--border-hover);
+    border-radius: 3px;
+}
+
+.terminal-input-wrapper {
+display: flex;
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+    background: hsl(0, 0%, 7%);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    align-items: center;
+}
+
+.terminal-input-wrapper span {
+color: var(--accent);
+    margin-right: 0.75rem;
+    font-family: var(--font-mono);
+    font-weight: bold;
+    font-size: 0.95rem;
+}
+
+#terminal-input {
+flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    outline: none;
+}
+
+.terminal-container {
+max-width: 100% !important;
+    overflow: hidden !important;
+}
+
+#terminal-output {
+max-width: 100% !important;
+    overflow-x: auto !important;
+    word-break: break-all !important;
+}

@@ -4,6 +4,7 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { toast, showConfirm, toastProgress } from '../components/Toast.jsx';
 import Select from '../components/Select.jsx';
+import '../styles/pages/Panel.css';
 
 export default function Panel() {
   const { user } = useAuth();

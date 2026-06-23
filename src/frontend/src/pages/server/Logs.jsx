@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import Select from '../../components/Select.jsx';
+import '../../styles/pages/server/Logs.css';
 
 function useIsLight() {
   const [isLight, setIsLight] = useState(

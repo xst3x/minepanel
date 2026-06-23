@@ -1,0 +1,375 @@
+.player-detail-stats {
+display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.player-detail-stats .stat-box {
+padding: 0.75rem;
+}
+
+.inv-section {
+margin-bottom: 1.25rem;
+}
+
+.inv-section-label {
+font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+}
+
+.inv-layout {
+display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.inv-equip {
+display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 46px;
+}
+
+.inv-equip-row {
+display: flex; gap: 3px;
+}
+
+.inv-main {
+display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.inv-grid {
+display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 3px;
+}
+
+.inv-slot {
+aspect-ratio: 1;
+    min-width: 0;
+    max-width: 48px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 4px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: default;
+}
+
+.inv-slot.has-item {
+border-color: hsla(149, 100%, 47%, 0.25); background: hsla(149, 100%, 47%, 0.04);
+}
+
+.inv-slot.has-item:hover {
+border-color: var(--accent); background: hsla(149, 100%, 47%, 0.12);
+}
+
+.inv-slot img.inv-icon {
+width: 70%;
+    height: 70%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    pointer-events: none;
+}
+
+.inv-slot .inv-count {
+position: absolute;
+    bottom: 1px;
+    right: 2px;
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.8);
+    line-height: 1;
+    pointer-events: none;
+}
+
+.inv-slot .inv-empty-label {
+font-size: 0.5rem;
+    color: rgba(255,255,255,0.12);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    pointer-events: none;
+    user-select: none;
+}
+
+.inv-hotbar-sep {
+height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 2px 0;
+}
+
+.mc-tooltip {
+position: fixed;
+    background: rgba(16, 0, 16, 0.94);
+    border: 2px solid #2d0a3e;
+    border-radius: 6px;
+    padding: 8px 10px;
+    pointer-events: none;
+    z-index: 100000;
+    color: #aaa;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    max-width: 320px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+    display: none;
+}
+
+.mc-tooltip .tt-title {
+color: #fff; font-weight: 600; margin-bottom: 3px;
+}
+
+.mc-tooltip .tt-line {
+margin: 1px 0;
+}
+
+.mc-tooltip .c-gold {
+color: #FFAA00; } .mc-tooltip .c-red { color: #FF5555;
+}
+
+.mc-tooltip .c-green {
+color: #55FF55; } .mc-tooltip .c-blue { color: #5555FF;
+}
+
+.mc-tooltip .c-yellow {
+color: #FFFF55; } .mc-tooltip .c-aqua { color: #55FFFF;
+}
+
+.mc-tooltip .c-lpurple {
+color: #FF55FF; } .mc-tooltip .c-dpurple { color: #AA00AA;
+}
+
+.mc-tooltip .c-white {
+color: #FFF; } .mc-tooltip .c-gray { color: #AAA;
+}
+
+.mc-tooltip .c-dgray {
+color: #555; } .mc-tooltip .c-dred { color: #AA0000;
+}
+
+.mc-tooltip .c-dgreen {
+color: #00AA00; } .mc-tooltip .c-dblue { color: #0000AA;
+}
+
+.mc-tooltip .c-daqua {
+color: #00AAAA;
+}
+
+.mc-tooltip .f-bold {
+font-weight: bold; } .mc-tooltip .f-italic { font-style: italic;
+}
+
+.player-action-section {
+margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+}
+
+.player-action-section h5 {
+font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.player-action-buttons {
+display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.player-actions-grid {
+display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.mc-grid-3x9 {
+display: grid;
+    grid-template-columns: repeat(9, 36px);
+    gap: 3px;
+}
+
+.mc-grid-1x9 {
+display: grid;
+    grid-template-columns: repeat(9, 36px);
+    gap: 3px;
+}
+
+.mc-enderchest-grid {
+display: grid;
+    grid-template-columns: repeat(9, 36px);
+    gap: 3px;
+}
+
+.mc-armor-column {
+display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.mc-slot {
+width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    transition: border-color 0.15s, background 0.15s;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.mc-slot.has-item {
+border-color: rgba(59,130,246,0.25);
+    background: rgba(59,130,246,0.04);
+}
+
+.mc-slot.has-item:hover {
+border-color: var(--accent);
+    background: rgba(59,130,246,0.12);
+}
+
+.mc-slot.selected {
+border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+}
+
+.mc-item-wrapper {
+position: relative;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mc-item-icon {
+width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    object-fit: contain;
+    pointer-events: none;
+    display: block;
+}
+
+.mc-item-count {
+position: absolute;
+    bottom: -4px;
+    right: -2px;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.9), -1px -1px 0 rgba(0,0,0,0.9);
+    line-height: 1;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.mc-item-label {
+display: none;
+}
+
+.mc-armor-svg {
+color: rgba(255,255,255,0.2);
+    pointer-events: none;
+}
+
+.mc-tooltip-name {
+color: #fff; font-weight: 600; margin-bottom: 4px; font-size: 13px;
+}
+
+.mc-name-custom {
+color: #fff;
+}
+
+.mc-name-enchanted {
+color: #aaaaff;
+}
+
+.mc-name-normal {
+color: #fff;
+}
+
+.mc-tooltip-meta {
+color: rgba(255,255,255,0.35); font-size: 10px; margin-bottom: 6px; font-family: var(--font-mono);
+}
+
+.mc-count-label {
+color: rgba(255,255,255,0.5);
+}
+
+.mc-tooltip-section {
+margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.mc-enchants .mc-enchant-line {
+color: #b0b0ff; font-size: 11px; line-height: 1.6;
+}
+
+.mc-lore .mc-lore-line {
+color: #9b59b6; font-style: italic; font-size: 11px; line-height: 1.5;
+}
+
+.mc-attributes .mc-attribute-line {
+color: #55ff55; font-size: 11px; line-height: 1.6;
+}
+
+.mc-durability .mc-damage-line {
+color: #ff5555; font-size: 11px;
+}
+
+.mc-durability .mc-unbreakable-line {
+color: #5555ff; font-size: 11px;
+}
+
+.mc-raw-nbt .mc-raw-title {
+color: rgba(255,255,255,0.5); font-size: 10px; margin-bottom: 4px;
+}
+
+.mc-raw-nbt pre {
+font-size: 10px; color: rgba(255,255,255,0.6); max-height: 200px; overflow-y: auto; margin: 0;
+}
+
+.mc-tooltip-hint {
+color: rgba(255,255,255,0.3); font-size: 10px; margin-top: 6px; font-style: italic;
+}
+
+.mc-item-canvas {
+width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    transition: transform 0.1s ease;
+    pointer-events: none;
+    display: block;
+}
+
+.mc-slot:hover .mc-item-canvas {
+transform: scale(1.05);
+}

@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm, showPrompt } from '../../components/Toast.jsx';
 import Select from '../../components/Select.jsx';
+import '../../styles/pages/server/Players.css';
 
 export default function Players() {
   const { serverId, status, hasPerm } = useOutletContext();

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { toast, showConfirm } from '../components/Toast.jsx';
 import Select from '../components/Select.jsx';
+import '../styles/pages/Settings.css';
 // Exact presets from old frontend
 const ACCENT_PRESETS = [
   { id: 'emerald',       label: 'Emerald',       value: 'hsl(149,100%,47%)' },

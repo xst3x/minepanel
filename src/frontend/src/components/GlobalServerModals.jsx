@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { toast, toastProgress } from '../components/Toast.jsx';
 import Select from '../components/Select.jsx';
 import { useServerModals } from '../context/ServerModalsContext.jsx';
+import '../styles/components/GlobalServerModals.css';
 
 export default function GlobalServerModals() {
   const { modal, close } = useServerModals();

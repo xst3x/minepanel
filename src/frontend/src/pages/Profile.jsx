@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { toast } from '../components/Toast.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import '../styles/pages/Profile.css';
 
 export default function Profile() {
   const { refresh } = useAuth();

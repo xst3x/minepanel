@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm } from '../../components/Toast.jsx';
 import Select from '../../components/Select.jsx';
+import '../../styles/pages/server/Properties.css';
 
 const MC_COLORS = [
   { code: '0', hex: '#000000', name: 'Black' },

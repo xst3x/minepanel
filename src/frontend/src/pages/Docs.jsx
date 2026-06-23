@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { marked } from 'marked';
 import { api } from '../lib/api.js';
+import '../styles/pages/Docs.css';
 
 const CATEGORY_LABELS = {
   'getting-started': 'Getting Started',

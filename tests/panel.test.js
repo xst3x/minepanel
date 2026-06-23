@@ -136,5 +136,8 @@ describe('Panel Core Tests', () => {
 
         const acquired3 = pm.acquireLock(serverId);
         expect(acquired3).toBe(true);
+
+        pm.releaseLock(serverId);
+        expect(pm.isLocked(serverId)).toBe(false);
     });
 });

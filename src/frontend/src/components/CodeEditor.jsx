@@ -20,6 +20,7 @@ import { xml } from '@codemirror/lang-xml';
 import { python } from '@codemirror/lang-python';
 import { java } from '@codemirror/lang-java';
 import { yaml } from '@codemirror/lang-yaml';
+import '../styles/components/CodeEditor.css';
 
 // ── Light theme ───────────────────────────────────────────────────────────────
 const lightTheme = EditorView.theme({
