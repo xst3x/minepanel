@@ -131,9 +131,21 @@ async function createModpackServer({ name, ram_mb, port, projectId, versionId, u
     const dirName = await ensureUniqueDirName(sanitizeDirName(name));
     const serverDir = path.join(SERVERS_DIR, dirName);
 
+    // Fetch the project title so we can persist the friendly modpack label.
+    let modpackTitle = null;
+    try {
+        const { fetchJson } = require('./modrinthHttp');
+        const proj = await fetchJson(`https://api.modrinth.com/v2/project/${encodeURIComponent(projectId)}`);
+        modpackTitle = proj?.title || null;
+    } catch (_) {}
+
     const result = await dbRun(
-        'INSERT INTO servers (uuid, name, software, version, ram_mb, port, owner_id, directory_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [uuid, name, software, mcVersion, ram_mb, port, userId, dirName]
+        `INSERT INTO servers
+            (uuid, name, software, version, ram_mb, port, owner_id, directory_name,
+             modpack_title, modpack_version, modpack_project_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uuid, name, software, mcVersion, ram_mb, port, userId, dirName,
+         modpackTitle, versionData.version_number || null, projectId]
     );
 
     const serverId = result.lastID;
@@ -156,6 +168,7 @@ async function createModpackServer({ name, ram_mb, port, projectId, versionId, u
                 projectId,
                 versionId: versionData.id,
                 versionNumber: versionData.version_number,
+                title: modpackTitle,
             },
         };
     } catch (err) {

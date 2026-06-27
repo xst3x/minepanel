@@ -17,7 +17,7 @@ const fs = require('fs');
 const fsp = fs.promises;
 const StreamZip = require('adm-zip');
 const logger = require('../../core/utils/logger');
-const { importUpload, runForgeInstaller, runNeoForgeInstaller } = require('./serverHelpers');
+const { importUpload, runForgeInstaller, runNeoForgeInstaller, buildDefaultStartCommand } = require('./serverHelpers');
 
 const router = express.Router();
 
@@ -195,6 +195,11 @@ router.post('/:serverId/change-version', authenticateToken, checkPermission('ser
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
 
+        // Spec item 5 — modpack lockout
+        if (server.modpack_project_id) {
+            return res.status(403).json({ error: 'MODPACK_LOCKED', message: 'Software modifications are strictly locked for curated Modpack environments to prevent server corruption.' });
+        }
+
         if (processManager.getStatus(serverId.toString()) === 'online') {
             return sendError(res, E.SERVER_MUST_BE_STOPPED, 400);
         }
@@ -249,6 +254,11 @@ router.post('/:serverId/switch-software', authenticateToken, checkPermission('se
     try {
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+
+        // Spec item 5 — modpack lockout
+        if (server.modpack_project_id) {
+            return res.status(403).json({ error: 'MODPACK_LOCKED', message: 'Software modifications are strictly locked for curated Modpack environments to prevent server corruption.' });
+        }
 
         if (processManager.getStatus(serverId.toString()) === 'online') {
             return sendError(res, E.SERVER_MUST_BE_STOPPED, 400);
@@ -404,6 +414,50 @@ router.post('/:serverId/backup-config', authenticateToken, checkPermission('serv
             res.json({ message: 'Backup configuration saved' });
         }
     );
+});
+
+// ─── Get auto-generated start command ────────────────────────────────────
+router.get('/:serverId/start-command', authenticateToken, checkPermission('server.properties.write'), async (req, res) => {
+    const { serverId } = req.params;
+    try {
+        const server = await getServer(serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+
+        const serverDir = getServerDir(server);
+        const javaPath = server.java_path || 'java';
+        const autoCommand = buildDefaultStartCommand(server, serverDir, javaPath);
+
+        res.json({
+            auto_command: autoCommand,
+            custom_command: server.custom_start_command || null,
+        });
+    } catch (e) {
+        logger.error(`[serverRoutes] GET start-command error (Server: ${serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ─── Save custom start command ────────────────────────────────────────────
+router.patch('/:serverId/start-command', authenticateToken, checkPermission('server.properties.write'), async (req, res) => {
+    const { serverId } = req.params;
+    const { custom_command } = req.body;
+
+    try {
+        const server = await getServer(serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+
+        // null / empty string = revert to auto
+        const value = (custom_command && custom_command.trim()) ? custom_command.trim() : null;
+        await dbRun('UPDATE servers SET custom_start_command = ? WHERE id = ?', [value, serverId]);
+
+        res.json({
+            message: value ? 'Custom start command saved.' : 'Reverted to auto-generated start command.',
+            custom_command: value,
+        });
+    } catch (e) {
+        logger.error(`[serverRoutes] PATCH start-command error (Server: ${serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
 });
 
 // ─── Delete server ─────────────────────────────────────────────────────────

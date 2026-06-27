@@ -69,11 +69,43 @@ export default function ServerSettings() {
   const [updCheckResult, setUpdCheckResult] = useState(null);
   const [ignoredInput, setIgnoredInput] = useState('');
 
+  // Start command state
+  const [startCmd, setStartCmd] = useState('');
+  const [startCmdAuto, setStartCmdAuto] = useState('');
+  const [startCmdDirty, setStartCmdDirty] = useState(false);
+  const [startCmdSaving, setStartCmdSaving] = useState(false);
+
   useEffect(() => {
     loadSettings();
     loadVersions();
     loadUpdateSettings();
+    loadStartCommand();
   }, [serverId]);
+
+  const loadStartCommand = async () => {
+    try {
+      const data = await api(`/api/servers/${serverId}/start-command`);
+      setStartCmdAuto(data.auto_command || '');
+      setStartCmd(data.custom_command || '');
+      setStartCmdDirty(false);
+    } catch (_) {}
+  };
+
+  const handleSaveStartCommand = async () => {
+    setStartCmdSaving(true);
+    try {
+      await api(`/api/servers/${serverId}/start-command`, {
+        method: 'PATCH',
+        body: { custom_command: startCmd || null },
+      });
+      toast(startCmd.trim() ? 'Custom start command saved.' : 'Reverted to auto-generated command.', 'success');
+      setStartCmdDirty(false);
+    } catch (err) {
+      toast('Failed to save: ' + err.message, 'error');
+    } finally {
+      setStartCmdSaving(false);
+    }
+  };
 
   const loadUpdateSettings = async () => {
     try {
@@ -381,24 +413,50 @@ export default function ServerSettings() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-      {/* Engine & Version Switcher */}
+      {/* Engine & Version Switcher — hidden for modpack servers (spec item 5) */}
       <div className="card">
         <h3>Server Engine &amp; Version</h3>
         <p className="text-muted" style={{ marginBottom: '0.75rem' }}>
-          Switch server engine software or upgrade/downgrade version. The server must be stopped first.
+          {serverInfo?.modpack_title
+            ? 'This server runs a curated Modpack environment. Engine and version switching is locked to prevent corruption.'
+            : 'Switch server engine software or upgrade/downgrade version. The server must be stopped first.'}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
           <div className="form-group">
             <label>Current Engine</label>
-            <input type="text" value={serverInfo?.software || ''} readOnly disabled />
+            <input
+              type="text"
+              value={
+                serverInfo?.modpack_title
+                  ? `${serverInfo.modpack_title}${serverInfo.modpack_version ? ` - ${serverInfo.modpack_version}` : ''}`
+                  : (serverInfo?.software || '')
+              }
+              readOnly disabled
+            />
           </div>
           <div className="form-group">
             <label>Current Version</label>
-            <input type="text" value={serverInfo?.version || ''} readOnly disabled />
+            <input type="text" value={serverInfo?.modpack_title ? (serverInfo?.version || '') : (serverInfo?.version || '')} readOnly disabled />
           </div>
         </div>
 
-        {hasPerm('server.properties.write') && (
+        {/* Modpack lockout banner */}
+        {serverInfo?.modpack_title && (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '0.65rem',
+            background: 'color-mix(in srgb, var(--bg-surface) 80%, var(--warning) 20%)',
+            border: '1px solid var(--warning)', borderRadius: 'var(--radius)',
+            padding: '0.75rem 1rem', fontSize: '0.82rem', color: 'var(--warning)',
+            marginTop: '0.75rem',
+          }}>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Software modifications are strictly locked for curated Modpack environments to prevent server corruption.
+          </div>
+        )}
+
+        {hasPerm('server.properties.write') && !serverInfo?.modpack_title && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem', alignItems: 'flex-end' }}>
             <div className="form-group" style={{ margin: 0 }}>
               <label>New Engine Software</label>
@@ -529,7 +587,8 @@ export default function ServerSettings() {
         )}
       </div>
 
-      {/* ── Auto-Update Settings ── */}
+      {/* ── Auto-Update Settings — hidden for modpack servers (spec item 5) ── */}
+      {!serverInfo?.modpack_title && (
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
           <h3 style={{ margin: 0 }}>Auto-Update Settings</h3>
@@ -733,6 +792,85 @@ export default function ServerSettings() {
           )}
         </div>
       </div>
+      )} {/* end !modpack_title auto-update guard */}
+
+      {/* ── Server Start Command (Java servers only, not Bedrock) ── */}
+      {!currentIsBedrock && hasPerm('server.properties.write') && (
+        <div className="card">
+          <h3>Server Start Command</h3>
+          <p className="text-muted" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
+            MinePanel auto-generates the start command from your software, RAM, and Java settings.
+            You can override it here with a fully custom command — useful for adding JVM flags, GC tuning, or custom jar arguments.
+            Leave blank to revert to the auto-generated command.
+          </p>
+
+          {/* Read-only auto-generated preview */}
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              Auto-generated command
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>(read-only preview)</span>
+            </label>
+            <div style={{
+              fontFamily: 'var(--font-mono)', fontSize: '0.78rem',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)', padding: '0.6rem 0.75rem',
+              color: 'var(--text-muted)', wordBreak: 'break-all', lineHeight: 1.6,
+              userSelect: 'all',
+            }}>
+              {startCmdAuto || <span style={{ fontStyle: 'italic' }}>Loading…</span>}
+            </div>
+          </div>
+
+          {/* Editable override field */}
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              Custom start command
+              {startCmd.trim() && (
+                <span style={{
+                  fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em',
+                  padding: '0.1rem 0.45rem', borderRadius: '999px',
+                  background: 'color-mix(in srgb, var(--bg-surface) 80%, var(--accent) 20%)',
+                  color: 'var(--accent)', border: '1px solid var(--accent)',
+                }}>ACTIVE</span>
+              )}
+            </label>
+            <textarea
+              rows={3}
+              placeholder={startCmdAuto}
+              value={startCmd}
+              onChange={e => { setStartCmd(e.target.value); setStartCmdDirty(true); }}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                fontFamily: 'var(--font-mono)', fontSize: '0.82rem',
+                resize: 'vertical', minHeight: '72px',
+              }}
+            />
+            <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Start with <code style={{ fontFamily: 'var(--font-mono)' }}>java</code> or your Java binary path.
+              The server will be stopped before changes take effect.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button
+              className="btn primary"
+              onClick={handleSaveStartCommand}
+              disabled={startCmdSaving || !startCmdDirty}
+            >
+              {startCmdSaving ? 'Saving…' : 'Save Command'}
+            </button>
+            {startCmd.trim() && (
+              <button
+                className="btn outline"
+                onClick={() => { setStartCmd(''); setStartCmdDirty(true); }}
+                style={{ fontSize: '0.82rem' }}
+              >
+                Reset to Auto
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Danger Zone */}
 

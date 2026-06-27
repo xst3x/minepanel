@@ -54,6 +54,10 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
   const [detailVersions, setDetailVersions] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailHit, setDetailHit] = useState(null);
+  const [detailTab, setDetailTab] = useState('overview'); // 'overview' | 'contents'
+  const [contents, setContents] = useState(null); // { mods, resource_packs, shaders }
+  const [contentsLoading, setContentsLoading] = useState(false);
+  const [contentsVersionId, setContentsVersionId] = useState(null);
 
   const searchInputRef = useRef(null);
   const queryRef = useRef('');
@@ -163,6 +167,9 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
     setDetailProject(null);
     setDetailVersions([]);
     setDetailHit(hit);
+    setDetailTab('overview');
+    setContents(null);
+    setContentsVersionId(null);
     try {
       const [project, versions] = await Promise.all([
         api(`/api/modpacks/project/${encodeURIComponent(hit.project_id)}`),
@@ -175,6 +182,30 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
       setView('browser');
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const loadContents = async (versionId) => {
+    if (!versionId) return;
+    if (contentsVersionId === versionId && contents) return; // already loaded
+    setContentsLoading(true);
+    setContents(null);
+    setContentsVersionId(versionId);
+    try {
+      const data = await api(`/api/modpacks/version/${encodeURIComponent(versionId)}/contents`);
+      setContents(data);
+    } catch (e) {
+      toast('Failed to load included content: ' + e.message, 'error');
+    } finally {
+      setContentsLoading(false);
+    }
+  };
+
+  const handleDetailTabChange = (tab) => {
+    setDetailTab(tab);
+    if (tab === 'contents' && detailVersions.length > 0) {
+      const latestVid = detailVersions[0]?.id;
+      loadContents(latestVid);
     }
   };
 
@@ -257,8 +288,87 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
               </div>
             )}
 
+            {/* Sub-tab navigation */}
+            <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+              {[
+                { id: 'overview', label: 'Overview' },
+                { id: 'contents', label: 'Included Content' },
+              ].map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => handleDetailTabChange(t.id)}
+                  style={{
+                    padding: '0.5rem 1rem', background: 'none', border: 'none',
+                    borderBottom: detailTab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
+                    color: detailTab === t.id ? 'var(--accent)' : 'var(--text-muted)',
+                    cursor: 'pointer', fontWeight: detailTab === t.id ? 600 : 400,
+                    fontSize: '0.85rem', transition: 'color 0.15s, border-color 0.15s',
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {detailTab === 'contents' && (
+              <div style={{ marginBottom: '1rem' }}>
+                {contentsLoading ? (
+                  <p className="text-muted" style={{ fontSize: '0.85rem' }}>Loading included content…</p>
+                ) : contents ? (
+                  (() => {
+                    const total = (contents.mods?.length || 0) + (contents.resource_packs?.length || 0) + (contents.shaders?.length || 0);
+                    if (total === 0) return <p className="text-muted" style={{ fontSize: '0.85rem' }}>No dependency information available for this version.</p>;
+
+                    const renderList = (title, items) => {
+                      if (!items?.length) return null;
+                      return (
+                        <div style={{ marginBottom: '1.25rem' }}>
+                          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                            {title} <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{items.length}</span>
+                          </h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            {items.map(item => (
+                              <div key={item.project_id} style={{
+                                display: 'flex', alignItems: 'center', gap: '0.6rem',
+                                padding: '0.4rem 0.6rem', borderRadius: 'var(--radius)',
+                                background: 'var(--bg-input)', border: '1px solid var(--border-color)',
+                                fontSize: '0.82rem',
+                              }}>
+                                {item.icon_url && (
+                                  <img src={`/api/modpacks/icon?url=${encodeURIComponent(item.icon_url)}`} alt="" width={20} height={20} style={{ borderRadius: '3px', flexShrink: 0 }} loading="lazy" />
+                                )}
+                                <span style={{ fontWeight: 500, color: 'var(--text-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                                {item.dependency_type === 'optional' && (
+                                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flexShrink: 0 }}>optional</span>
+                                )}
+                                <a href={`https://modrinth.com/mod/${item.slug}`} target="_blank" rel="noopener noreferrer"
+                                  style={{ color: 'var(--accent)', fontSize: '0.72rem', flexShrink: 0 }}
+                                  onClick={e => e.stopPropagation()}
+                                >↗</a>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <>
+                        {renderList('Mods', contents.mods)}
+                        {renderList('Resource Packs', contents.resource_packs)}
+                        {renderList('Shaders', contents.shaders)}
+                      </>
+                    );
+                  })()
+                ) : (
+                  <p className="text-muted" style={{ fontSize: '0.85rem' }}>Select a version and click "Included Content" to load dependencies.</p>
+                )}
+              </div>
+            )}
+
             <div className="plugin-detail-columns">
-              <section className="plugin-readme">
+              <section className="plugin-readme" style={detailTab === 'contents' ? { display: 'none' } : {}}>
                 <div className="markdown-body plugin-description">
                   {detailProject.body
                     ? <div dangerouslySetInnerHTML={{ __html: parseMarkdown(detailProject.body) }} />

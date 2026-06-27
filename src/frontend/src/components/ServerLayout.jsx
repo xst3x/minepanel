@@ -272,8 +272,17 @@ export default function ServerLayout() {
               <h2 id="sh-name">{serverInfo?.name || 'Server'}</h2>
               <p className="sh-meta" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <span>
-                  <span id="sh-software">{serverInfo?.software || 'Minecraft'}</span>{' '}
-                  <span id="sh-version">{serverInfo?.version || ''}</span> &mdash;{' '}
+                  {serverInfo?.modpack_title ? (
+                    <span id="sh-software">
+                      {serverInfo.modpack_title}
+                      {serverInfo.modpack_version ? ` - ${serverInfo.modpack_version}` : ''}
+                    </span>
+                  ) : (
+                    <>
+                      <span id="sh-software">{serverInfo?.software || 'Minecraft'}</span>{' '}
+                      <span id="sh-version">{serverInfo?.version || ''}</span>
+                    </>
+                  )}{' '}&mdash;{' '}
                   <span id="sh-address">{serverAddress}</span>
                 </span>
                 <span className={`status-badge ${status}`} id="sh-status">

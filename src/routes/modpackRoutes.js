@@ -114,6 +114,64 @@ router.get('/project/:projectId', authenticateToken, async (req, res) => {
     }
 });
 
+/**
+ * GET /api/modpacks/version/:versionId/contents
+ * Resolves all dependencies of a modpack version and groups them into
+ * mods, resource_packs, and shaders lists. Used for the "Included Content" tab.
+ */
+router.get('/version/:versionId/contents', authenticateToken, async (req, res) => {
+    try {
+        const { fetchJson } = require('../core/services/modrinthHttp');
+        const MODRINTH_BASE = 'https://api.modrinth.com/v2';
+
+        const version = await fetchJson(`${MODRINTH_BASE}/version/${encodeURIComponent(req.params.versionId)}`);
+        const deps = (version.dependencies || []).filter(d => d.project_id && d.dependency_type !== 'incompatible');
+
+        if (!deps.length) {
+            return res.json({ mods: [], resource_packs: [], shaders: [] });
+        }
+
+        // Batch-fetch project info for all dependency project IDs (Modrinth supports up to 1000 IDs).
+        const ids = [...new Set(deps.map(d => d.project_id))];
+        let projects = [];
+        try {
+            const idsParam = encodeURIComponent(JSON.stringify(ids));
+            projects = await fetchJson(`${MODRINTH_BASE}/projects?ids=${idsParam}`);
+        } catch (_) {}
+
+        const projectMap = {};
+        for (const p of (projects || [])) projectMap[p.id] = p;
+
+        const mods = [], resource_packs = [], shaders = [];
+
+        for (const dep of deps) {
+            const proj = projectMap[dep.project_id];
+            const entry = {
+                project_id: dep.project_id,
+                version_id: dep.version_id || null,
+                dependency_type: dep.dependency_type,
+                name: proj?.title || dep.project_id,
+                slug: proj?.slug || dep.project_id,
+                icon_url: proj?.icon_url || null,
+                project_type: proj?.project_type || 'mod',
+            };
+            const type = proj?.project_type || 'mod';
+            if (type === 'resourcepack' || type === 'resource_pack') {
+                resource_packs.push(entry);
+            } else if (type === 'shader') {
+                shaders.push(entry);
+            } else {
+                mods.push(entry);
+            }
+        }
+
+        res.json({ mods, resource_packs, shaders });
+    } catch (e) {
+        logger.error('[modpackRoutes] version contents error:', e);
+        return sendError(res, E.INTERNAL_ERROR, 500, 'Failed to fetch version contents');
+    }
+});
+
 router.get('/project/:projectId/versions', authenticateToken, async (req, res) => {
     try {
         const versions = await getProjectVersions(req.params.projectId);

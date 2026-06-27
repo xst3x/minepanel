@@ -120,7 +120,44 @@ function getStartInfo(server) {
         }
     } catch (_) {}
 
+    // If the admin set a fully custom start command, parse it into args and use it.
+    if (server.custom_start_command && server.custom_start_command.trim()) {
+        const rawCmd = server.custom_start_command.trim();
+        // Split the command into tokens (naive shell-like split — handles quoted strings).
+        const tokens = rawCmd.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+        // Strip leading executable token if it's the java binary (we pass javaPath separately).
+        const isJavaCmd = tokens[0] && (tokens[0] === 'java' || tokens[0].toLowerCase().endsWith('java') || tokens[0].toLowerCase().endsWith('java.exe'));
+        const customArgs = isJavaCmd ? tokens.slice(1) : tokens;
+        return { serverDir, jarFile, customArgs };
+    }
+
     return { serverDir, jarFile, customArgs };
+}
+
+/**
+ * Build the human-readable default start command string for a Java server.
+ * Used by the Settings UI to show the auto-generated command in the text field.
+ */
+function buildDefaultStartCommand(server, serverDir, javaPath = 'java') {
+    const software = (server.software || '').toLowerCase();
+
+    // Forge / NeoForge: try to reconstruct from run script
+    if (software === 'forge' || software === 'neoforge') {
+        const isWin = process.platform === 'win32';
+        const runScript = path.join(serverDir, isWin ? 'run.bat' : 'run.sh');
+        if (fs.existsSync(runScript)) {
+            const content = fs.readFileSync(runScript, 'utf8');
+            for (const line of content.split('\n')) {
+                if (line.trim().startsWith('java ')) {
+                    return line.trim();
+                }
+            }
+        }
+    }
+
+    // Standard Java: simple -Xms/-Xmx -jar server.jar nogui
+    const ram = server.ram_mb || 2048;
+    return `${javaPath} -Xms${ram}M -Xmx${ram}M -jar server.jar nogui`;
 }
 
 // ── Forge installer helpers ─────────────────────────────────────────────────
@@ -326,6 +363,7 @@ async function runNeoForgeInstaller(installerPath, serverDir, serverId) {
 module.exports = {
     importUpload,
     getStartInfo,
+    buildDefaultStartCommand,
     runForgeInstaller,
     findForgeJarRecursive,
     runNeoForgeInstaller,
