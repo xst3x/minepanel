@@ -10,6 +10,7 @@ Plans-and-internal-stuff/
 .antigravity/
 .agent/
 venv
+ADMIN_CREDENTIALS.txt
 
 # AI / aider / history junk
 .aider.*

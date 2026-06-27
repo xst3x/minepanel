@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { toast, toastProgress } from '../components/Toast.jsx';
 import Select from '../components/Select.jsx';
+import ModpackBrowser from '../components/ModpackBrowser.jsx';
 import { useServerModals } from '../context/ServerModalsContext.jsx';
 import '../styles/components/GlobalServerModals.css';
 
@@ -75,7 +76,7 @@ export default function GlobalServerModals() {
   // Tab change resets software/port defaults
   useEffect(() => {
     if (csTab === 'java') { setCsSoftware('paper'); setCsPort(25565); }
-    else { setCsSoftware('bedrock'); setCsPort(19132); }
+    else if (csTab === 'bedrock') { setCsSoftware('bedrock'); setCsPort(19132); }
   }, [csTab]);
 
   // Port hint based on bedrock software selection
@@ -199,41 +200,79 @@ export default function GlobalServerModals() {
       {/* Create Modal */}
       {modal === 'create' && (
         <div className="modal-overlay active">
-          <div className="modal">
+          <div className={`modal${csTab === 'modpacks' ? ' large' : ''}`}>
             <div className="modal-header">
               <h3>Create new server</h3>
               <button className="close-btn" onClick={close}>&times;</button>
             </div>
 
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', padding: '0 1.5rem', gap: '0.25rem' }}>
-              {['java', 'bedrock'].map(tab => (
+              {[
+                { id: 'java', label: 'Java Edition', icon: 'java' },
+                { id: 'bedrock', label: 'Bedrock Edition', icon: 'bedrock' },
+                { id: 'modpacks', label: 'Java Modpacks', icon: 'modpacks' },
+              ].map(tab => (
                 <button
-                  key={tab}
+                  key={tab.id}
                   type="button"
-                  onClick={() => setCsTab(tab)}
+                  onClick={() => setCsTab(tab.id)}
                   style={{
                     padding: '0.65rem 1.1rem', background: 'none', border: 'none',
-                    borderBottom: csTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
-                    color: csTab === tab ? 'var(--accent)' : 'var(--text-muted)',
-                    cursor: 'pointer', fontWeight: csTab === tab ? 600 : 400,
+                    borderBottom: csTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
+                    color: csTab === tab.id ? 'var(--accent)' : 'var(--text-muted)',
+                    cursor: 'pointer', fontWeight: csTab === tab.id ? 600 : 400,
                     fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.45rem',
                     transition: 'color 0.15s, border-color 0.15s',
                   }}
                 >
-                  {tab === 'java'
-                    ? <><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Java Edition</>
-                    : <><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>Bedrock Edition</>
-                  }
+                  {tab.icon === 'java' && (
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                  )}
+                  {tab.icon === 'bedrock' && (
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+                  )}
+                  {tab.icon === 'modpacks' && (
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                  )}
+                  {tab.label}
                 </button>
               ))}
             </div>
 
-            <form onSubmit={handleCreateServer}>
-              <div className="modal-body">
+            <form onSubmit={csTab === 'modpacks' ? (e) => e.preventDefault() : handleCreateServer}>
+              <div className="modal-body" style={csTab === 'modpacks' ? { paddingBottom: '0.5rem' } : undefined}>
                 <div className="form-group">
                   <label>Server Name</label>
-                  <input type="text" required placeholder="My Server" value={csName} onChange={(e) => setCsName(e.target.value)} />
+                  <input type="text" required={csTab !== 'modpacks'} placeholder="My Server" value={csName} onChange={(e) => setCsName(e.target.value)} />
                 </div>
+
+                {csTab === 'modpacks' && (
+                  <>
+                    <div className="form-group row" style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem' }}>
+                      <div style={{ flex: 1 }}>
+                        <label>RAM (MB)</label>
+                        <input type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label>Port</label>
+                        <input type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
+                      </div>
+                    </div>
+                    <ModpackBrowser
+                      serverName={csName}
+                      ramMb={csRam}
+                      port={csPort}
+                      onInstalled={() => {
+                        close();
+                        setCsName('');
+                        setCsRam(2048);
+                        setCsPort(25565);
+                        setCsTab('java');
+                        window.dispatchEvent(new Event('mp:server-status-changed'));
+                      }}
+                    />
+                  </>
+                )}
 
                 {csTab === 'java' && (
                   <>
@@ -337,7 +376,9 @@ export default function GlobalServerModals() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn outline" onClick={close}>Cancel</button>
-                <button type="submit" className="btn primary">Create Server</button>
+                {csTab !== 'modpacks' && (
+                  <button type="submit" className="btn primary">Create Server</button>
+                )}
               </div>
             </form>
           </div>

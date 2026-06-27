@@ -1,0 +1,62 @@
+.modpack-browser {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-height: 0;
+}
+
+.modpack-browser-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.modpack-browser-filters label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.modpack-loader-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.45rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.modpack-version-item.latest {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.modpack-version-item.latest .plugin-version-title::after {
+  content: ' · Latest';
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.modpack-detail-scroll {
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+@media (max-width: 720px) {
+  .modpack-browser-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .plugin-detail-columns {
+    grid-template-columns: 1fr !important;
+  }
+}

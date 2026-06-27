@@ -81,6 +81,14 @@ const createServer = Joi.object({
     port,
 });
 
+const createModpackServer = Joi.object({
+    name:      Joi.string().min(1).max(64).required(),
+    ram_mb:    ram,
+    port,
+    projectId: Joi.string().trim().min(1).max(128).required(),
+    versionId: Joi.string().trim().min(1).max(128).optional().allow(null, ''),
+});
+
 const serverSettings = Joi.object({
     name:                 Joi.string().min(1).max(64).required(),
     port,
@@ -286,7 +294,7 @@ module.exports = {
     createUser, changeName, adminChangeName, changePassword, resetPassword, generateToken,
     accentColor, customAccentCreate, setUserRank, userPermissions,
     // Server
-    createServer, serverSettings, changeVersion, switchSoftware, backupConfig, sendCommand,
+    createServer, createModpackServer, serverSettings, changeVersion, switchSoftware, backupConfig, sendCommand,
     // Auto-Update
     updateSettings, updateRun,
     // Files

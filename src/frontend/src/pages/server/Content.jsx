@@ -2,18 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm } from '../../components/Toast.jsx';
-import { marked } from 'marked';
+import { parseMarkdown } from '../../lib/markdown.js';
 import PocketMinePlugins from './PocketMinePlugins.jsx';
 import '../../styles/pages/server/Content.css';
-
-// Configure marked — safe, no gfm alerts, open links in new tab
-marked.setOptions({ breaks: true, gfm: true });
-const renderer = new marked.Renderer();
-renderer.link = (href, title, text) =>
-  `<a href="${href}" target="_blank" rel="noopener noreferrer"${title ? ` title="${title}"` : ''}>${text}</a>`;
-renderer.image = (href, title, text) =>
-  `<img src="${href}" alt="${text || ''}"${title ? ` title="${title}"` : ''} style="max-width:100%;border-radius:6px;" />`;
-marked.use({ renderer });
 
 const PAGE_SIZE = 60;
 const ROWS = 10;
@@ -427,7 +418,7 @@ export default function Content() {
                               </div>
                             </div>
                           </div>
-                          <div className="markdown-body plugin-description"><div className="plugin-desc" dangerouslySetInnerHTML={{ __html: marked.parse(hit.description) }}></div></div>
+                          <div className="markdown-body plugin-description"><div className="plugin-desc" dangerouslySetInnerHTML={{ __html: parseMarkdown(hit.description) }}></div></div>
                           <div className="plugin-card-meta">
                             <span>{(hit.downloads || 0).toLocaleString()} downloads</span>
                             <span>{hit.project_type || 'plugin'}</span>
@@ -527,8 +518,8 @@ export default function Content() {
                         {detailProject.body
                           ? <div dangerouslySetInnerHTML={{
                               __html: hit.source === 'hangar'
-                                ? marked.parse(detailProject.body)
-                                : marked.parse(detailProject.body.slice(0, 20000))
+                                ? parseMarkdown(detailProject.body)
+                                : parseMarkdown(detailProject.body)
                             }} />
                           : <p className="text-muted">No description provided.</p>}
                       </div>
