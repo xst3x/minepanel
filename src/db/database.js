@@ -181,49 +181,63 @@ const { runMigrations } = require('./migrationRunner');
 const ADMIN_CREDS_FILE = path.join(__dirname, '../../ADMIN_CREDENTIALS.txt');
 
 const ensureAdminAccount = async () => {
-    try {
-        const userCount = await dbGet('SELECT COUNT(*) as count FROM users');
-        if (userCount && userCount.count > 0) return;
+    // ── Guard: do nothing if any user already exists (idempotent across restarts) ──
+    const userCount = await dbGet('SELECT COUNT(*) as count FROM users');
+    if (userCount && userCount.count > 0) return;
 
-        // No accounts — generate admin
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*';
-        let password = '';
-        for (let i = 0; i < 15; i++) password += chars[Math.floor(Math.random() * chars.length)];
+    // ── Generate a cryptographically secure random password ────────────────────
+    const crypto = require('crypto');
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*';
+    const bytes = crypto.randomBytes(15);
+    const password = Array.from(bytes, b => chars[b % chars.length]).join('');
 
-        const hash = await bcrypt.hash(password, 12);
-        await dbRun(
-            'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-            ['admin', hash, 'admin']
+    // ── Hash and insert — errors propagate up to initDb (→ process.exit(1)) ──
+    const hash = await bcrypt.hash(password, 12);
+    await dbRun(
+        'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+        ['admin', hash, 'admin']
+    );
+
+    // ── Verify the row actually landed before printing anything ───────────────
+    const created = await dbGet('SELECT id FROM users WHERE username = ?', ['admin']);
+    if (!created) {
+        throw new Error(
+            '[DB] ensureAdminAccount: INSERT reported success but row is missing — ' +
+            'database may be corrupt or using a different file than expected.'
         );
+    }
 
-        const msg = [
-            '╔══════════════════════════════════════════╗',
-            '║         MINEPANEL DEFAULT ADMIN          ║',
-            '║                                          ║',
-            `║  Username : admin                        ║`,
-            `║  Password : ${password.padEnd(28)}║`,
-            '║                                          ║',
-            '║  Credentials saved to:                   ║',
-            '║  ADMIN_CREDENTIALS.txt                   ║',
-            '║  Change your password after first login! ║',
-            '╚══════════════════════════════════════════╝',
-        ].join('\n');
+    // ── ONLY NOW reveal credentials ────────────────────────────────────────────
+    const msg = [
+        '╔══════════════════════════════════════════╗',
+        '║         MINEPANEL DEFAULT ADMIN          ║',
+        '║                                          ║',
+        `║  Username : admin                        ║`,
+        `║  Password : ${password.padEnd(28)}║`,
+        '║                                          ║',
+        '║  Credentials saved to:                   ║',
+        '║  ADMIN_CREDENTIALS.txt                   ║',
+        '║  Change your password after first login! ║',
+        '╚══════════════════════════════════════════╝',
+    ].join('\n');
 
-        logger.warn('\n' + msg);
+    logger.warn('\n' + msg);
 
-        const fileContent = [
-            'MinePanel — Auto-generated Admin Account',
-            '========================================',
-            `Username : admin`,
-            `Password : ${password}`,
-            '',
-            'IMPORTANT: Delete this file and change your password after logging in!',
-            `Generated: ${new Date().toISOString()}`,
-        ].join('\n');
+    // ── Save to file (non-fatal — credentials already printed to console) ──────
+    const fileContent = [
+        'MinePanel — Auto-generated Admin Account',
+        '========================================',
+        `Username : admin`,
+        `Password : ${password}`,
+        '',
+        'IMPORTANT: Delete this file and change your password after logging in!',
+        `Generated: ${new Date().toISOString()}`,
+    ].join('\n');
 
+    try {
         fs.writeFileSync(ADMIN_CREDS_FILE, fileContent, 'utf8');
-    } catch (e) {
-        logger.error('[DB] ensureAdminAccount failed:', e.message);
+    } catch (writeErr) {
+        logger.warn(`[DB] Could not write ADMIN_CREDENTIALS.txt: ${writeErr.message} — credentials shown above in console.`);
     }
 };
 
@@ -246,7 +260,7 @@ const initDb = async () => {
     // Sync Sequelize schema first (this creates the tables if they don't exist, which is critical for tests using :memory:)
     await sequelize.sync();
 
-    await runMigrations(dbRun, dbGet);
+    await runMigrations(dbRun, dbGet, dbAll);
     await seedRanks();
     await migratePermissionsData();
     if (process.env.NODE_ENV !== 'test') await ensureAdminAccount();

@@ -9,22 +9,6 @@ const logger = require('../core/utils/logger');
 
 const router = express.Router();
 
-// Ensure sort_order column exists (safe migration)
-(async () => {
-    try {
-        await dbRun('ALTER TABLE ranks ADD COLUMN sort_order INTEGER DEFAULT 999');
-        // Set initial order based on built-in priority
-        const PRIORITY = { owner: 0, manager: 1, admin: 2, helper: 3, player: 4 };
-        const ranks = await dbAll('SELECT id, name FROM ranks');
-        for (const r of ranks) {
-            const order = PRIORITY[r.name.toLowerCase()] ?? 999;
-            await dbRun('UPDATE ranks SET sort_order = ? WHERE id = ?', [order, r.id]);
-        }
-    } catch (e) {
-        // Column likely already exists — ignore
-    }
-})();
-
 // List all ranks
 router.get('/', authenticateToken, async (req, res) => {
     try {

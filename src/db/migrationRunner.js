@@ -9,7 +9,7 @@ const logger = require('../core/utils/logger');
 
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 
-const runMigrations = async (dbRun, dbGet) => {
+const runMigrations = async (dbRun, dbGet, dbAll) => {
     // Create the migrations tracking table if it doesn't exist yet
     await dbRun(`
         CREATE TABLE IF NOT EXISTS _migrations (
@@ -51,7 +51,7 @@ const runMigrations = async (dbRun, dbGet) => {
         logger.info(`[Migrations] Applying v${migration.version}: ${migration.description || file}`);
 
         try {
-            await migration.up(dbRun);
+            await migration.up(dbRun, dbGet, dbAll);
 
             await dbRun(
                 'INSERT OR IGNORE INTO _migrations (version, description) VALUES (?, ?)',
