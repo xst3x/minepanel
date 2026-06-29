@@ -114,18 +114,80 @@ const isVersionCompatible = (version, serverVersion, softwareLower) => {
     return true;
 };
 
-const buildServerFacets = (server) => {
+const isBedrock = (software) =>
+    ['bedrock', 'bedrock-preview', 'pocketmine', 'nukkitx', 'powernukkitx', 'waterdogpe'].includes(software.toLowerCase());
+
+const getLevelName = (server) => {
+    try {
+        const propsPath = path.join(getServerDir(server), 'server.properties');
+        if (fs.existsSync(propsPath)) {
+            const content = fs.readFileSync(propsPath, 'utf8');
+            for (let line of content.split('\n')) {
+                line = line.trim();
+                if (line && !line.startsWith('#')) {
+                    const parts = line.split('=');
+                    if (parts[0].trim() === 'level-name') {
+                        return parts.slice(1).join('=').trim() || 'world';
+                    }
+                }
+            }
+        }
+    } catch (_) {}
+    return 'world';
+};
+
+const getInstalledDatapacks = async (server) => {
+    const levelName = getLevelName(server);
+    const datapacksDir = path.join(getServerDir(server), levelName, 'datapacks');
+    if (!fs.existsSync(datapacksDir)) return [];
+    const entries = fs.readdirSync(datapacksDir, { withFileTypes: true });
+    const items = [];
+    for (const entry of entries) {
+        // Skip dotfiles that are minepanel metadata sidecars
+        if (entry.name.startsWith('.minepanel-metadata-') && entry.name.endsWith('.json')) continue;
+
+        // Only .zip archives are valid installable/visible datapacks — skip directories and non-zip files
+        if (entry.isDirectory() || !entry.name.toLowerCase().endsWith('.zip')) continue;
+
+        const entryPath = path.join(datapacksDir, entry.name);
+        let size = 0;
+        let modifiedAt = new Date();
+        try {
+            const stats = fs.statSync(entryPath);
+            size = stats.size;
+            modifiedAt = stats.mtime;
+        } catch (_) {}
+
+        const item = {
+            name: entry.name,
+            size,
+            modifiedAt,
+            isDirectory: false,
+        };
+
+        // Read sidecar metadata alongside the .zip file
+        const metaPath = path.join(datapacksDir, `.minepanel-metadata-${entry.name}.json`);
+        if (fs.existsSync(metaPath)) {
+            try {
+                const metaContent = fs.readFileSync(metaPath, 'utf8');
+                item.modrinth = JSON.parse(metaContent);
+            } catch (_) {}
+        }
+        items.push(item);
+    }
+    return items;
+};
+
+const buildServerFacets = (server, projectTypeOverride) => {
     const softwareLower = server.software.toLowerCase();
     const loader = getModrinthLoader(softwareLower);
     const facets = [];
-    if (isModBased(softwareLower)) {
-        facets.push(['project_type:mod']);
-        if (loader) facets.push([`categories:${loader}`]);
-        facets.push([`versions:${server.version}`]);
-    } else {
-        facets.push(['project_type:plugin']);
-        facets.push([`versions:${server.version}`]);
+    const projectType = projectTypeOverride || (isModBased(softwareLower) ? 'mod' : 'plugin');
+    facets.push([`project_type:${projectType}`]);
+    if (projectType === 'mod' && loader) {
+        facets.push([`categories:${loader}`]);
     }
+    facets.push([`versions:${server.version}`]);
     return facets;
 };
 
@@ -257,18 +319,52 @@ const pickCompatibleVersion = (versions, serverVersion, softwareLower) =>
     versions.filter(v => isVersionCompatible(v, serverVersion, softwareLower))[0] || null;
 
 
+// ─── Content type filter helpers ──────────────────────────────────────────────
+
+const MOD_LOADERS = new Set(['fabric', 'forge', 'neoforge', 'quilt']);
+const PLUGIN_LOADERS = new Set(['paper', 'purpur', 'spigot', 'bukkit', 'folia', 'leaves', 'pufferfish', 'velocity', 'waterfall', 'bungeecord']);
+
+/**
+ * Strictly filter Modrinth version array to only include versions matching
+ * the requested content type. Never mixes types.
+ *   'datapack' → no mod/plugin loaders (pure datapack)
+ *   'mod'      → has at least one mod loader
+ *   'plugin'   → has at least one plugin loader
+ */
+const filterVersionsByType = (versions, contentType) => {
+    if (!contentType) return versions;
+    return versions.filter(v => {
+        const loaders = (v.loaders || []).map(l => l.toLowerCase());
+        const hasMod = loaders.some(l => MOD_LOADERS.has(l));
+        const hasPlugin = loaders.some(l => PLUGIN_LOADERS.has(l));
+        switch (contentType) {
+            case 'datapack':
+                // Pure datapack: no mod or plugin loaders
+                return !hasMod && !hasPlugin;
+            case 'mod':
+                return hasMod;
+            case 'plugin':
+                return hasPlugin;
+            default:
+                return true;
+        }
+    });
+};
+
+
 // ─── Routes: Modrinth ────────────────────────────────────────────────────────
 
 router.get('/modrinth/search', authenticateToken, async (req, res) => {
     const { serverId } = req.params;
     const query = req.query.q || '';
     const category = req.query.category || '';
+    const projectType = req.query.project_type;
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 24, 1), 100);
     const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
     try {
         const server = await getServer(serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
-        const facets = buildServerFacets(server);
+        const facets = buildServerFacets(server, projectType);
         if (category) facets.push([`categories:${category}`]);
         const indexSort = query ? 'relevance' : 'downloads';
         const url = `https://api.modrinth.com/v2/search?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}&index=${indexSort}&facets=${encodeURIComponent(JSON.stringify(facets))}`;
@@ -295,9 +391,16 @@ router.get('/modrinth/project/:projectId/versions', authenticateToken, async (re
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const contentType = req.query.type || ''; // 'mod' | 'plugin'
         const softwareLower = server.software.toLowerCase();
         const installed = await getInstalledItems(server);
-        const versions = await fetchJson(`https://api.modrinth.com/v2/project/${encodeURIComponent(req.params.projectId)}/version`);
+        let versions = await fetchJson(`https://api.modrinth.com/v2/project/${encodeURIComponent(req.params.projectId)}/version`);
+
+        // Strict type filter BEFORE compatibility check — reject wrong-type versions entirely
+        if (contentType) {
+            versions = filterVersionsByType(versions, contentType);
+        }
+
         res.json(versions.map(v => ({
             ...v,
             source: 'modrinth',
@@ -380,6 +483,203 @@ router.get('/hangar/project/:owner/:slug/versions', authenticateToken, async (re
         res.json(versions);
     } catch (e) {
         logger.error(`[pluginRoutes] Hangar versions error:`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+
+// ─── Routes: Datapacks ────────────────────────────────────────────────────────
+
+router.get('/datapacks/installed', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        res.json(await getInstalledDatapacks(server));
+    } catch (e) {
+        logger.error(`[pluginRoutes] List installed datapacks error:`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+router.get('/datapacks/search', authenticateToken, async (req, res) => {
+    const { serverId } = req.params;
+    const query = req.query.q || '';
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 24, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    try {
+        const server = await getServer(serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        if (isBedrock(server.software)) {
+            return res.json({ hits: [], offset, limit, totalHits: 0, incompatible: true, reason: 'Datapacks are only available for Java Edition servers.' });
+        }
+        const facets = [['project_type:datapack'], [`versions:${server.version}`]];
+        const indexSort = query ? 'relevance' : 'downloads';
+        const url = `https://api.modrinth.com/v2/search?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}&index=${indexSort}&facets=${encodeURIComponent(JSON.stringify(facets))}`;
+        const data = await fetchJson(url);
+        const hits = (data.hits || []).filter(h => h.server_side !== 'unsupported');
+        res.json({ hits: hits.map(h => ({ ...h, source: 'modrinth' })), offset: data.offset ?? offset, limit: data.limit ?? limit, totalHits: data.total_hits ?? hits.length });
+    } catch (e) {
+        logger.error(`[pluginRoutes] Datapacks search error:`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500, 'Failed to fetch datapacks from Modrinth');
+    }
+});
+
+router.get('/datapacks/project/:projectId', authenticateToken, async (req, res) => {
+    try {
+        const project = await fetchJson(`https://api.modrinth.com/v2/project/${encodeURIComponent(req.params.projectId)}`);
+        res.json({ ...project, source: 'modrinth', modrinthUrl: `https://modrinth.com/datapack/${project.slug || project.id}` });
+    } catch (e) {
+        logger.error(`[pluginRoutes] Datapacks project detail error:`, e);
+        return sendError(res, E.PLUGIN_NOT_FOUND, 404);
+    }
+});
+
+router.get('/datapacks/project/:projectId/versions', authenticateToken, async (req, res) => {
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const installed = await getInstalledDatapacks(server);
+        let versions = await fetchJson(`https://api.modrinth.com/v2/project/${encodeURIComponent(req.params.projectId)}/version`);
+
+        // Strict type filter: only pure datapack versions (no mod/plugin loaders)
+        versions = filterVersionsByType(versions, 'datapack');
+
+        res.json(versions.map(v => {
+            const gameOk = v.game_versions && v.game_versions.includes(server.version);
+            return {
+                ...v,
+                source: 'modrinth',
+                compatible: gameOk,
+                installed: installed.some(i => i.modrinth?.versionId === v.id),
+                installedProject: installed.some(i => i.modrinth?.projectId === v.project_id),
+            };
+        }));
+    } catch (e) {
+        logger.error(`[pluginRoutes] Datapacks versions error:`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+router.post('/datapacks/install', authenticateToken, checkPermission('server.plugins.install'), async (req, res) => {
+    const { projectId, versionId } = req.body;
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        if (isBedrock(server.software)) {
+            return sendError(res, E.BAD_REQUEST, 400, 'Datapacks are only available for Java Edition servers.');
+        }
+
+        const project = await fetchJson(`https://api.modrinth.com/v2/project/${projectId}`);
+        const slug = project.slug || projectId;
+
+        const levelName = getLevelName(server);
+        const datapacksDir = path.join(getServerDir(server), levelName, 'datapacks');
+        if (!fs.existsSync(datapacksDir)) fs.mkdirSync(datapacksDir, { recursive: true });
+
+        let targetVersionId = versionId;
+        if (!targetVersionId) {
+            const versions = await fetchJson(`https://api.modrinth.com/v2/project/${projectId}/version`);
+            // Only consider datapack versions — filter by type before checking compatibility
+            const dpVersions = filterVersionsByType(versions, 'datapack');
+            const compatible = dpVersions.find(v => v.game_versions && v.game_versions.includes(server.version));
+            if (!compatible) return sendError(res, E.PLUGIN_INCOMPATIBLE, 404, `No compatible datapack version found for game version ${server.version}.`);
+            targetVersionId = compatible.id;
+        }
+
+        const versionData = await fetchJson(`https://api.modrinth.com/v2/version/${targetVersionId}`);
+        const primaryFile = versionData.files.find(f => f.primary) || versionData.files[0];
+        if (!primaryFile) throw new Error('No download file found');
+
+        // Determine the archive filename — use the original filename from Modrinth or default to slug.zip
+        const archiveName = primaryFile.filename || `${slug}.zip`;
+
+        // Datapacks must be .zip archives — reject anything else (jars, raw mcfunctions, etc.)
+        if (!archiveName.toLowerCase().endsWith('.zip')) {
+            return sendError(res, E.BAD_REQUEST, 400, `Datapack must be a .zip archive. Modrinth returned: ${archiveName}`);
+        }
+        const archivePath = path.join(datapacksDir, archiveName);
+
+        // Clean up any previous installation of this datapack (same slug)
+        // Remove old .zip file matching this slug's metadata
+        const existing = fs.readdirSync(datapacksDir, { withFileTypes: true });
+        for (const e of existing) {
+            const metaFile = path.join(datapacksDir, `.minepanel-metadata-${e.name}.json`);
+            if (fs.existsSync(metaFile)) {
+                try {
+                    const meta = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
+                    if (meta.slug === slug || meta.projectId === projectId) {
+                        // Remove old datapack file/folder
+                        const oldPath = path.join(datapacksDir, e.name);
+                        if (fs.existsSync(oldPath)) {
+                            if (e.isDirectory()) {
+                                fs.rmSync(oldPath, { recursive: true, force: true });
+                            } else {
+                                fs.unlinkSync(oldPath);
+                            }
+                        }
+                        // Remove old metadata
+                        fs.unlinkSync(metaFile);
+                    }
+                } catch (_) {}
+            }
+        }
+        // Also check if a folder with the slug name exists (legacy extracted format)
+        const legacyDir = path.join(datapacksDir, slug);
+        if (fs.existsSync(legacyDir)) {
+            fs.rmSync(legacyDir, { recursive: true, force: true });
+        }
+
+        // Download the datapack file directly as .zip (no extraction)
+        const tempPath = `${archivePath}.download`;
+        await downloadFile(primaryFile.url, tempPath);
+        if (fs.existsSync(archivePath)) fs.unlinkSync(archivePath);
+        fs.renameSync(tempPath, archivePath);
+
+        // Save sidecar metadata alongside the .zip file
+        const metaPath = path.join(datapacksDir, `.minepanel-metadata-${archiveName}.json`);
+        fs.writeFileSync(metaPath, JSON.stringify({
+            projectId,
+            versionId: versionData.id,
+            versionNumber: versionData.version_number,
+            title: project.title,
+            slug,
+            archiveName,
+            installedAt: new Date().toISOString()
+        }, null, 2));
+
+        res.json({ message: `Datapack ${project.title} installed successfully.`, archiveName });
+    } catch (e) {
+        logger.error(`[pluginRoutes] Datapack install error:`, e);
+        return sendError(res, E.PLUGIN_INSTALL_FAILED, 500, e.message);
+    }
+});
+
+router.post('/datapacks/uninstall', authenticateToken, checkPermission('server.plugins.install'), async (req, res) => {
+    const { folderName } = req.body;
+    if (!folderName) return sendError(res, E.BAD_REQUEST, 400, 'Name is required');
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const levelName = getLevelName(server);
+        const datapacksDir = path.join(getServerDir(server), levelName, 'datapacks');
+        const filePath = path.join(datapacksDir, folderName);
+        const expectedDir = path.resolve(datapacksDir);
+        if (!path.resolve(filePath).startsWith(expectedDir)) return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        if (fs.existsSync(filePath)) {
+            if (fs.statSync(filePath).isDirectory()) {
+                fs.rmSync(filePath, { recursive: true, force: true });
+            } else {
+                fs.unlinkSync(filePath);
+            }
+            // Remove sidecar metadata if it exists
+            const metaPath = path.join(datapacksDir, `.minepanel-metadata-${folderName}.json`);
+            if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
+            res.json({ message: `Uninstalled datapack ${folderName}` });
+        } else {
+            return sendError(res, E.PLUGIN_NOT_FOUND, 404);
+        }
+    } catch (e) {
+        logger.error(`[pluginRoutes] Datapack uninstall error:`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });

@@ -49,7 +49,9 @@ export function ToastProvider({ children }) {
 
   const addToast = useCallback((message, type = 'info') => {
     const id = ++idRef.current;
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts(prev => [...prev, { id, message, type, exiting: false }]);
+    // Start exit animation 220ms before DOM removal
+    setTimeout(() => setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t)), 3280);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
   }, []);
 
@@ -110,7 +112,7 @@ export function ToastProvider({ children }) {
       }}>
         {/* Progress toasts (persistent, with indeterminate bar) */}
         {progressToasts.map(t => (
-          <div key={t.id} style={{
+          <div key={t.id} className="toast toast-enter" style={{
             pointerEvents: 'auto',
             display: 'flex', flexDirection: 'column', gap: '0.55rem',
             padding: '0.85rem 1.35rem',
@@ -124,7 +126,6 @@ export function ToastProvider({ children }) {
             fontFamily: 'var(--font-ui)',
             boxShadow: 'var(--shadow-md)',
             minWidth: 280, maxWidth: 420,
-            animation: 'toastIn 0.25s cubic-bezier(0.4,0,0.2,1)',
           }}>
             <span>{t.message}</span>
             <div style={{ height: '3px', borderRadius: '2px', background: 'var(--bg-input)', overflow: 'hidden' }}>
@@ -139,7 +140,7 @@ export function ToastProvider({ children }) {
         ))}
         {/* Regular toasts */}
         {toasts.map(t => (
-          <div key={t.id} style={{
+          <div key={t.id} className={`toast ${t.exiting ? 'toast-exit' : 'toast-enter'}`} style={{
             pointerEvents: 'auto',
             display: 'flex', alignItems: 'center', gap: '0.75rem',
             padding: '0.85rem 1.35rem',
@@ -153,7 +154,6 @@ export function ToastProvider({ children }) {
             fontFamily: 'var(--font-ui)',
             boxShadow: 'var(--shadow-md)',
             minWidth: 280, maxWidth: 420,
-            animation: 'toastIn 0.25s cubic-bezier(0.4,0,0.2,1)',
           }}>
             <span style={{ flex: 1 }}>{t.message}</span>
             <button

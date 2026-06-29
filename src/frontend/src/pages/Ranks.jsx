@@ -35,7 +35,15 @@ export default function Ranks() {
         api('/api/servers'),
         api('/api/users/permissions'),
       ]);
-      setRanks(ranksData || []);
+      // Owner always pinned at top; rest follow server order
+      const sorted = (ranksData || []).slice().sort((a, b) => {
+        const aOwner = a.name?.toLowerCase() === 'owner' || (a.is_builtin && (a.global_permissions || []).includes('*'));
+        const bOwner = b.name?.toLowerCase() === 'owner' || (b.is_builtin && (b.global_permissions || []).includes('*'));
+        if (aOwner && !bOwner) return -1;
+        if (!aOwner && bOwner) return 1;
+        return 0;
+      });
+      setRanks(sorted);
       setServers(serversData || []);
       setAllPerms(permsData || []);
     } catch (err) {
@@ -46,18 +54,29 @@ export default function Ranks() {
   };
 
   // ── Drag-and-drop reorder ────────────────────────────────────────────────
+  const isOwnerRank = (r) =>
+    r.name?.toLowerCase() === 'owner' || (r.is_builtin && (r.global_permissions || []).includes('*'));
+
   const onDragStart = (e, idx) => {
+    if (isOwnerRank(ranks[idx])) { e.preventDefault(); return; } // Owner is not draggable
     setDragIdx(idx);
     e.dataTransfer.effectAllowed = 'move';
   };
-  const onDragEnter = (idx) => setDragOver(idx);
+  const onDragEnter = (idx) => {
+    if (isOwnerRank(ranks[idx])) return; // Can't drop onto Owner slot
+    setDragOver(idx);
+  };
   const onDragOver  = (e) => e.preventDefault();
   const onDrop = (e, dropIdx) => {
     e.preventDefault();
     if (dragIdx === null || dragIdx === dropIdx) return;
+    if (isOwnerRank(ranks[dropIdx])) return; // Can't displace Owner
     const next = [...ranks];
     const [moved] = next.splice(dragIdx, 1);
     next.splice(dropIdx, 0, moved);
+    // Re-pin Owner at index 0 after any reorder
+    const ownerIdx = next.findIndex(isOwnerRank);
+    if (ownerIdx > 0) { const [o] = next.splice(ownerIdx, 1); next.unshift(o); }
     setRanks(next);
     setDragIdx(null);
     setDragOver(null);

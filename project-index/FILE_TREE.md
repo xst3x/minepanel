@@ -18,7 +18,7 @@ MinePanel/
 ├─ LICENSE                     [DOCS] License file
 ├─ setup.py                    [UTIL] Python setup utility
 ├─ Build.bat / Run.bat         [UTIL] Windows batch scripts
-├─
+│
 ├─ data/                        [RUNTIME] Database & application data
 │  ├─ minepanel.db            Database file (SQLite3)
 │  ├─ db/                      Database storage
@@ -71,32 +71,33 @@ MinePanel/
 │  ├─ ranks.md
 │  └─ discord-bot.md
 │
+├─ project-index/              [DOCS] AI-Readable system map (this folder)
+│  ├─ INDEX.md                Navigation & quick reference
+│  ├─ PROJECT_OVERVIEW.md     Architecture & core modules
+│  ├─ FILE_TREE.md            This file
+│  ├─ API_ROUTES.md           All HTTP endpoints
+│  ├─ BACKEND_MAP.md          Services & data flows
+│  ├─ DATABASE.md             Schema & relationships
+│  ├─ FRONTEND_MAP.md         React components & pages
+│  └─ SYSTEM_BEHAVIOR.md      Workflows & state machines
+│
 ├─ github-assets/              [DOCS] Screenshots & images
 │
 └─ node_modules/               [DEPENDENCIES] Installed packages
-   └─ ... (npm packages)
 ```
 
 ---
 
-## Source Code Structure
+## Source Code: Backend Structure
 
-### `src/` - Main Application
-
-#### `src/minepanel.js` [CORE] (479 lines)
+### `src/minepanel.js` [CORE] (479 lines)
 **Purpose**: Main Express server application
-**Contains**:
 - Express app initialization & middleware setup
 - Launcher process logic (checks MINEPANEL_SERVER env var)
 - Port binding with auto-retry on failure
 - Route mounting (all API routes)
 - WebSocket handler setup
 - Server startup sequence
-**Importance**: **CORE** — Don't modify launcher logic without understanding process lifecycle
-
-#### `src/index.js`
-**Purpose**: Unknown/legacy
-**Importance**: LOW
 
 ---
 
@@ -109,81 +110,55 @@ MinePanel/
 
 ### `src/db/` - Database Layer
 
-#### `database.js` [CORE] (306 lines)
-**Purpose**: Database initialization, model loading, backup/integrity operations
-**Exports**:
-- `initDb()`: Initialize Sequelize + run migrations
-- `db`, `dbRun()`, `dbGet()`, `dbAll()`: Low-level query helpers
-- `backupDatabase()`, `listBackups()`: Backup operations
-- `checkIntegrity()`: DB integrity check
-- `PREMADE_RANKS`: Default role definitions
-**Importance**: **CORE** — Entry point for all DB operations
+| File | Purpose | Importance |
+|------|---------|------------|
+| `database.js` | DB initialization, model loading, backup/integrity | **CORE** |
+| `sequelize.js` | Sequelize connection, SQLite3 config | MEDIUM |
+| `migrationRunner.js` | Load & execute migrations on startup | **CORE** |
+| `db-cli.js` | CLI tool for DB management | MEDIUM |
 
-#### `sequelize.js`
-**Purpose**: Sequelize connection configuration
-**Contains**: SQLite3 connection setup, logger binding
-**Importance**: MEDIUM — Modify if changing DB driver
+**Models** (`src/db/models/`):
+- `User.js` — Panel user accounts (**CORE**)
+- `Server.js` — Minecraft server instances (**CORE**)
+- `ServerStats.js` — Performance time-series
+- `Rank.js` — Permission role definitions
+- `UserServerPermission.js` — Per-server ACLs
+- `UserServerRank.js` — Server-specific roles
+- `Setting.js` — Panel config
+- `DiscordBot.js`, `DiscordBotServer.js`, `DiscordIntegration.js` — Discord integration
+- `Webhook.js` — Generic webhooks
+- `UserCustomAccent.js` — Theme color overrides
+- `AccountCreationToken.js` — Signup tokens
+- `AuditLog.js` — Admin activity log
 
-#### `migrationRunner.js`
-**Purpose**: Loads & executes pending migrations on startup
-**Importance**: CORE — Handles schema evolution
-
-#### `db-cli.js`
-**Purpose**: Command-line tool for DB management
-**Usage**: `npm run db migrate | backup | integrity | status`
-**Importance**: MEDIUM
-
-#### `models/` - Sequelize Model Definitions
-| File | Table | Purpose | Importance |
-|------|-------|---------|------------|
-| `User.js` | users | Panel user accounts | **CORE** |
-| `Server.js` | servers | Minecraft server instances | **CORE** |
-| `ServerStats.js` | server_stats | Historical performance data | MEDIUM |
-| `Rank.js` | ranks | Permission role definitions | HIGH |
-| `UserServerPermission.js` | user_server_permissions | Per-server ACLs | HIGH |
-| `UserServerRank.js` | user_server_ranks | Server-specific role assignment | HIGH |
-| `Setting.js` | settings | Global panel configuration | MEDIUM |
-| `DiscordBot.js` | discord_bots | Registered Discord bots | MEDIUM |
-| `DiscordBotServer.js` | discord_bot_servers | Bot→Server assignment | MEDIUM |
-| `DiscordIntegration.js` | discord_integrations | Server webhook configs | MEDIUM |
-| `UserCustomAccent.js` | user_custom_accents | Theme color overrides | LOW |
-| `Webhook.js` | webhooks | Generic webhooks | MEDIUM |
-| `AccountCreationToken.js` | account_creation_tokens | Signup link tokens | MEDIUM |
-| `AuditLog.js` | audit_logs | Admin action tracking | MEDIUM |
-
-#### `migrations/` - Schema Evolution
-| File | Description | Status |
-|------|-------------|--------|
-| `001_init.js` — `013_docker_execution_mode.js` | 13+ migrations | Active |
-
-**Importance**: Do not modify executed migrations; create new ones for schema changes
+**Migrations** (`src/db/migrations/`):
+- `001_init.js` through `013_docker_execution_mode.js`
+- 13+ migrations handling schema evolution
 
 ---
 
 ### `src/routes/` - Express Route Handlers
 
-| File | Endpoints | Purpose | Lines | Importance |
-|------|-----------|---------|-------|------------|
-| `serverRoutes.js` | `GET/POST/PATCH /api/server/*` | Server CRUD, start/stop/restart, files, properties | 1483 | **CORE** |
-| `authRoutes.js` | `POST /auth/login`, `/verify`, `/totp`, etc. | Authentication, JWT, 2FA | HIGH | **CORE** |
-| `fileRoutes.js` | `GET/POST /api/files/*` | Server file browser, upload, download, edit | HIGH | **CORE** |
-| `userRoutes.js` | `GET/POST/PATCH /api/users/*` | User management, profile | MEDIUM |
-| `rankRoutes.js` | `GET/POST/PATCH /api/ranks/*` | Permission group CRUD | MEDIUM |
-| `backupRoutes.js` | `GET/POST /api/backup/*` | Backup list, create, restore | HIGH |
-| `playerRoutes.js` | `GET/POST /api/players/*` | Ban, whitelist, OP management | MEDIUM |
-| `pluginRoutes.js` | `GET/POST /api/plugins/*` | Plugin list, upload, ignore list | MEDIUM |
-| `propertiesRoutes.js` | `GET/PATCH /api/properties/*` | server.properties editor | MEDIUM |
-| `logRoutes.js` | `GET /api/logs/*` | Log file viewer | LOW |
-| `systemRoutes.js` | `GET /api/system/*` | Panel stats, Java versions, RCON | MEDIUM |
-| `statsRoutes.js` | `GET /api/stats/*` | Server stats time-series | MEDIUM |
-| `discordRoutes.js` | `GET/POST /api/discord/*` | Discord webhook config | MEDIUM |
-| `discordBotsRoutes.js` | `GET/POST /api/discord-bots/*` | Discord bot management | MEDIUM |
-| `docsRoutes.js` | `GET /api/docs/*` | In-app documentation | LOW |
-| `dockerRoutes.js` | `GET/POST /api/docker/*` | Docker execution mode settings | MEDIUM |
-| `pocketmineRoutes.js` | `GET /api/pocketmine/*` | PocketMine-specific endpoints | LOW |
-| `thresholdRoutes.js` | `GET/PATCH /api/thresholds/*` | CPU/RAM alert thresholds | LOW |
-
-**Importance**: Routes are entry points for all API operations
+| File | Endpoints | Purpose | Importance |
+|------|-----------|---------|------------|
+| `serverRoutes.js` | `/api/server/*` | Server CRUD, start/stop/restart, files, properties | **CORE** |
+| `authRoutes.js` | `/auth/*` | Authentication, JWT, 2FA | **CORE** |
+| `fileRoutes.js` | `/api/files/*` | File browser, upload, download, edit | **CORE** |
+| `backupRoutes.js` | `/api/backup/*` | Backup list, create, restore | HIGH |
+| `playerRoutes.js` | `/api/players/*` | Ban, whitelist, OP management | MEDIUM |
+| `pluginRoutes.js` | `/api/plugins/*` | Plugin list, upload, ignore | MEDIUM |
+| `userRoutes.js` | `/api/users/*` | User CRUD, profile | MEDIUM |
+| `rankRoutes.js` | `/api/ranks/*` | Permission group CRUD | MEDIUM |
+| `propertiesRoutes.js` | `/api/properties/*` | server.properties editor | MEDIUM |
+| `logRoutes.js` | `/api/logs/*` | Log file viewer | LOW |
+| `systemRoutes.js` | `/api/system/*` | Panel stats, Java detection | MEDIUM |
+| `statsRoutes.js` | `/api/stats/*` | Performance time-series | MEDIUM |
+| `discordRoutes.js` | `/api/discord/*` | Webhook config | MEDIUM |
+| `discordBotsRoutes.js` | `/api/discord-bots/*` | Bot management | MEDIUM |
+| `docsRoutes.js` | `/api/docs/*` | Documentation viewer | LOW |
+| `dockerRoutes.js` | `/api/docker/*` | Docker execution settings | MEDIUM |
+| `pocketmineRoutes.js` | `/api/pocketmine/*` | PocketMine-specific | LOW |
+| `thresholdRoutes.js` | `/api/thresholds/*` | CPU/RAM alerts | LOW |
 
 ---
 
@@ -201,61 +176,40 @@ MinePanel/
 
 | File | Purpose | Importance |
 |------|---------|------------|
-| **auth.js** | JWT generation/verification, TOTP 2FA, password hashing | **CORE** |
-| **permissions.js** | RBAC: role checks, per-server ACL evaluation | **CORE** |
-| **processManager.js** | Spawn/monitor/kill JVM processes, emit WebSocket events | **CORE** |
-| **executionManager.js** | Abstraction: delegates to processManager OR dockerService | **CORE** |
-| **errorCodes.js** | Centralized error constants (ERROR_SERVER_NOT_FOUND, etc.) | MEDIUM |
-| **errors.js** | Error class + sendError() utility | MEDIUM |
-| **serverHelper.js** | Utilities: getServer(), getServerDir(), backup creation | **CORE** |
-| **versionManager.js** | Server version compatibility checking | MEDIUM |
-| **versionFetcher.js** | Fetch latest versions from resolvers | MEDIUM |
-| **statsCollector.js** | Periodic CPU/RAM/player sampling, WebSocket broadcast | HIGH |
-| **ftpServer.js** | Per-server FTP server (port, auth, mounting) | HIGH |
-| **dockerService.js** | Docker container management via dockerode | MEDIUM |
-| **migrationService.js** | Helper for schema migrations | LOW |
-| **javaManager.js` | Detect Java versions, resolve java executable path | MEDIUM |
-| **diskUsage.js** | Calculate server directory disk usage | LOW |
-| **performance.js** | Performance monitoring utilities | LOW |
-| **webhookManager.js** | Trigger webhooks on events (server start, crash, etc.) | LOW |
-| **thresholdManager.js** | CPU/RAM threshold enforcement | LOW |
-| **throttleManager.js** | Rate limiting utilities | LOW |
+| `auth.js` | JWT, TOTP 2FA, password hashing | **CORE** |
+| `permissions.js` | RBAC, per-server ACL evaluation | **CORE** |
+| `processManager.js` | Spawn/monitor/kill JVM, emit events | **CORE** |
+| `executionManager.js` | Abstraction: native vs Docker | **CORE** |
+| `serverHelper.js` | Utilities, findAvailablePort(), isPortAvailable() | **CORE** |
+| `statsCollector.js` | CPU/RAM/player sampling, broadcast | HIGH |
+| `versionManager.js` | Version compatibility checking | MEDIUM |
+| `versionFetcher.js` | Fetch versions from resolvers | MEDIUM |
+| `ftpServer.js` | Per-server FTP (port, auth, mount) | HIGH |
+| `dockerService.js` | Docker container management | MEDIUM |
+| `javaManager.js` | Detect Java versions | MEDIUM |
+| `diskUsage.js` | Calculate server directory size | LOW |
+| `webhookManager.js` | Trigger webhooks on events | LOW |
+| `errorCodes.js` | Error constants | MEDIUM |
+| `errors.js` | Error class + utility | MEDIUM |
 
-#### `src/core/resolvers/` - Software Version Resolvers
-| File | Software | Method |
-|------|----------|--------|
-| `index.js` | Dispatcher | Route software type to resolver |
-| `PaperMC.js` | PaperMC | GitHub API |
-| `Forge.js` | Forge | Jenkins API |
-| `Bukkit.js` | Bukkit/CraftBukkit | GitHub API |
-| `Purpur.js` | Purpur | GitHub API |
-| `Spigot.js` | Spigot | Custom scraper |
-| `Bedrock.js` | Bedrock Edition | Microsoft API |
-| `PocketMine.js` | PocketMine-MP | GitHub + RSS feed |
-| `PowerNukkit.js` | PowerNukkit | GitHub API |
-| `WaterdogPE.js` | WaterdogPE | GitHub API |
+**Resolvers** (`src/core/resolvers/`):
+- `index.js` — Dispatcher
+- `PaperMC.js`, `Forge.js`, `Bukkit.js`, `Purpur.js` — Java servers
+- `Bedrock.js`, `PocketMine.js`, `PowerNukkit.js`, `WaterdogPE.js` — Non-Java
 
-#### `src/core/discord/`
-| File | Purpose |
-|------|---------|
-| `discordBot.js` | Discord.js bot initialization & event handlers |
-| `discordWebhook.js` | Webhook posting utilities |
-| Other files | Discord-specific helpers |
+**Discord** (`src/core/discord/`):
+- `discordBot.js` — Bot initialization & handlers
+- `discordWebhook.js` — Webhook utilities
 
-#### `src/core/update/`
-| File | Purpose |
-|------|---------|
-| `BackupManager.js` | Create/restore backups |
-| `RestoreManager.js` | Restore from backup |
-| `UpdateManager.js` | Handle auto-update workflows |
+**Update** (`src/core/update/`):
+- `BackupManager.js` — Backup creation
+- `RestoreManager.js` — Backup restore
+- `UpdateManager.js` — Auto-update workflows
 
-#### `src/core/utils/`
-| File | Purpose | Importance |
-|------|---------|------------|
-| `logger.js` | Winston logging setup | MEDIUM |
-| `envHelper.js` | .env file operations, port updates | MEDIUM |
-| `fsRetry.js` | Retry wrappers for file ops (handle EBUSY on Windows) | HIGH |
-| Other files | Various utilities | LOW |
+**Utils** (`src/core/utils/`):
+- `logger.js` — Winston logging
+- `envHelper.js` — .env operations
+- `fsRetry.js` — Retry wrappers (Windows EBUSY handling)
 
 ---
 
@@ -263,83 +217,74 @@ MinePanel/
 
 | File | Purpose |
 |------|---------|
-| `bedrock.js` | Bedrock server launch config, RCON command mapping |
-| `pocketmine.js` | PocketMine server launch config |
+| `bedrock.js` | Bedrock server config, RCON mapping |
+| `pocketmine.js` | PocketMine server config |
 
 ---
 
-### `src/frontend/` - React Vite Application
+## Frontend: React/Vite Application
 
-#### Root Files
-| File | Purpose |
-|------|---------|
-| `package.json` | Frontend dependencies & build scripts |
-| `vite.config.js` | Vite bundler configuration |
-| `index.html` | HTML entry point |
-| `README.md` | Frontend documentation |
+### `src/frontend/` Structure
 
-#### `src/frontend/src/`
+**Root Files**:
+- `package.json` — Frontend dependencies & build scripts
+- `vite.config.js` — Vite bundler configuration
+- `index.html` — HTML entry point
+- `README.md` — Frontend documentation
 
-**`main.jsx`** — Entry point, mounts React app to DOM
+### `src/frontend/src/` - React Source
 
-**`App.jsx`** — Top-level router, route definitions
+**Main**:
+- `main.jsx` — Entry point, mounts to DOM
+- `App.jsx` — Top-level router, route definitions
 
-**Components** (`components/`)
+**Components** (`components/`):
 | File | Purpose | Reusable |
 |------|---------|----------|
-| `AppLayout.jsx` | Main nav, theme provider, logo/favicon | Yes |
-| `ServerLayout.jsx` | Server context wrapper (`:serverId` param) | Yes |
+| `AppLayout.jsx` | Main nav, theme, logo/favicon | Yes |
+| `ServerLayout.jsx` | Server context wrapper | Yes |
 | `RequireAuth.jsx` | Protected route guard | Yes |
-| `CodeEditor.jsx` | CodeMirror-based syntax editor | Yes |
-| `Select.jsx` | Dropdown/select component | Yes |
-| `Toast.jsx` | Notification system | Yes |
+| `CodeEditor.jsx` | CodeMirror syntax editor | Yes |
+| `Select.jsx` | Reusable dropdown | Yes |
+| `Toast.jsx` | Notifications | Yes |
 | `BgCanvas.jsx` | Animated background | No |
 
-**Pages** (`pages/`)
+**Pages** (`pages/`):
 | File | Route | Purpose |
 |------|-------|---------|
 | `Login.jsx` | `/login` | Authentication UI |
-| `Panel.jsx` | `/` | Dashboard |
-| `Servers.jsx` | `/servers` | Server list & creation |
-| `Settings.jsx` | `/settings` | Panel configuration |
+| `Panel.jsx` | `/` | Dashboard + modals |
+| `Servers.jsx` | `/servers` | Server list |
+| `Settings.jsx` | `/settings` | Panel config |
 | `Users.jsx` | `/users` | User management |
-| `Ranks.jsx` | `/ranks` | Permission group editor |
-| `Profile.jsx` | `/profile` | User settings, 2FA, theme |
-| `Discord.jsx` | `/discord` | Discord bot config |
-| `Docs.jsx` | `/docs` | Documentation viewer |
+| `Ranks.jsx` | `/ranks` | Permission groups |
+| `Profile.jsx` | `/profile` | User settings |
+| `Discord.jsx` | `/discord` | Bot config |
+| `Docs.jsx` | `/docs` | Documentation |
 
-**Server Sub-Pages** (`pages/server/`) — All nested under `/server/:serverId/`
-| File | Route | Purpose |
-|------|-------|---------|
-| `Overview.jsx` | `overview` | Server status & quick stats |
-| `Console.jsx` | `console` | Live command line |
-| `Files.jsx` | `files` | File browser & editor |
-| `Backup.jsx` | `backup` | Backup management |
-| `Plugins.jsx` | `plugins` | Plugin manager |
-| `Properties.jsx` | `properties` | server.properties editor |
-| `Players.jsx` | `players` | Whitelist, bans, OPs |
-| `Settings.jsx` | `settings` | Server-specific config |
-| `Stats.jsx` | `stats` | Performance graphs |
-| `Logs.jsx` | `logs` | Log file viewer |
+**Server Pages** (`pages/server/`):
+- `Overview.jsx` — Status & quick stats
+- `Console.jsx` — Live command line
+- `Files.jsx` — File browser
+- `Backup.jsx` — Backup management
+- `Plugins.jsx` — Plugin manager
+- `Properties.jsx` — server.properties editor
+- `Players.jsx` — Player management
+- `Settings.jsx` — Server config
+- `Stats.jsx` — Performance graphs
+- `Logs.jsx` — Log viewer
 
-**Context** (`context/`)
-| File | Purpose |
-|------|---------|
-| `AuthContext.jsx` | Global auth state, user info, token management |
+**Context** (`context/`):
+- `AuthContext.jsx` — Global auth state
 
-**Libraries** (`lib/`)
-| File | Purpose |
-|------|---------|
-| `api.js` | Axios HTTP client with token injection, error handling |
+**Libraries** (`lib/`):
+- `api.js` — Axios wrapper with token injection
 
-**Styling** (`styles/`)
-| File | Purpose |
-|------|---------|
-| `style.css` | Global styles, CSS variables, theme definitions |
+**Styling** (`styles/`):
+- `style.css` — Global styles, CSS variables, themes
 
-**Legacy** (`legacy/`)
-- Old HTML/JS implementation (kept for reference)
-- Not actively used
+**Legacy** (`legacy/`):
+- Old HTML/JS implementation (reference only)
 
 ---
 
@@ -348,54 +293,37 @@ MinePanel/
 ### Test Files (`tests/`)
 | File | Coverage |
 |------|----------|
-| `api_test.js` | API endpoint integration tests |
-| `auth.test.js` | Authentication workflows |
-| `backups.test.js` | Backup/restore operations |
+| `api_test.js` | API endpoints |
+| `auth.test.js` | Authentication |
+| `backups.test.js` | Backup/restore |
 | `errors.test.js` | Error handling |
 | `files.test.js` | File operations |
-| `panel.test.js` | Panel core functionality |
-| `security.test.js` | Security/permission tests |
-| `server.test.js` | Server CRUD operations |
+| `panel.test.js` | Panel core |
+| `security.test.js` | Permissions |
+| `server.test.js` | Server CRUD |
 | `validation.test.js` | Input validation |
-| Others | Specialized tests (magma, parsing, etc.) |
-
-**Run**: `npm test`
 
 ---
 
-## Configuration Files
-
-| File | Purpose |
-|------|---------|
-| `.env` | Environment variables (PORT, JWT_SECRET, DATA_DIR, etc.) |
-| `.gitignore` | Git ignore rules |
-| `.gitattributes` | Git attributes (line endings, etc.) |
-| `settings.json` | Runtime panel settings (persisted to DB) |
-
----
-
-## Summary Table
+## Summary
 
 | Category | Count | Core Files |
 |----------|-------|-----------|
 | Routes | 18 | serverRoutes, authRoutes, fileRoutes |
 | Models | 14 | User, Server, Rank, Permission |
 | Migrations | 13+ | Schema evolution |
-| Core Services | 15+ | ProcessManager, ExecutionManager, StatsCollector |
+| Core Services | 15+ | ProcessManager, StatsCollector, etc. |
 | Resolvers | 10 | PaperMC, Forge, Bedrock, etc. |
-| Frontend Pages | 18 | Login, Panel, Servers, Settings, etc. |
-| Frontend Components | 7 | AppLayout, ServerLayout, CodeEditor, etc. |
+| Frontend Pages | 18 | Login, Panel, Servers, etc. |
+| Frontend Components | 7 | AppLayout, ServerLayout, etc. |
 | Tests | 10+ | Various coverage |
-| Total Lines (Backend) | ~15,000+ | Estimated |
-| Total Lines (Frontend) | ~8,000+ | Estimated |
+| **Total Lines** | ~23,000+ | Backend + Frontend |
 
 ---
 
 ## File Importance Legend
 
-- **CORE**: Essential to system operation; breaking changes here cascade widely
+- **CORE**: Essential to system operation; breaking changes cascade widely
 - **HIGH**: Important business logic; changes require careful testing
 - **MEDIUM**: Significant functionality; modifications affect features
 - **LOW**: Utilities or optional features; safe to modify
-
-Always check dependencies before modifying CORE files.

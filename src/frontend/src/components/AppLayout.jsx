@@ -5,6 +5,7 @@ import { api } from '../lib/api.js';
 import BgCanvas from './BgCanvas.jsx';
 import { ServerModalsProvider, useServerModals } from '../context/ServerModalsContext.jsx';
 import GlobalServerModals from './GlobalServerModals.jsx';
+import { showConfirm } from './Toast.jsx';
 import '../styles/components/AppLayout.css';
 
 // Logo SVG Components
@@ -82,6 +83,10 @@ function AppLayoutInner() {
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [serverStatusOverrides, setServerStatusOverrides] = useState({});
 
+  // Drag-and-drop state for sidebar server reorder
+  const [dragServerId, setDragServerId] = useState(null);
+  const [dragOverServerId, setDragOverServerId] = useState(null);
+
   useInjectFavicon();
 
   const loadServers = async () => {
@@ -133,6 +138,38 @@ function AppLayoutInner() {
     setThemeMode(next);
   };
 
+  // Sidebar server drag-and-drop handlers
+  const onServerDragStart = (e, id) => {
+    setDragServerId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    // Ghost image: transparent so it doesn't flicker
+    const ghost = document.createElement('div');
+    ghost.style.cssText = 'position:fixed;top:-999px;opacity:0';
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+    setTimeout(() => document.body.removeChild(ghost), 0);
+  };
+  const onServerDragEnter = (e, id) => { e.preventDefault(); setDragOverServerId(id); };
+  const onServerDragOver  = (e) => e.preventDefault();
+  const onServerDrop = async (e, targetId) => {
+    e.preventDefault();
+    if (!dragServerId || dragServerId === targetId) { setDragServerId(null); setDragOverServerId(null); return; }
+    const next = [...servers];
+    const fromIdx = next.findIndex(s => s.id === dragServerId);
+    const toIdx   = next.findIndex(s => s.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) { setDragServerId(null); setDragOverServerId(null); return; }
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    setServers(next);
+    setDragServerId(null);
+    setDragOverServerId(null);
+    // Persist order to backend
+    try {
+      await api('/api/servers/reorder', { method: 'POST', body: { order: next.map(s => s.id) } });
+    } catch (_) { /* non-critical — UI already updated */ }
+  };
+  const onServerDragEnd = () => { setDragServerId(null); setDragOverServerId(null); };
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', themeMode);
   }, [themeMode]);
@@ -145,6 +182,8 @@ function AppLayoutInner() {
     ));
 
   const handleLogout = async () => {
+    const confirmed = await showConfirm('Are you sure you want to logout?', 'Logout Confirmation');
+    if (!confirmed) return;
     await logout();
     navigate('/login');
   };
@@ -235,10 +274,25 @@ function AppLayoutInner() {
               const pathSegment = `/server/${sv.id}/`;
               const active = location.pathname.startsWith(pathSegment);
               const status = serverStatusOverrides[String(sv.id)] || sv.status || 'offline';
+              const isDragging = dragServerId === sv.id;
+              const isOver    = dragOverServerId === sv.id && dragServerId !== sv.id;
               return (
                 <Link key={sv.id} to={`/server/${sv.id}/overview`}
                   className={`sidebar-item sidebar-server-item${active ? ' active' : ''}`}
-                  onClick={() => setIsMobileMenuOpen(false)}>
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  draggable
+                  onDragStart={e => onServerDragStart(e, sv.id)}
+                  onDragEnter={e => onServerDragEnter(e, sv.id)}
+                  onDragOver={onServerDragOver}
+                  onDrop={e => onServerDrop(e, sv.id)}
+                  onDragEnd={onServerDragEnd}
+                  style={{
+                    opacity: isDragging ? 0.35 : 1,
+                    borderTop: isOver ? '2px solid var(--accent)' : undefined,
+                    transition: 'opacity 0.15s, border-top 0.1s',
+                    cursor: 'grab',
+                  }}
+                >
                   <span className="sidebar-server-icon-wrap">
                     {sv.icon
                       ? <img className="sidebar-server-icon" src={sv.icon} alt="" />

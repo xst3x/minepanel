@@ -48,6 +48,19 @@ export default function Content() {
     return <PocketMinePlugins serverId={serverId} />;
   }
 
+  const software = serverInfo?.software?.toLowerCase() || '';
+  const isJava = !['bedrock', 'bedrock-preview', 'pocketmine', 'nukkitx', 'powernukkitx', 'waterdogpe'].includes(software);
+  const supportsMods = ['fabric', 'forge', 'neoforge', 'quilt', 'magma', 'mohist', 'arclight', 'spongevanilla'].includes(software);
+  const supportsPlugins = ['paper', 'purpur', 'folia', 'leaves', 'pufferfish', 'magma', 'mohist', 'arclight', 'waterfall', 'velocity'].includes(software);
+
+  // ── Tab switcher ───────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState(() => {
+    if (supportsPlugins) return 'plugins';
+    if (supportsMods) return 'mods';
+    if (isJava) return 'datapacks';
+    return '';
+  });
+
   // ── Installed ──────────────────────────────────────────────────────────────
   const [installedItems, setInstalledItems]   = useState([]);
   const [installedLoading, setInstalledLoading] = useState(true);
@@ -104,29 +117,51 @@ export default function Content() {
     };
   }, [calcPageSize]);
 
+  // Set default tab on load
+  useEffect(() => {
+    if (supportsPlugins) {
+      setActiveTab('plugins');
+    } else if (supportsMods) {
+      setActiveTab('mods');
+    } else if (isJava) {
+      setActiveTab('datapacks');
+    }
+  }, [software, supportsPlugins, supportsMods, isJava]);
+
   // ── Installed ──────────────────────────────────────────────────────────────
-  const loadInstalled = useCallback(async () => {
+  const loadInstalled = useCallback(async (tab = activeTab) => {
+    if (!tab) return;
     setInstalledLoading(true);
     try {
-      const data = await api(`/api/servers/${serverId}/plugins/installed`);
-      setInstalledItems(data || []);
+      if (tab === 'datapacks') {
+        const data = await api(`/api/servers/${serverId}/plugins/datapacks/installed`);
+        setInstalledItems(data || []);
+      } else {
+        const data = await api(`/api/servers/${serverId}/plugins/installed`);
+        setInstalledItems(data || []);
+      }
     } catch (e) { toast(e.message, 'error'); }
     finally { setInstalledLoading(false); }
-  }, [serverId]);
-
-  useEffect(() => { loadInstalled(); }, [loadInstalled]);
+  }, [serverId, activeTab]);
 
   const uninstall = async (filename) => {
-    if (!(await showConfirm(`Remove ${filename}?`, 'Remove Plugin'))) return;
+    const isDatapack = activeTab === 'datapacks';
+    const confirmMsg = isDatapack ? `Remove datapack ${filename}?` : `Remove ${filename}?`;
+    const confirmTitle = isDatapack ? 'Remove Datapack' : 'Remove Plugin';
+    if (!(await showConfirm(confirmMsg, confirmTitle))) return;
     try {
-      await api(`/api/servers/${serverId}/plugins/uninstall`, { method:'POST', body:{ filename } });
+      if (isDatapack) {
+        await api(`/api/servers/${serverId}/plugins/datapacks/uninstall`, { method:'POST', body:{ folderName: filename } });
+      } else {
+        await api(`/api/servers/${serverId}/plugins/uninstall`, { method:'POST', body:{ filename } });
+      }
       toast('Removed', 'success');
       loadInstalled();
     } catch (e) { toast(e.message, 'error'); }
   };
 
   const updateAll = async () => {
-    if (!installedItems.length) return toast('No plugins installed.', 'info');
+    if (!installedItems.length) return toast('No items installed.', 'info');
     toast('Checking for updates...', 'info');
     try {
       const r = await api(`/api/servers/${serverId}/plugins/update-all`, { method:'POST' });
@@ -137,7 +172,7 @@ export default function Content() {
 
 
   // ── Search / browse ────────────────────────────────────────────────────────
-  const doSearch = useCallback(async (q, cat, page, activeVendor, ps) => {
+  const doSearch = useCallback(async (q, cat, page, activeVendor, ps, tab = activeTab) => {
     const limit = ps || pageSize || PAGE_SIZE;
     currentQueryRef.current = q;
     currentCatRef.current   = cat;
@@ -146,10 +181,19 @@ export default function Content() {
     setSearchLoading(true);
     setIncompatMsg('');
     try {
-      if (activeVendor === 'modrinth') {
-        const catParam = cat !== 'popular' ? cat : '';
+      if (tab === 'datapacks') {
         const data = await api(
-          `/api/servers/${serverId}/plugins/modrinth/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(catParam)}&limit=${limit}&offset=${off}`
+          `/api/servers/${serverId}/plugins/datapacks/search?q=${encodeURIComponent(q)}&limit=${limit}&offset=${off}`
+        );
+        const h = data.hits || [];
+        setHits(h);
+        setTotal(data.totalHits || h.length);
+        setResultBar(`${q ? `"${q}"` : 'Popular'} — ${(data.totalHits || h.length).toLocaleString()} results`);
+      } else if (activeVendor === 'modrinth') {
+        const catParam = cat !== 'popular' ? cat : '';
+        const projType = tab === 'mods' ? 'mod' : 'plugin';
+        const data = await api(
+          `/api/servers/${serverId}/plugins/modrinth/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(catParam)}&limit=${limit}&offset=${off}&project_type=${projType}`
         );
         const h = data.hits || [];
         setHits(h);
@@ -172,13 +216,13 @@ export default function Content() {
       }
     } catch (e) { toast(e.message, 'error'); }
     finally { setSearchLoading(false); }
-  }, [serverId, pageSize]);
+  }, [serverId, pageSize, activeTab]);
 
-  const loadCategory = useCallback((cat, page = 0, v = vendor) => {
+  const loadCategory = useCallback((cat, page = 0, v = vendor, tab = activeTab) => {
     setActiveCategory(cat);
     if (searchInputRef.current) searchInputRef.current.value = '';
-    doSearch('', cat, page, v);
-  }, [doSearch, vendor]);
+    doSearch('', cat, page, v, undefined, tab);
+  }, [doSearch, vendor, activeTab]);
 
   const handleSearch = () => {
     const q = searchInputRef.current?.value || '';
@@ -202,7 +246,25 @@ export default function Content() {
     doSearch('', 'popular', 0, v);
   };
 
-  useEffect(() => { loadCategory('popular', 0, 'modrinth'); }, []);
+  const handleTabChange = (tab) => {
+    setView('browser');
+    setHits([]);
+    setTotal(0);
+    setOffset(0);
+    setActiveCategory('popular');
+    currentQueryRef.current = '';
+    if (searchInputRef.current) searchInputRef.current.value = '';
+    setActiveTab(tab);
+  };
+
+  useEffect(() => {
+    if (activeTab) {
+      const defaultVendor = (activeTab === 'mods' || activeTab === 'datapacks') ? 'modrinth' : vendor;
+      setVendor(defaultVendor);
+      loadCategory('popular', 0, defaultVendor, activeTab);
+      loadInstalled(activeTab);
+    }
+  }, [activeTab]);
 
   // Re-fetch page 0 whenever pageSize is recalculated (grid resized)
   const pageSizeInitRef = useRef(false);
@@ -219,13 +281,19 @@ export default function Content() {
     try {
       toast('Installing...', 'info');
       let body;
-      if (hit.source === 'hangar') {
+      if (activeTab === 'datapacks') {
+        body = { projectId: hit.project_id };
+        const r = await api(`/api/servers/${serverId}/plugins/datapacks/install`, { method:'POST', body });
+        toast(r.message, 'success');
+      } else if (hit.source === 'hangar') {
         body = { source: 'hangar', hangarOwner: hit.owner, hangarSlug: hit.slug };
+        const r = await api(`/api/servers/${serverId}/plugins/install`, { method:'POST', body });
+        toast(r.message, 'success');
       } else {
         body = { source: 'modrinth', projectId: hit.project_id };
+        const r = await api(`/api/servers/${serverId}/plugins/install`, { method:'POST', body });
+        toast(r.message, 'success');
       }
-      const r = await api(`/api/servers/${serverId}/plugins/install`, { method:'POST', body });
-      toast(r.message, 'success');
       await loadInstalled();
     } catch (e) { toast(e.message, 'error'); }
   };
@@ -233,7 +301,11 @@ export default function Content() {
   const uninstallProject = async (filename, title) => {
     if (!(await showConfirm(`Uninstall ${title}?`, 'Remove'))) return;
     try {
-      await api(`/api/servers/${serverId}/plugins/uninstall`, { method:'POST', body:{ filename } });
+      if (activeTab === 'datapacks') {
+        await api(`/api/servers/${serverId}/plugins/datapacks/uninstall`, { method:'POST', body:{ folderName: filename } });
+      } else {
+        await api(`/api/servers/${serverId}/plugins/uninstall`, { method:'POST', body:{ filename } });
+      }
       toast(`${title} uninstalled`, 'success');
       await loadInstalled();
     } catch (e) { toast(e.message, 'error'); }
@@ -246,7 +318,14 @@ export default function Content() {
     setDetailProject(null);
     setDetailVersions([]);
     try {
-      if (hit.source === 'hangar') {
+      if (activeTab === 'datapacks') {
+        const [project, versions] = await Promise.all([
+          api(`/api/servers/${serverId}/plugins/datapacks/project/${encodeURIComponent(hit.project_id)}`),
+          api(`/api/servers/${serverId}/plugins/datapacks/project/${encodeURIComponent(hit.project_id)}/versions?type=datapack`),
+        ]);
+        setDetailProject({ ...project, _hit: hit });
+        setDetailVersions(versions || []);
+      } else if (hit.source === 'hangar') {
         const [project, versions] = await Promise.all([
           api(`/api/servers/${serverId}/plugins/hangar/project/${encodeURIComponent(hit.owner)}/${encodeURIComponent(hit.slug)}`),
           api(`/api/servers/${serverId}/plugins/hangar/project/${encodeURIComponent(hit.owner)}/${encodeURIComponent(hit.slug)}/versions`),
@@ -254,9 +333,10 @@ export default function Content() {
         setDetailProject({ ...project, _hit: hit });
         setDetailVersions(versions || []);
       } else {
+        const contentType = activeTab === 'mods' ? 'mod' : 'plugin';
         const [project, versions] = await Promise.all([
           api(`/api/servers/${serverId}/plugins/modrinth/project/${encodeURIComponent(hit.project_id)}`),
-          api(`/api/servers/${serverId}/plugins/modrinth/project/${encodeURIComponent(hit.project_id)}/versions`),
+          api(`/api/servers/${serverId}/plugins/modrinth/project/${encodeURIComponent(hit.project_id)}/versions?type=${contentType}`),
         ]);
         setDetailProject({ ...project, _hit: hit });
         setDetailVersions(versions || []);
@@ -275,15 +355,20 @@ export default function Content() {
       toast('Installing...', 'info');
       let body;
       const hit = detailProject._hit;
-      if (hit.source === 'hangar') {
+      if (activeTab === 'datapacks') {
+        body = { projectId: detailProject.id, versionId };
+        const r = await api(`/api/servers/${serverId}/plugins/datapacks/install`, { method:'POST', body });
+        toast(r.message, 'success');
+      } else if (hit.source === 'hangar') {
         body = { source: 'hangar', hangarOwner: hit.owner, hangarSlug: hit.slug, versionId };
+        const r = await api(`/api/servers/${serverId}/plugins/install`, { method:'POST', body });
+        toast(r.message, 'success');
       } else {
         body = { source: 'modrinth', projectId: detailProject.id, versionId, allowIncompatible: !compatible };
+        const r = await api(`/api/servers/${serverId}/plugins/install`, { method:'POST', body });
+        toast(r.message, 'success');
       }
-      const r = await api(`/api/servers/${serverId}/plugins/install`, { method:'POST', body });
-      toast(r.message, 'success');
       await loadInstalled();
-      // refresh versions
       openProject(hit);
     } catch (e) { toast(e.message, 'error'); }
   };
@@ -293,21 +378,58 @@ export default function Content() {
   const categories  = vendor === 'modrinth' ? MODRINTH_CATEGORIES : HANGAR_CATEGORIES;
   const activeVendorMeta = VENDORS.find(v => v.id === vendor);
 
+  const discoverTitle = activeTab === 'datapacks' ? 'Discover Datapacks' : (activeTab === 'mods' ? 'Discover Mods' : 'Discover Plugins');
+  const installedLabel = activeTab === 'datapacks' ? 'datapacks' : (activeTab === 'mods' ? 'mods' : 'plugins');
 
   return (
     <div className="plugins-section">
+
+      {/* ── Tabs Selector ─────────────────────────────────────────────────── */}
+      {(supportsMods || supportsPlugins || isJava) && (
+        <div className="sub-nav" style={{ marginBottom: '1.25rem' }}>
+          {supportsMods && (
+            <button
+              type="button"
+              className={`sub-nav-item${activeTab === 'mods' ? ' active' : ''}`}
+              onClick={() => handleTabChange('mods')}
+            >
+              Mods
+            </button>
+          )}
+          {supportsPlugins && (
+            <button
+              type="button"
+              className={`sub-nav-item${activeTab === 'plugins' ? ' active' : ''}`}
+              onClick={() => handleTabChange('plugins')}
+            >
+              Plugins
+            </button>
+          )}
+          {isJava && (
+            <button
+              type="button"
+              className={`sub-nav-item${activeTab === 'datapacks' ? ' active' : ''}`}
+              onClick={() => handleTabChange('datapacks')}
+            >
+              Datapacks
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Installed ─────────────────────────────────────────────────────── */}
       <div className="card">
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
           <h3 style={{ margin:0 }}>Installed</h3>
-          <button className="btn outline small" onClick={updateAll}>Update All</button>
+          {activeTab !== 'datapacks' && (
+            <button className="btn outline small" onClick={updateAll}>Update All</button>
+          )}
         </div>
         <div className="installed-plugins-list">
           {installedLoading
             ? <p className="text-muted">Loading...</p>
             : !installedItems.length
-              ? <p className="text-muted">No plugins installed.</p>
+              ? <p className="text-muted">No {installedLabel} installed.</p>
               : installedItems.map(p => (
                 <div key={p.name} className="installed-plugin-item">
                   <div>
@@ -315,7 +437,7 @@ export default function Content() {
                     <span className="ips">{bytes(p.size)}</span>
                     {p.modrinth
                       ? <span className="ips" style={{ color:'var(--text-muted)' }}>Modrinth · {p.modrinth.versionNumber || p.modrinth.versionId}</span>
-                      : <span className="ips" style={{ color:'var(--text-muted)' }}>Manual jar</span>
+                      : <span className="ips" style={{ color:'var(--text-muted)' }}>{activeTab === 'datapacks' ? 'Manual datapack' : 'Manual jar'}</span>
                     }
                   </div>
                   <button className="btn danger small" onClick={() => uninstall(p.name)}>Remove</button>
@@ -330,46 +452,50 @@ export default function Content() {
 
         {/* Vendor switcher */}
         <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', marginBottom:'1.25rem', flexWrap:'wrap' }}>
-          <h3 style={{ margin:0, flex:1 }}>Discover Plugins & Mods</h3>
-          <div style={{ display:'flex', gap:'0.5rem' }}>
-            {VENDORS.map(v => (
-              <button
-                key={v.id}
-                onClick={() => vendor !== v.id && switchVendor(v.id)}
-                style={{
-                  padding:'0.4rem 1rem',
-                  borderRadius:'var(--radius)',
-                  border: vendor === v.id ? '2px solid var(--accent)' : '2px solid var(--border)',
-                  background: vendor === v.id ? 'var(--accent-subtle)' : 'var(--bg-card)',
-                  color: vendor === v.id ? 'var(--accent)' : 'var(--text-muted)',
-                  fontWeight: vendor === v.id ? 700 : 400,
-                  cursor:'pointer', transition:'all 0.15s', fontSize:'0.9rem',
-                  display:'flex', alignItems:'center', gap:'0.4rem'
-                }}>
-                {v.label}
-              </button>
-            ))}
-          </div>
+          <h3 style={{ margin:0, flex:1 }}>{discoverTitle}</h3>
+          {activeTab === 'plugins' && (
+            <div style={{ display:'flex', gap:'0.5rem' }}>
+              {VENDORS.map(v => (
+                <button
+                  key={v.id}
+                  onClick={() => vendor !== v.id && switchVendor(v.id)}
+                  style={{
+                    padding:'0.4rem 1rem',
+                    borderRadius:'var(--radius)',
+                    border: vendor === v.id ? '2px solid var(--accent)' : '2px solid var(--border)',
+                    background: vendor === v.id ? 'var(--accent-subtle)' : 'var(--bg-card)',
+                    color: vendor === v.id ? 'var(--accent)' : 'var(--text-muted)',
+                    fontWeight: vendor === v.id ? 700 : 400,
+                    cursor:'pointer', transition:'all 0.15s', fontSize:'0.9rem',
+                    display:'flex', alignItems:'center', gap:'0.4rem'
+                  }}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Browser view */}
         {view === 'browser' && (
           <>
             {/* Category tabs */}
-            <div className="sub-nav" style={{ marginBottom:'1rem' }}>
-              {categories.map(([id, label]) => (
-                <button key={id}
-                  className={`sub-nav-item${activeCategory === id && !currentQueryRef.current ? ' active' : ''}`}
-                  onClick={() => loadCategory(id, 0)}>
-                  {label}
-                </button>
-              ))}
-            </div>
+            {activeTab !== 'datapacks' && (
+              <div className="sub-nav" style={{ marginBottom:'1rem' }}>
+                {categories.map(([id, label]) => (
+                  <button key={id}
+                    className={`sub-nav-item${activeCategory === id && !currentQueryRef.current ? ' active' : ''}`}
+                    onClick={() => loadCategory(id, 0)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Search bar */}
             <div className="plugins-header">
               <input type="text" ref={searchInputRef}
-                placeholder={`Search on ${activeVendorMeta.label}...`}
+                placeholder={`Search on ${activeVendorMeta?.label || 'Modrinth'}...`}
                 className="search-bar"
                 onKeyDown={e => e.key === 'Enter' && handleSearch()} />
               <button className="btn primary" onClick={handleSearch}>Search</button>
@@ -397,7 +523,7 @@ export default function Content() {
                   {!hits.length && !incompatMsg
                     ? <p className="text-muted">No results found.</p>
                     : hits.map(hit => {
-                      const installedEntry = hit.source === 'modrinth' ? getInstalledForProject(hit.project_id) : null;
+                      const installedEntry = getInstalledForProject(hit.project_id);
                       const isInstalled = !!installedEntry;
                       return (
                         <div key={hit.project_id} className="plugin-card" tabIndex={0}
@@ -421,7 +547,7 @@ export default function Content() {
                           <div className="markdown-body plugin-description"><div className="plugin-desc" dangerouslySetInnerHTML={{ __html: parseMarkdown(hit.description) }}></div></div>
                           <div className="plugin-card-meta">
                             <span>{(hit.downloads || 0).toLocaleString()} downloads</span>
-                            <span>{hit.project_type || 'plugin'}</span>
+                            <span>{activeTab === 'datapacks' ? 'datapack' : (hit.project_type || 'plugin')}</span>
                           </div>
                           {isInstalled && (
                             <div className="plugin-installed-note">
@@ -435,7 +561,7 @@ export default function Content() {
                               if (isInstalled) uninstallProject(installedEntry.name, hit.title);
                               else installProject(hit);
                             }}>
-                            {isInstalled ? 'Uninstall' : 'Install latest compatible'}
+                            {isInstalled ? 'Uninstall' : (activeTab === 'datapacks' ? 'Install latest' : 'Install latest compatible')}
                           </button>
                         </div>
                       );
@@ -482,10 +608,10 @@ export default function Content() {
                     <button className="btn outline small" onClick={() => setView('browser')}>← Back</button>
                     <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
                       <span style={{ color:'var(--accent)', fontSize:'0.8rem', fontWeight:700, textTransform:'uppercase' }}>
-                        {hit.source === 'hangar' ? 'Hangar' : 'Modrinth'}
+                        {activeTab === 'datapacks' ? 'Modrinth' : (hit.source === 'hangar' ? 'Hangar' : 'Modrinth')}
                       </span>
                       <button className="btn outline small" onClick={() => window.open(externalUrl, '_blank', 'noopener')}>
-                        View on {hit.source === 'hangar' ? 'Hangar' : 'Modrinth'} 
+                        View on {activeTab === 'datapacks' ? 'Modrinth' : (hit.source === 'hangar' ? 'Hangar' : 'Modrinth')} 
                       </button>
                     </div>
                   </div>
@@ -504,7 +630,7 @@ export default function Content() {
                       <div className="plugin-detail-stats">
                         <span>{(detailProject.downloads||0).toLocaleString()} downloads</span>
                         {detailProject.followers > 0 && <span>{(detailProject.followers||0).toLocaleString()} followers</span>}
-                        <span>{detailProject.project_type || 'plugin'}</span>
+                        <span>{activeTab === 'datapacks' ? 'datapack' : (detailProject.project_type || 'plugin')}</span>
                       </div>
                       <div className="plugin-tags">
                         {(detailProject.categories||[]).slice(0,8).map(c => <span key={c}>{c}</span>)}
@@ -528,8 +654,8 @@ export default function Content() {
                       <h3>Versions</h3>
                       <div className="plugin-versions-list">
                         {!detailVersions.length
-                          ? <p className="text-muted">No versions found.</p>
-                          : detailVersions.map(v => {
+                           ? <p className="text-muted">No versions found.</p>
+                           : detailVersions.map(v => {
                             const pf = (v.files||[]).find(f=>f.primary) || v.files?.[0];
                             const date = v.date_published ? new Date(v.date_published).toLocaleDateString() : '';
                             const gvs  = (v.game_versions||[]).slice(0,4).join(', ');
