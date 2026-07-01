@@ -5,7 +5,7 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const multer = require('multer');
-const { ZipArchive } = require('archiver');
+const AdmZip = require('adm-zip');
 const { authenticateToken } = require('../core/auth');
 const { checkPermission } = require('../core/permissions');
 const { getServer, getServerDir } = require('../core/serverHelper');
@@ -49,6 +49,41 @@ const BLOCKED_EXTENSIONS = new Set([
     '.pif', '.reg', '.hta', '.cpl', '.dll', '.sys', '.drv',
     '.app', '.bin', '.run', '.elf',
 ]);
+
+// ── Helper: create a zip buffer/file from an array of absolute paths ──────────
+/**
+ * Builds a zip archive synchronously using adm-zip.
+ * @param {string[]} absPaths   - absolute filesystem paths to include
+ * @param {string}   serverDir  - server root (used to compute relative names inside zip)
+ * @returns {Buffer}            - zip file buffer
+ */
+function buildZipBuffer(absPaths, serverDir) {
+    const zip = new AdmZip();
+    for (const absPath of absPaths) {
+        try {
+            const stat = fs.statSync(absPath);
+            if (stat.isDirectory()) {
+                // addLocalFolder(localPath, zipPath)
+                const relName = path.relative(serverDir, absPath).replace(/\\/g, '/');
+                zip.addLocalFolder(absPath, relName);
+            } else {
+                const relName = path.relative(serverDir, path.dirname(absPath)).replace(/\\/g, '/');
+                zip.addLocalFile(absPath, relName);
+            }
+        } catch (e) {
+            logger.warn(`[fileRoutes] buildZipBuffer: skipping ${absPath}: ${e.message}`);
+        }
+    }
+    return zip.toBuffer();
+}
+
+// ── Helper: write zip buffer to a temp file and return the path ───────────────
+async function writeTempZip(buffer) {
+    const tmpFile = path.join(os.tmpdir(), `minepanel-${crypto.randomBytes(8).toString('hex')}.zip`);
+    await fsp.writeFile(tmpFile, buffer);
+    return tmpFile;
+}
+
 
 const upload = multer({
     storage: multer.diskStorage({
@@ -206,13 +241,15 @@ router.post('/create', authenticateToken, checkPermission('server.files.write'),
     }
 });
 
-// ── Download ──────────────────────────────────────────────────────────────────
+
+// ── Download (single file or folder-as-zip) ───────────────────────────────────
 router.get('/download', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
     if (!req.query.path) return sendError(res, E.FILE_PATH_REQUIRED, 400);
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
-        const safePath = getSafePath(getServerDir(server), req.query.path);
+        const serverDir = getServerDir(server);
+        const safePath = getSafePath(serverDir, req.query.path);
         try { await fsp.access(safePath); } catch { return sendError(res, E.FILE_NOT_FOUND, 404); }
         const stats = await fsp.stat(safePath);
 
@@ -220,18 +257,10 @@ router.get('/download', authenticateToken, checkPermission('server.files.read'),
             return res.download(safePath);
         }
 
+        // Folder → zip it with adm-zip
         const folderName = path.basename(safePath);
-        const tmpFile = path.join(os.tmpdir(), `minepanel-dl-${crypto.randomBytes(8).toString('hex')}.zip`);
-
-        await new Promise((resolve, reject) => {
-            const output = fs.createWriteStream(tmpFile);
-            const archive = new ZipArchive({ zlib: { level: 6 } });
-            output.on('close', resolve);
-            archive.on('error', reject);
-            archive.pipe(output);
-            archive.directory(safePath, folderName);
-            archive.finalize();
-        });
+        const buffer = buildZipBuffer([safePath], serverDir);
+        const tmpFile = await writeTempZip(buffer);
 
         const token = crypto.randomBytes(24).toString('hex');
         _dlTokens.set(token, {
@@ -241,7 +270,7 @@ router.get('/download', authenticateToken, checkPermission('server.files.read'),
             expires: Date.now() + 5 * 60 * 1000
         });
 
-        res.json({ downloadUrl: `/api/files/dl/${token}` });
+        res.json({ downloadUrl: `/api/servers/${req.params.serverId}/files/dl/${token}` });
     } catch (e) {
         logger.error('[fileRoutes] download error:', e);
         return sendError(res, E.INTERNAL_ERROR, 500, e.message);
@@ -270,7 +299,275 @@ router.get('/dl/:token', async (req, res) => {
     });
 });
 
-// Upload
+// ── Batch delete ──────────────────────────────────────────────────────────────
+router.post('/batch-delete', authenticateToken, checkPermission('server.files.delete'), async (req, res) => {
+    const { paths } = req.body;
+    if (!paths || !Array.isArray(paths) || paths.length === 0) {
+        return sendError(res, E.BAD_REQUEST, 400, 'paths array is required');
+    }
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const serverDir = getServerDir(server);
+        const results = [];
+        for (const p of paths) {
+            try {
+                const safePath = getSafePath(serverDir, p);
+                await fsp.rm(safePath, { recursive: true, force: true });
+                results.push({ path: p, status: 'deleted' });
+            } catch (err) {
+                results.push({ path: p, status: 'error', error: err.message });
+            }
+        }
+        res.json({ message: `Deleted ${results.filter(r => r.status === 'deleted').length} item(s).`, results });
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        logger.error(`[fileRoutes] batch-delete error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ── Batch download (multiple items → single zip) ──────────────────────────────
+router.post('/batch-download', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
+    const { paths } = req.body;
+    if (!paths || !Array.isArray(paths) || paths.length === 0) {
+        return sendError(res, E.BAD_REQUEST, 400, 'paths array is required');
+    }
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const serverDir = getServerDir(server);
+
+        // Validate all paths exist before building archive
+        const absPaths = [];
+        for (const p of paths) {
+            const safePath = getSafePath(serverDir, p);
+            if (!fs.existsSync(safePath)) {
+                logger.warn(`[fileRoutes] batch-download: skipping missing path: ${p}`);
+                continue;
+            }
+            absPaths.push(safePath);
+        }
+
+        const buffer = buildZipBuffer(absPaths, serverDir);
+        const tmpFile = await writeTempZip(buffer);
+
+        const token = crypto.randomBytes(24).toString('hex');
+        _dlTokens.set(token, {
+            file: tmpFile,
+            name: `selection-${Date.now()}.zip`,
+            deleteAfter: true,
+            expires: Date.now() + 5 * 60 * 1000
+        });
+
+        res.json({ downloadUrl: `/api/servers/${req.params.serverId}/files/dl/${token}` });
+    } catch (e) {
+        logger.error('[fileRoutes] batch-download error:', e);
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message);
+    }
+});
+
+// ── Archive in-place (creates .zip in current directory from selected items) ──
+router.post('/archive', authenticateToken, checkPermission('server.files.write'), async (req, res) => {
+    const { paths, archiveName } = req.body;
+    if (!paths || !Array.isArray(paths) || paths.length === 0) {
+        return sendError(res, E.BAD_REQUEST, 400, 'paths array is required');
+    }
+    const name = (archiveName || 'archive').replace(/[^a-zA-Z0-9.\-_]/g, '_').replace(/\.zip$/i, '') + '.zip';
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const serverDir = getServerDir(server);
+
+        // Validate paths and collect absolute paths
+        const absPaths = [];
+        for (const p of paths) {
+            const safePath = getSafePath(serverDir, p);
+            if (!fs.existsSync(safePath)) {
+                return sendError(res, E.FILE_NOT_FOUND, 404, `Path not found: ${p}`);
+            }
+            absPaths.push(safePath);
+        }
+
+        // Resolve the common parent directory from the first path
+        const firstSafe = absPaths[0];
+        const parentDir = path.dirname(firstSafe);
+
+        const archivePath = path.join(parentDir, name);
+        if (fs.existsSync(archivePath)) {
+            return sendError(res, E.FILE_ALREADY_EXISTS, 409, `Archive ${name} already exists`);
+        }
+
+        // Build zip and write to parent dir
+        const buffer = buildZipBuffer(absPaths, serverDir);
+        await fsp.writeFile(archivePath, buffer);
+
+        res.json({ message: `Archive ${name} created with ${paths.length} item(s).`, archiveName: name });
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        logger.error(`[fileRoutes] archive error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message);
+    }
+});
+
+
+// ── Copy items ────────────────────────────────────────────────────────────────
+router.post('/copy', authenticateToken, checkPermission('server.files.write'), async (req, res) => {
+    const { paths, destination } = req.body;
+    if (!paths || !Array.isArray(paths) || paths.length === 0 || !destination) {
+        return sendError(res, E.BAD_REQUEST, 400, 'paths array and destination are required');
+    }
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const serverDir = getServerDir(server);
+        const destSafe = getSafePath(serverDir, destination);
+        await fsp.mkdir(destSafe, { recursive: true });
+
+        const results = [];
+        for (const p of paths) {
+            try {
+                const srcSafe = getSafePath(serverDir, p);
+                if (!fs.existsSync(srcSafe)) {
+                    results.push({ path: p, status: 'error', error: 'Source not found' });
+                    continue;
+                }
+                const baseName = path.basename(srcSafe);
+                const destPath = path.join(destSafe, baseName);
+
+                // Handle name conflicts
+                let finalDest = destPath;
+                let counter = 1;
+                while (fs.existsSync(finalDest)) {
+                    const ext = path.extname(baseName);
+                    const stem = path.basename(baseName, ext);
+                    finalDest = path.join(destSafe, `${stem} (${counter})${ext}`);
+                    counter++;
+                }
+
+                await fsp.cp(srcSafe, finalDest, { recursive: true, force: false });
+                results.push({ path: p, status: 'copied', dest: path.relative(serverDir, finalDest) });
+            } catch (err) {
+                results.push({ path: p, status: 'error', error: err.message });
+            }
+        }
+        res.json({ message: `Copied ${results.filter(r => r.status === 'copied').length} item(s).`, results });
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        logger.error(`[fileRoutes] copy error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ── Move items ────────────────────────────────────────────────────────────────
+router.post('/move', authenticateToken, checkPermission('server.files.write'), async (req, res) => {
+    const { paths, destination } = req.body;
+    if (!paths || !Array.isArray(paths) || paths.length === 0 || !destination) {
+        return sendError(res, E.BAD_REQUEST, 400, 'paths array and destination are required');
+    }
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const serverDir = getServerDir(server);
+        const destSafe = getSafePath(serverDir, destination);
+        await fsp.mkdir(destSafe, { recursive: true });
+
+        const results = [];
+        for (const p of paths) {
+            try {
+                const srcSafe = getSafePath(serverDir, p);
+                if (!fs.existsSync(srcSafe)) {
+                    results.push({ path: p, status: 'error', error: 'Source not found' });
+                    continue;
+                }
+                const baseName = path.basename(srcSafe);
+                const destPath = path.join(destSafe, baseName);
+
+                // Handle name conflicts
+                let finalDest = destPath;
+                let counter = 1;
+                while (fs.existsSync(finalDest)) {
+                    const ext = path.extname(baseName);
+                    const stem = path.basename(baseName, ext);
+                    finalDest = path.join(destSafe, `${stem} (${counter})${ext}`);
+                    counter++;
+                }
+
+                await fsp.rename(srcSafe, finalDest);
+                results.push({ path: p, status: 'moved', dest: path.relative(serverDir, finalDest) });
+            } catch (err) {
+                results.push({ path: p, status: 'error', error: err.message });
+            }
+        }
+        res.json({ message: `Moved ${results.filter(r => r.status === 'moved').length} item(s).`, results });
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        logger.error(`[fileRoutes] move error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ── Extract archive ───────────────────────────────────────────────────────────
+router.post('/extract', authenticateToken, checkPermission('server.files.write'), async (req, res) => {
+    const { path: archiveRelPath } = req.body;
+    if (!archiveRelPath) return sendError(res, E.BAD_REQUEST, 400, 'path is required');
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const serverDir = getServerDir(server);
+        const safePath = getSafePath(serverDir, archiveRelPath);
+
+        if (!fs.existsSync(safePath)) return sendError(res, E.FILE_NOT_FOUND, 404);
+        const ext = path.extname(safePath).toLowerCase();
+        if (ext !== '.zip') return sendError(res, E.BAD_REQUEST, 400, 'Only .zip archives can be extracted');
+
+        const parentDir = path.dirname(safePath);
+        const zip = new AdmZip(safePath);
+        zip.extractAllTo(parentDir, true);
+
+        const count = zip.getEntries().length;
+        res.json({ message: `Extracted ${count} entr${count === 1 ? 'y' : 'ies'} from ${path.basename(safePath)}.` });
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        logger.error(`[fileRoutes] extract error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500, e.message);
+    }
+});
+
+// ── Archive tree preview (list contents without extracting) ───────────────────
+router.get('/archive-tree', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
+    if (!req.query.path) return sendError(res, E.BAD_REQUEST, 400, 'path query param is required');
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const serverDir = getServerDir(server);
+        const safePath = getSafePath(serverDir, req.query.path);
+
+        if (!fs.existsSync(safePath)) return sendError(res, E.FILE_NOT_FOUND, 404);
+        const ext = path.extname(safePath).toLowerCase();
+        if (ext !== '.zip') return sendError(res, E.BAD_REQUEST, 400, 'Not a .zip archive');
+
+        const zip = new AdmZip(safePath);
+        const entries = zip.getEntries().map(e => ({
+            name: e.entryName,
+            isDirectory: e.isDirectory,
+            size: e.header.size,
+            compressedSize: e.header.compressedSize,
+        })).sort((a, b) => {
+            if (a.isDirectory && !b.isDirectory) return -1;
+            if (!a.isDirectory && b.isDirectory) return 1;
+            return a.name.localeCompare(b.name);
+        });
+
+        res.json({ entries, totalEntries: entries.length, archiveName: path.basename(safePath) });
+    } catch (e) {
+        if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        logger.error(`[fileRoutes] archive-tree error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
+// ── Upload ────────────────────────────────────────────────────────────────────
 router.post('/upload', authenticateToken, checkPermission('server.files.write'), (req, res, next) => {
     upload.single('file')(req, res, (err) => {
         if (err) {

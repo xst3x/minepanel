@@ -13,13 +13,7 @@ export default function BgCanvas() {
     const ctx = canvas.getContext('2d');
 
     let animId;
-
-    function resize() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    resize();
-    window.addEventListener('resize', resize);
+    let resizeTimeout;
 
     function getAccentHsl() {
       const raw = getComputedStyle(document.documentElement)
@@ -47,6 +41,22 @@ export default function BgCanvas() {
     }
 
     const shapes = [];
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      // Regenerate shapes so density/coverage adapts to the new viewport size —
+      // otherwise newly revealed areas stay empty until shapes drift into them.
+      makeShapes();
+    }
+    function onResize() {
+      // Debounce so we don't regenerate shapes on every single resize tick
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(resize, 120);
+      // Still update the canvas buffer size immediately to avoid stretching/blur
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
 
     function makeShapes() {
       shapes.length = 0;
@@ -95,7 +105,8 @@ export default function BgCanvas() {
       ctx.restore();
     }
 
-    makeShapes();
+    resize();
+    window.addEventListener('resize', onResize);
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -142,7 +153,8 @@ export default function BgCanvas() {
 
     return () => {
       cancelAnimationFrame(animId);
-      window.removeEventListener('resize', resize);
+      clearTimeout(resizeTimeout);
+      window.removeEventListener('resize', onResize);
       observer.disconnect();
       document.removeEventListener('accentChanged', makeShapes);
     };

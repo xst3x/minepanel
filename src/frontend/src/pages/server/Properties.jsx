@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm } from '../../components/Toast.jsx';
@@ -61,11 +61,229 @@ const normalizeVal = (raw) => {
   return map[String(raw).toLowerCase()] || String(raw).toLowerCase();
 };
 
+// ── Color Picker Component ────────────────────────────────────────────────────
+function CustomColorPicker({ onClose, onApply }) {
+  const canvasRef = useRef(null);
+  const cursorRef = useRef(null);
+  const [brightness, setBrightness] = useState(50);
+  const [wheelH, setWheelH] = useState(0);
+  const [wheelS, setWheelS] = useState(0);
+  const [hex, setHex] = useState('#6366f1');
+  const [colorName, setColorName] = useState('');
+  const dragging = useRef(false);
+  const hRef = useRef(0);
+  const sRef = useRef(0);
+
+  function hslToRgb(h, s, l) {
+    s /= 100; l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+  }
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+    return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+  }
+  function toHex(r, g, b) {
+    return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+  }
+  function hexToRgb(h) {
+    const c = h.replace('#', '');
+    if (c.length !== 6) return null;
+    return [parseInt(c.slice(0, 2), 16), parseInt(c.slice(2, 4), 16), parseInt(c.slice(4, 6), 16)];
+  }
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width / 2, cy = canvas.height / 2, r = cx - 2;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let angle = 0; angle < 360; angle++) {
+      const startAngle = (angle - 0.5) * Math.PI / 180;
+      const endAngle = (angle + 1.5) * Math.PI / 180;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      grad.addColorStop(0, `hsl(${angle},0%,50%)`);
+      grad.addColorStop(1, `hsl(${angle},100%,50%)`);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+    const radGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.15);
+    radGrad.addColorStop(0, 'rgba(128,128,128,1)');
+    radGrad.addColorStop(1, 'rgba(128,128,128,0)');
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = radGrad; ctx.fill();
+  }, []);
+
+  const syncFromHSL = useCallback((h, s, l) => {
+    const [r, g, b] = hslToRgb(h, s, l);
+    setHex(toHex(r, g, b));
+    const canvas = canvasRef.current;
+    if (canvas && cursorRef.current) {
+      const cx = canvas.width / 2;
+      const rad = h * Math.PI / 180;
+      const dist = (s / 100) * (cx - 4);
+      cursorRef.current.style.left = (cx + Math.cos(rad) * dist) + 'px';
+      cursorRef.current.style.top  = (cx + Math.sin(rad) * dist) + 'px';
+    }
+  }, []);
+
+  useEffect(() => { syncFromHSL(wheelH, wheelS, brightness); }, [wheelH, wheelS, brightness]);
+
+  function pickWheel(x, y) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const cx = canvas.width / 2;
+    const dx = x - cx, dy = y - cx;
+    const dist = Math.min(Math.sqrt(dx * dx + dy * dy), cx - 4);
+    const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+    const sat = dist / (cx - 4) * 100;
+    hRef.current = angle;
+    sRef.current = sat;
+    setWheelH(angle);
+    setWheelS(sat);
+  }
+
+  function onMouseDown(e) {
+    dragging.current = true;
+    const rc = canvasRef.current.getBoundingClientRect();
+    pickWheel(e.clientX - rc.left, e.clientY - rc.top);
+  }
+
+  useEffect(() => {
+    function onMove(e) {
+      if (!dragging.current) return;
+      const rc = canvasRef.current?.getBoundingClientRect();
+      if (rc) pickWheel(e.clientX - rc.left, e.clientY - rc.top);
+    }
+    function onUp() { dragging.current = false; }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, []);
+
+  const [r2, g2, b2] = hslToRgb(wheelH, wheelS, 10);
+  const [r3, g3, b3] = hslToRgb(wheelH, wheelS, 90);
+  const trackGrad = `linear-gradient(to right, rgb(${r2},${g2},${b2}), rgb(${r3},${g3},${b3}))`;
+
+  return (
+    <div className="modal-overlay active" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Pick a Custom Color</h3>
+          <button className="close-btn" onClick={onClose}>&times;</button>
+        </div>
+        <div className="modal-body" style={{ padding: '1.5rem' }}>
+          <div style={{ display: 'flex', gap: '2rem' }}>
+            {/* Color wheel */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+              <canvas
+                ref={canvasRef}
+                width={200}
+                height={200}
+                onMouseDown={onMouseDown}
+                style={{ cursor: 'crosshair', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', display: 'block' }}
+              />
+              <div
+                ref={cursorRef}
+                style={{
+                  position: 'absolute',
+                  width: '12px',
+                  height: '12px',
+                  border: '2px solid white',
+                  borderRadius: '50%',
+                  pointerEvents: 'none',
+                  marginTop: '-216px',
+                  boxShadow: '0 0 0 1px rgba(0,0,0,0.5)',
+                  transform: 'translate(-6px, -6px)'
+                }}
+              />
+            </div>
+
+            {/* Controls */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
+              {/* Brightness slider */}
+              <div>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>Brightness</label>
+                <input
+                  type="range"
+                  min="0" max="100" value={brightness}
+                  onChange={e => setBrightness(Number(e.target.value))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              {/* Hex input */}
+              <div>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Hex</label>
+                <input
+                  type="text"
+                  value={hex}
+                  onChange={e => {
+                    setHex(e.target.value);
+                    const rgb = hexToRgb(e.target.value);
+                    if (rgb) {
+                      const [h, s, l] = rgbToHsl(...rgb);
+                      setWheelH(h);
+                      setWheelS(s);
+                      setBrightness(l);
+                    }
+                  }}
+                  style={{ width: '100%', padding: '8px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'var(--font-mono)' }}
+                />
+              </div>
+
+              {/* Color preview */}
+              <div style={{
+                width: '100%',
+                height: '60px',
+                background: hex,
+                border: '2px dashed var(--border)',
+                borderRadius: 'var(--radius)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                color: 'var(--text)',
+                textShadow: '0 0 2px rgba(0,0,0,0.5)'
+              }}>
+                {hex.toUpperCase()}
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className="btn outline" onClick={onClose}>Cancel</button>
+                <button className="btn primary" onClick={() => onApply(hex)} style={{ flex: 1 }}>Apply Color</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ServerProperties() {
   const { serverId } = useOutletContext();
 
   const [properties, setProperties] = useState({});
-  const [mode, setMode] = useState('visual'); // 'visual' | 'raw'
+  const [mode, setMode] = useState('visual');
   const [activeCat, setActiveCat] = useState('gameplay');
   const [rawText, setRawText] = useState('');
   
@@ -80,6 +298,10 @@ export default function ServerProperties() {
   const [motdPreviewHtml, setMotdPreviewHtml] = useState('');
   const [showSpecialChars, setShowSpecialChars] = useState(false);
   const motdTextareaRef = useRef(null);
+
+  // Custom Color States
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [customColor, setCustomColor] = useState('');
 
   useEffect(() => {
     loadProperties();
@@ -109,7 +331,6 @@ export default function ServerProperties() {
   // Switch to Raw / Visual Editor
   const handleToggleMode = () => {
     if (mode === 'visual') {
-      // Build raw text from state properties
       let text = '';
       const finalProps = { ...properties, motd: motdVal };
       for (const [k, v] of Object.entries(finalProps)) {
@@ -118,7 +339,6 @@ export default function ServerProperties() {
       setRawText(text);
       setMode('raw');
     } else {
-      // Parse raw text back to properties state
       const lines = rawText.split('\n');
       const newProps = {};
       lines.forEach(line => {
@@ -131,166 +351,41 @@ export default function ServerProperties() {
         }
       });
       setProperties(newProps);
-      if (newProps.motd !== undefined) {
-        setMotdVal(newProps.motd);
-      }
+      if (newProps.motd) setMotdVal(newProps.motd);
       setMode('visual');
     }
   };
 
-  // Save changes
   const handleSave = async () => {
-    let payload = {};
-    if (mode === 'raw') {
-      const lines = rawText.split('\n');
-      lines.forEach(line => {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
-          const idx = trimmed.indexOf('=');
-          const k = trimmed.substring(0, idx).trim();
-          const v = trimmed.substring(idx + 1).trim();
-          payload[k] = v;
-        }
-      });
-    } else {
-      payload = { ...properties, motd: motdVal };
-    }
-
     try {
-      await api(`/api/servers/${serverId}/properties`, {
-        method: 'POST',
-        body: payload
-      });
-      toast('Properties saved. Restart server to apply.', 'success');
-      setProperties(payload);
-      if (payload.motd !== undefined) {
-        setMotdVal(payload.motd);
-      }
+      const finalProps = { ...properties, motd: motdVal };
+      await api(`/api/servers/${serverId}/properties`, { method: 'POST', body: finalProps });
+      toast('Properties saved successfully.', 'success');
     } catch (e) {
       toast('Failed to save properties: ' + e.message, 'error');
     }
   };
 
-  // Update a single property
-  const handlePropChange = (key, value) => {
-    setProperties(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-
-  // MOTD Parser
-  useEffect(() => {
-    const parseMotd = (raw) => {
-      const colorMap = {};
-      MC_COLORS.forEach(c => colorMap[c.code] = c.hex);
-      let html = '', curColor = '#aaaaaa', bold = false, italic = false, under = false, strike = false, obf = false;
-      
-      for (let i = 0; i < raw.length; i++) {
-        if ((raw[i] === '&' || raw[i] === '§') && i + 1 < raw.length) {
-          const c = raw[i + 1].toLowerCase();
-          if (colorMap[c]) {
-            curColor = colorMap[c];
-            bold = italic = under = strike = obf = false;
-          } else if (c === 'l') bold = true;
-          else if (c === 'o') italic = true;
-          else if (c === 'n') under = true;
-          else if (c === 'm') strike = true;
-          else if (c === 'k') obf = true;
-          else if (c === 'r') {
-            curColor = '#aaaaaa';
-            bold = italic = under = strike = obf = false;
-          }
-          i++;
-          continue;
-        }
-        let s = `color:${curColor};`;
-        if (bold) s += 'font-weight:700;';
-        if (italic) s += 'font-style:italic;';
-        const td = [];
-        if (under) td.push('underline');
-        if (strike) td.push('line-through');
-        if (td.length) s += `text-decoration:${td.join(' ')};`;
-        
-        const safe = raw[i] === '<' ? '&lt;' : raw[i] === '>' ? '&gt;' : raw[i] === '&' ? '&amp;' : raw[i];
-        if (obf) {
-          html += `<span class="mc-obf" style="${s}">?</span>`;
-        } else {
-          html += `<span style="${s}">${safe}</span>`;
-        }
-      }
-      return html;
-    };
-    
-    setMotdPreviewHtml(parseMotd(motdVal));
-  }, [motdVal]);
-
-  // Handle MOTD obfuscation animation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-      document.querySelectorAll('.mc-obf').forEach(el => {
-        el.textContent = chars[Math.floor(Math.random() * chars.length)];
-      });
-    }, 80);
-    return () => clearInterval(interval);
-  }, [motdPreviewHtml]);
-
-  // Insert formatting or special characters at cursor
-  const insertTextAtCursor = (text) => {
-    const ta = motdTextareaRef.current;
-    if (!ta) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const value = ta.value;
-    const newValue = value.slice(0, start) + text + value.slice(end);
-    setMotdVal(newValue);
-    setTimeout(() => {
-      ta.selectionStart = ta.selectionEnd = start + text.length;
-      ta.focus();
-    }, 50);
-  };
-
-  // Icon upload
   const handleUploadPng = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !window.serverIconHelper) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
     try {
-      toast('Uploading image...', 'info');
-      const pngBlob = await window.serverIconHelper.processImage(file);
       const fd = new FormData();
-      fd.append('icon', pngBlob, 'server-icon.png');
-      await api(`/api/servers/${serverId}/properties/icon`, {
-        method: 'POST',
-        body: fd
-      });
-      window.serverIconHelper.invalidateIconCache(serverId);
-      toast('Icon uploaded successfully!', 'success');
+      fd.append('icon', file);
+      await api(`/api/servers/${serverId}/properties/icon`, { method: 'POST', body: fd });
+      window.serverIconHelper?.invalidateIconCache(serverId);
+      toast('Icon updated successfully!', 'success');
       loadIcon();
-      
-      // Update sidebar icons
-      if (window.serverIconHelper.mountSidebarIcon) {
-        document.querySelectorAll('.sidebar-server-item').forEach(btn => {
-          if (btn.dataset.serverId === serverId) {
-            const oldWrap = btn.querySelector('.sidebar-server-icon-wrap');
-            if (oldWrap) oldWrap.remove();
-            window.serverIconHelper.mountSidebarIcon(btn, serverId);
-          }
-        });
-      }
     } catch (err) {
       toast('Failed to upload icon: ' + err.message, 'error');
     }
+    e.target.value = '';
   };
 
-  // Remove icon
   const handleRemoveIcon = async () => {
-    if (!await showConfirm('Remove server icon?', 'Remove Icon')) return;
     try {
       await api(`/api/servers/${serverId}/properties/icon`, { method: 'DELETE' });
-      if (window.serverIconHelper) {
-        window.serverIconHelper.invalidateIconCache(serverId);
-      }
+      window.serverIconHelper?.invalidateIconCache(serverId);
       toast('Icon removed.', 'success');
       loadIcon();
     } catch (err) {
@@ -298,13 +393,56 @@ export default function ServerProperties() {
     }
   };
 
-  // Open item picker modal
+  const insertTextAtCursor = (text) => {
+    const textarea = motdTextareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || 0;
+    const before = motdVal.substring(0, start);
+    const after = motdVal.substring(end);
+    const newVal = before + text + after;
+    setMotdVal(newVal);
+    setTimeout(() => {
+      textarea.selectionStart = textarea.selectionEnd = start + text.length;
+      textarea.focus();
+    }, 0);
+  };
+
+  const renderMotdPreview = useCallback((text) => {
+    const colorMap = MC_COLORS.reduce((acc, c) => { acc[c.code] = c.hex; return acc; }, {});
+    let html = '';
+    let i = 0;
+    let currentColor = '#aaa';
+    while (i < text.length) {
+      if (text[i] === '&' && i + 1 < text.length) {
+        const code = text[i + 1];
+        if (code === 'r') {
+          currentColor = '#aaa';
+          i += 2;
+        } else if (colorMap[code]) {
+          currentColor = colorMap[code];
+          i += 2;
+        } else {
+          html += text[i];
+          i++;
+        }
+      } else {
+        html += text[i];
+        i++;
+      }
+    }
+    return `<span style="color:${currentColor}">${html}</span>`;
+  }, []);
+
+  useEffect(() => {
+    setMotdPreviewHtml(renderMotdPreview(motdVal));
+  }, [motdVal, renderMotdPreview]);
+
   const handleOpenItemPicker = async () => {
     if (!window.serverIconHelper) return;
     setShowItemPicker(true);
     const presets = window.serverIconHelper.PRESET_ITEMS || [];
     setPickerItems(presets);
-    
     if (window.players && window.players.assetsMapper) {
       await window.players.assetsMapper.init(serverId);
     }
@@ -318,10 +456,7 @@ export default function ServerProperties() {
       const pngBlob = await window.serverIconHelper.renderItemToPngBlob(itemId, serverId);
       const fd = new FormData();
       fd.append('icon', pngBlob, 'server-icon.png');
-      await api(`/api/servers/${serverId}/properties/icon`, {
-        method: 'POST',
-        body: fd
-      });
+      await api(`/api/servers/${serverId}/properties/icon`, { method: 'POST', body: fd });
       window.serverIconHelper.invalidateIconCache(serverId);
       toast('Icon updated successfully!', 'success');
       loadIcon();
@@ -335,7 +470,6 @@ export default function ServerProperties() {
     const list = [];
     const keys = Object.keys(properties).sort();
     
-    // Determine which keys belong to this category
     const categoryKeys = keys.filter(k => {
       if (activeCat === 'other') {
         return !Object.values(CATEGORIES).some(arr => arr.includes(k)) && k !== 'motd';
@@ -409,6 +543,10 @@ export default function ServerProperties() {
     });
   };
 
+  const handlePropChange = (key, val) => {
+    setProperties(prev => ({ ...prev, [key]: val }));
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       
@@ -417,7 +555,6 @@ export default function ServerProperties() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0 }}>Server Icon</h3>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-
             <button className="btn outline small" onClick={() => fileInputRef.current?.click()}>Upload PNG</button>
             {iconUrl && <button className="btn danger small" onClick={handleRemoveIcon}>Remove</button>}
           </div>
@@ -497,7 +634,7 @@ export default function ServerProperties() {
               ))}
             </div>
 
-            {/* Custom MOTD Editor (Always visible at the top of gameplay tab or as a special component) */}
+            {/* Custom MOTD Editor */}
             {activeCat === 'gameplay' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
                 <span className="prop-label" style={{ fontWeight: 600 }}>Message of the Day (MOTD)</span>
@@ -653,6 +790,48 @@ export default function ServerProperties() {
               </div>
             )}
 
+            {/* Custom Color Picker Section */}
+            {activeCat === 'gameplay' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
+                <span className="prop-label" style={{ fontWeight: 600 }}>Custom Color</span>
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Pick a custom color for your server branding or panel theme (stored locally).
+                </p>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: 'var(--radius)',
+                      background: customColor || '#6366f1',
+                      border: '2px solid var(--border)',
+                      boxShadow: 'var(--shadow-sm)',
+                      flexShrink: 0
+                    }}
+                  />
+                  <button
+                    className="btn primary"
+                    onClick={() => setShowColorPicker(true)}
+                  >
+                    Open Color Picker
+                  </button>
+                  {customColor && (
+                    <button
+                      className="btn outline"
+                      onClick={() => setCustomColor('')}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                {customColor && (
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                    {customColor.toUpperCase()}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Properties List Grid */}
             <div className="props-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
               {renderVisualProperties()}
@@ -713,7 +892,6 @@ export default function ServerProperties() {
                         cursor: 'pointer'
                       }}
                     >
-                      {/* Use default minecraft item textures or text */}
                       <span style={{ fontSize: '10px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', width: '100%' }}>
                         {resolvedId.substring(0, 5)}
                       </span>
@@ -724,6 +902,18 @@ export default function ServerProperties() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Custom Color Picker Modal */}
+      {showColorPicker && (
+        <CustomColorPicker
+          onClose={() => setShowColorPicker(false)}
+          onApply={(hex) => {
+            setCustomColor(hex);
+            setShowColorPicker(false);
+            toast(`Custom color set to ${hex}`, 'success');
+          }}
+        />
       )}
 
     </div>
