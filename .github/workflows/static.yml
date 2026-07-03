@@ -41,6 +41,10 @@ jobs:
         run: npm run build
         working-directory: ./src/demo
 
+      # Pas nou: verificăm ce fișiere s-au creat în dist ca să vedem problema
+      - name: Check dist folder content
+        run: ls -la ./src/demo/dist
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
