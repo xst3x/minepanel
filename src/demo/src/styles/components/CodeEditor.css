@@ -1,0 +1,5 @@
+.CodeMirror {
+height: 100% !important;
+    font-family: var(--font-mono) !important;
+    font-size: 13px;
+}

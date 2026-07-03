@@ -1,0 +1,2936 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap');
+
+/* Cyber-Emerald & Deep Slate Glassmorphism Theme */
+/* Semantic Colors */
+/* Backward compatibility variables */
+/* Glassmorphism blur effects */
+:root {
+--bg-base: hsl(0, 0%, 5%);           /* Very dark solid background behind glass */
+    --bg-surface: hsla(0, 0%, 11%, 0.65); /* Glass translucent surface */
+    --bg-elevated: hsla(0, 0%, 15%, 0.8); /* Inset hover translucent background */
+    --bg-input: hsla(0, 0%, 5%, 0.5);     /* Translucent input fields base */
+    
+    --accent: hsl(149, 100%, 47%);       /* Dynamic accent base - changed dynamically by JS */
+    --accent-hover: hsl(149, 100%, 55%);
+    --accent-glow: hsla(149, 100%, 47%, 0.15);
+    --accent-subtle: hsla(149, 100%, 47%, 0.08);
+    
+    --text-primary: hsl(0, 0%, 95%);     /* Crisp light text */
+    --text-secondary: hsl(0, 0%, 70%);   /* Medium secondary label text */
+    --text-muted: hsl(0, 0%, 48%);        /* Muted gray descriptors */
+    
+    --border: hsla(0, 0%, 100%, 0.08);   /* Fine-line glass borders */
+    --border-hover: hsla(0, 0%, 100%, 0.16);
+    
+    --green: hsl(149, 100%, 47%);
+    --red: hsl(355, 90%, 60%);
+    --orange: hsl(28, 95%, 55%);
+    --yellow: hsl(48, 95%, 55%);
+    
+    --bg-dark: var(--bg-base);
+    --bg-panel: var(--bg-surface);
+    --bg-panel-hover: var(--bg-elevated);
+    --bg-card: var(--bg-surface);
+    --border-color: var(--border);
+    --accent-primary: var(--accent);
+    --success: var(--green);
+    --danger: var(--red);
+    --warning: var(--yellow);
+    
+    --font-ui: 'Sora', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Fira Code', 'Cascadia Code', monospace;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --radius-sm: 6px;
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.5);
+
+    --glass-blur: blur(16px);
+    --glass-blur-sm: blur(8px);
+}
+
+
+
+/* Light Theme Variables — optimized for premium glassmorphism, WCAG contrast & professional colour palette */
+html[data-theme="light"] {
+--bg-base: hsl(220, 20%, 95%);
+    --bg-surface: rgba(255, 255, 255, 0.72);
+    --bg-elevated: rgba(255, 255, 255, 0.88);
+    --bg-input: rgba(0, 0, 0, 0.04);
+    
+    --accent: hsl(149, 80%, 32%);
+    --accent-hover: hsl(149, 82%, 27%);
+    --accent-glow: hsla(149, 80%, 32%, 0.12);
+    --accent-subtle: hsla(149, 80%, 32%, 0.06);
+    
+    --text-primary: hsl(220, 25%, 12%);
+    --text-secondary: hsl(220, 15%, 35%);
+    --text-muted: hsl(220, 10%, 48%);
+    
+    --border: rgba(0, 0, 0, 0.09);
+    --border-hover: rgba(0, 0, 0, 0.16);
+    
+    --green: hsl(149, 80%, 32%);
+    --red: hsl(355, 78%, 45%);
+    --orange: hsl(28, 78%, 50%);
+    --yellow: hsl(45, 74%, 50%);
+    
+    --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+
+
+*, *::before, *::after {
+box-sizing: border-box; 
+    margin: 0; 
+    padding: 0;
+}
+
+
+
+/* ── Global overflow & text safety ─────────────────────────────────────────── */
+
+/* Every element respects its container width */
+img, svg, video, canvas, iframe, embed, object {
+max-width: 100%;
+    display: block;
+}
+
+
+
+/* Text elements never overflow their box */
+h1, h2, h3, h4, h5, h6, p, span, label, li, td, th, dt, dd, blockquote, figcaption {
+overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+}
+
+
+
+/* Headings truncate with ellipsis when space is tight */
+h1, h2, h3, h4 {
+max-width: 100%;
+}
+
+
+
+/* Code / mono elements wrap instead of push layout */
+code, pre, .text-mono {
+white-space: pre-wrap;
+    word-break: break-all;
+    max-width: 100%;
+}
+
+
+
+/* Pre blocks never overflow horizontally */
+pre {
+overflow-x: auto;
+}
+
+
+
+/* All flex containers default to wrapping */
+
+/* No element wider than its parent */
+
+/* Buttons never shrink below readable size, always wrap */
+
+
+/* Inputs never overflow their container */
+input, select, textarea {
+max-width: 100%;
+    min-width: 0;
+}
+
+
+
+/* Status badges clip text instead of overflowing */
+
+/* ── End global overflow & text safety ──────────────────────────────────────── */
+
+a {
+color: var(--accent); 
+    text-decoration: none; 
+    transition: var(--transition);
+}
+
+
+a:hover {
+color: var(--accent-hover);
+}
+
+
+
+/* App View Wrapper */
+#app {
+width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: transparent;
+}
+
+
+
+.view {
+display: none; 
+    width: 100%;
+    height: 100vh;
+}
+
+
+
+.view.active {
+display: flex;
+}
+
+
+
+/* Auth Page */
+
+
+
+
+
+
+/* Forms & Inputs */
+input:focus, select:focus {
+border-color: var(--accent); 
+    box-shadow: 0 0 0 3px var(--accent-glow);
+    background: var(--bg-surface);
+}
+
+
+input:disabled, select:disabled {
+opacity: 0.5;
+    cursor: not-allowed;
+}
+
+
+
+/* Custom Select Styling */
+select {
+appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 14px;
+    padding-right: 38px;
+    cursor: pointer;
+}
+
+
+select option {
+background-color: var(--bg-base);
+    color: var(--text-primary);
+    padding: 10px;
+}
+
+
+
+/* Color input */
+
+
+/* Buttons */
+
+
+
+
+
+html[data-theme="dark"] .btn.primary {
+color: #0b0b0b;
+}
+
+
+html[data-theme="light"] .btn.primary {
+color: #ffffff;
+}
+
+
+/* Sidebar create button text per theme */
+html[data-theme="dark"] .sidebar-item.sidebar-create {
+color: #0b0b0b;
+}
+
+
+html[data-theme="light"] .sidebar-item.sidebar-create {
+color: #ffffff;
+}
+
+
+html[data-theme="light"] .sidebar-item.sidebar-create:hover {
+color: #ffffff !important;
+}
+
+
+
+
+html[data-theme="dark"] .btn.success {
+color: #0b0b0b;
+}
+
+
+html[data-theme="light"] .btn.success {
+color: #ffffff;
+}
+
+
+
+
+
+
+
+
+
+/* Icon Buttons */
+
+/* Sidebar Layout */
+#main-view.active {
+display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+
+
+
+
+
+
+/* Servers section: only scrollable area in the sidebar */
+
+
+
+
+
+html[data-theme="dark"] .sidebar-item.sidebar-create:hover {
+color: #0b0b0b;
+}
+
+
+
+
+/* Sidebar server list extra styles */
+@media (max-width: 768px) {
+.icon-item-picker-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
+
+
+/* Sidebar Footer */
+
+
+
+/* Content Area Layout */
+
+
+body {
+font-family: var(--font-ui);
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    line-height: 1.5;
+    font-size: 13.5px;
+    overflow: hidden;
+    height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+
+
+#app {
+width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: transparent;
+    position: relative;
+    z-index: 1;
+}
+
+
+
+#main-view.active {
+background: transparent;
+}
+
+
+
+.content-area {
+flex: 1;
+    overflow-y: auto;
+    background: transparent;
+    padding: 0;
+    position: relative;
+    transition: none;
+    height: 100vh;
+}
+
+
+
+.content-area > * {
+position: relative;
+    z-index: 1;
+}
+
+
+
+.content-view {
+display: none;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+
+.content-view.active {
+display: block;
+    animation: fadeIn 0.22s ease-out;
+}
+
+
+
+@keyframes fadeIn {
+from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
+
+/* Route-level transition: re-triggers on each navigation via React key change */
+.route-fade {
+animation: routeFadeIn 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+@keyframes routeFadeIn {
+from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+
+
+/* ── Animation Keyframes ─────────────────────────────────────────────────────── */
+@keyframes slideInLeft {
+from { opacity: 0; transform: translateX(-18px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+
+@keyframes slideInUp {
+from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+
+@keyframes scaleIn {
+from { opacity: 0; transform: scale(0.93); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+
+@keyframes shimmer {
+0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+
+/* ── End Animation Keyframes ─────────────────────────────────────────────────── */
+
+/* Header & Back Navigation */
+
+
+/* Server Cards Grid */
+
+/* Badges */
+
+
+
+
+
+
+
+
+
+
+
+/* Rank Badges */
+
+/* Server Header Card */
+
+/* Specific warning button stop styled with warning-redstone color */
+
+/* Sub-navigation Tabs */
+@keyframes tabActivate {
+from { transform: scale(0.95); }
+    to   { transform: scale(1); }
+}
+
+
+
+/* Tab panes */
+
+/* Standard cards */
+
+
+.section-title {
+font-size: 0.85rem;
+    font-weight: 700;
+    margin: 1.25rem 0 0.6rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+
+
+/* Overview grid layout */
+
+/* Stats dashboard */
+
+/* Console tab */
+html[data-theme="light"] .terminal-container {
+background: hsl(220, 15%, 14%);
+    border-color: hsl(220, 15%, 25%);
+}
+
+
+html[data-theme="light"] .terminal-input-wrapper {
+background: hsl(220, 15%, 10%);
+    border-top-color: hsl(220, 15%, 25%);
+}
+
+
+html[data-theme="light"] #terminal-output {
+color: hsl(0, 0%, 90%);
+    background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 3px, 3px 100%;
+}
+
+
+html[data-theme="light"] #terminal-input {
+color: hsl(0, 0%, 90%);
+}
+
+
+
+/* File Manager */
+
+
+/* Modrinth search and plugin grid */
+
+
+/* Lists and Tables (Users page container) */
+
+
+
+
+
+
+
+
+/* Toggle Switches */
+
+/* Properties Grid */
+
+/* Logs and pagination */
+html[data-theme="light"] .log-viewer {
+background: hsl(220, 15%, 12%);
+    border-color: hsl(220, 15%, 25%);
+}
+
+
+html[data-theme="light"] .log-viewer pre {
+color: hsl(0, 0%, 90%);
+}
+
+
+
+/* Permissions Grid */
+
+/* ── Matrix Checkbox (Permissions Table) ─────────────────────────────────── */
+
+/* Hide the native checkbox but keep it accessible */
+
+/* The visual square */
+
+/* Checkmark via pseudo-element */
+
+/* Hover state (not locked) */
+
+/* Checked state */
+
+/* Locked / disabled state */
+
+/* Scrollbar (global) */
+::-webkit-scrollbar {
+width: 6px;
+    height: 6px;
+}
+
+
+::-webkit-scrollbar-track {
+background: transparent;
+}
+
+
+::-webkit-scrollbar-thumb {
+background: var(--bg-elevated);
+    border-radius: 3px;
+}
+
+
+::-webkit-scrollbar-thumb:hover {
+background: var(--border-hover);
+}
+
+
+
+/* Override styling of specific sidebar item elements */
+
+/* Custom Rank styling rules */
+
+/* Keyframes for pulse */
+@keyframes pulse {
+0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+
+
+/* Modal System */
+
+@keyframes modalSpringIn {
+from { opacity: 0; transform: scale(0.95) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+
+
+
+/* Toast Container */
+
+@keyframes toastIn {
+from { opacity: 0; transform: translateY(12px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+
+@keyframes toastOut {
+from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(-12px) scale(0.95); }
+}
+
+
+
+/* -------------------------------------------------------------------------
+   Preserved Players Tab, Inventory GUI, Tooltip Rework & Responsive Code
+   ------------------------------------------------------------------------- */
+/* ===== Inventory Viewer (Dashboard-native design) ===== */
+
+/* Tooltip */
+
+/* Ranks View Styles */
+
+/* Reorder drag item */
+
+
+/* CodeMirror customization */
+
+
+/* Custom Rank Selection Modal */
+
+/* Premium scrollable matrix table */
+
+/* Mobile responsive media overrides */
+@media (max-width: 768px) {
+.mc-inventory-layout {
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+    .mc-equipment-panel {
+        flex-direction: row !important;
+        width: 100% !important;
+        justify-content: center !important;
+        gap: 0.5rem !important;
+    }
+    .mc-grid-3x9, .mc-grid-1x9, .mc-enderchest-grid {
+        grid-template-columns: repeat(9, 36px) !important;
+        grid-template-rows: auto !important;
+        gap: 2px !important;
+    }
+    .mc-slot {
+        width: 36px !important;
+        height: 36px !important;
+    }
+    .mc-item-icon {
+        width: 24px !important;
+        height: 24px !important;
+    }
+    .mc-item-count {
+        font-size: 9px !important;
+    }
+}
+
+
+
+/* ===== Minecraft Inventory Grid ===== */
+
+/* Tooltip inner classes */
+
+/* Canvas-based isometric block renderer */
+
+
+/* Permission Matrix Custom Styles */
+
+/* --- Mobile Responsive Table-to-Card conversions and Stacked matrix styling --- */
+@media (max-width: 992px) {
+#main-view.active {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+    .sidebar-brand {
+        height: 52px;
+    }
+    .sidebar-section {
+        padding: 0.75rem;
+        flex-direction: row;
+        overflow-x: auto;
+        border-bottom: none;
+    }
+    .sidebar-section-title {
+        display: none;
+    }
+    .sidebar-footer {
+        display: none;
+    }
+    .content-area {
+        padding: 1.25rem;
+    }
+    .overview-grid {
+        grid-template-columns: 1fr;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    .props-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+
+/* Mobile top bar + overlay — hidden by default on desktop */
+
+@media (max-width: 768px) {
+html, body {
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+    
+    body {
+        height: auto !important;
+        min-height: 100vh !important;
+    }
+
+    #app {
+        height: auto !important;
+        min-height: 100vh !important;
+    }
+
+    #main-view.active {
+        flex-direction: row !important;
+        height: 100vh !important;
+    }
+
+    .mobile-top-bar {
+        display: flex !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 48px !important;
+        background: var(--bg-surface) !important;
+        border-bottom: 1px solid var(--border) !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0 1rem !important;
+        z-index: 1000 !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    .mobile-hamburger {
+        background: none !important;
+        border: none !important;
+        color: var(--text-primary) !important;
+        font-size: 1.5rem !important;
+        cursor: pointer !important;
+        width: 44px !important;
+        height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: var(--radius) !important;
+    }
+    .mobile-hamburger:hover {
+        background: var(--bg-elevated) !important;
+    }
+
+    .mobile-logo {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        font-weight: 700 !important;
+        font-size: 1rem !important;
+        color: var(--text-primary) !important;
+    }
+
+    .mobile-user-circle {
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 50% !important;
+        background: var(--accent) !important;
+        color: #0b0b0b !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: 700 !important;
+        font-size: 0.85rem !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        border: 2px solid var(--border) !important;
+    }
+
+    .mobile-user-dropdown {
+        display: none !important;
+        position: absolute !important;
+        top: 44px !important;
+        right: 12px !important;
+        background: var(--bg-surface) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        padding: 0.5rem !important;
+        box-shadow: var(--shadow-md) !important;
+        min-width: 140px !important;
+        z-index: 1001 !important;
+    }
+    .mobile-user-dropdown.active {
+        display: block !important;
+    }
+    .dropdown-username {
+        font-weight: 600 !important;
+        padding: 0.4rem 0.6rem !important;
+        font-size: 0.85rem !important;
+        color: var(--text-primary) !important;
+        border-bottom: 1px solid var(--border) !important;
+        margin-bottom: 0.4rem !important;
+        text-overflow: ellipsis !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+    }
+    .mobile-user-dropdown .dropdown-item {
+        background: none !important;
+        border: none !important;
+        color: var(--red) !important;
+        width: 100% !important;
+        padding: 0.5rem 0.6rem !important;
+        text-align: left !important;
+        font-family: var(--font-ui) !important;
+        font-size: 0.85rem !important;
+        cursor: pointer !important;
+        border-radius: var(--radius-sm) !important;
+        display: block !important;
+        transition: var(--transition) !important;
+    }
+    .mobile-user-dropdown .dropdown-item:hover {
+        background: hsla(355, 90%, 60%, 0.1) !important;
+    }
+
+    .mobile-overlay {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: rgba(0, 0, 0, 0.6) !important;
+        backdrop-filter: blur(4px) !important;
+        z-index: 9998 !important;
+        display: none !important;
+    }
+    .mobile-overlay.active {
+        display: block !important;
+    }
+
+    .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 280px !important;
+        height: 100vh !important;
+        z-index: 9999 !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        border-right: 1px solid var(--border) !important;
+        border-bottom: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        background: var(--bg-surface) !important;
+    }
+    .sidebar.active {
+        transform: translateX(0) !important;
+    }
+
+    .sidebar-close-btn {
+        display: flex !important;
+        position: absolute !important;
+        top: 8px !important;
+        right: 8px !important;
+        background: none !important;
+        border: none !important;
+        color: var(--text-muted) !important;
+        font-size: 1.8rem !important;
+        cursor: pointer !important;
+        width: 44px !important;
+        height: 44px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: var(--radius) !important;
+        z-index: 10 !important;
+    }
+    .sidebar-close-btn:hover {
+        background: var(--bg-elevated) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .sidebar-brand {
+        height: 56px !important;
+        padding-right: 3.5rem !important;
+    }
+
+    .sidebar-section {
+        flex-direction: column !important;
+        overflow-x: visible !important;
+        border-bottom: 1px solid var(--border) !important;
+        padding: 1.25rem 0.75rem !important;
+    }
+
+    .sidebar-section-title {
+        display: block !important;
+    }
+
+    .sidebar-footer {
+        display: flex !important;
+        flex-direction: column !important;
+        margin-top: auto !important;
+    }
+
+    .sidebar-bottom-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+
+    .sidebar-actions {
+        display: flex !important;
+        gap: 0.3rem !important;
+    }
+
+    .content-area {
+        padding: 1.25rem !important;
+        width: 100% !important;
+        height: calc(100vh - 48px) !important;
+        margin-top: 48px !important;
+        overflow-y: auto !important;
+    }
+
+    input[type="text"], 
+    input[type="password"], 
+    input[type="number"], 
+    select, 
+    textarea,
+    .CodeMirror {
+        font-size: 16px !important;
+    }
+
+    .form-group.row {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    .form-group.row .col {
+        width: 100% !important;
+    }
+
+    .overview-grid,
+    .quick-actions-grid,
+    .stats-grid,
+    .props-grid,
+    .servers-grid,
+    .ranks-grid,
+    .rank-cards-grid,
+    .player-detail-stats {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
+
+    .terminal-container {
+        height: 380px !important;
+    }
+    .log-viewer {
+        max-height: 320px !important;
+    }
+
+    .server-header-card {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        padding: 1rem !important;
+        gap: 0.75rem !important;
+    }
+    .server-header-card .sh-actions {
+        width: 100% !important;
+        justify-content: flex-start !important;
+        margin-top: 0.5rem !important;
+        gap: 0.5rem !important;
+    }
+
+    .toolbar, .fm-toolbar, .logs-toolbar, .props-toolbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+    }
+    .toolbar-left, .toolbar-right, .fm-actions, .logs-toolbar-left, .logs-toolbar-right {
+        width: 100% !important;
+        justify-content: space-between !important;
+        gap: 0.5rem !important;
+    }
+    .sh-actions button, .fm-actions button, .toolbar-left button, .toolbar-right button {
+        flex: 1 !important;
+    }
+
+    .list-header, .fm-list-header {
+        display: none !important;
+    }
+
+    .list-item, .fm-item {
+        display: block !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-lg) !important;
+        padding: 1rem !important;
+        margin-bottom: 0.75rem !important;
+        background: var(--bg-surface) !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    .col, .fm-col {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 0.4rem 0 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+        width: 100% !important;
+        flex: none !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: normal !important;
+        min-height: 36px !important;
+    }
+    
+    .col:last-child, .fm-col:last-child, .col.actions, .fm-col.actions {
+        border-bottom: none !important;
+        justify-content: flex-end !important;
+        padding-top: 0.75rem !important;
+        margin-top: 0.25rem !important;
+    }
+
+    .col[data-label]::before, .fm-col[data-label]::before {
+        content: attr(data-label) !important;
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
+        color: var(--text-muted) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin-right: 1rem !important;
+    }
+
+    .fm-icon {
+        display: none !important;
+    }
+    .fm-col.name {
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+    }
+
+    .matrix-scroll-wrapper {
+        border: none !important;
+        box-shadow: none !important;
+        margin-top: 0.75rem !important;
+        background: transparent !important;
+    }
+
+    .matrix-table {
+        display: block !important;
+        width: 100% !important;
+        border: none !important;
+    }
+    .matrix-table thead {
+        display: none !important;
+    }
+    .matrix-table tbody {
+        display: block !important;
+    }
+    .matrix-table tr {
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 12px !important;
+        margin-bottom: 12px !important;
+        background: var(--bg-surface) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+    }
+
+    .matrix-table tr.matrix-group-row {
+        display: block !important;
+        padding: 6px 12px !important;
+        margin-bottom: 8px !important;
+        border: none !important;
+        background: var(--bg-input) !important;
+        border-radius: var(--radius-sm) !important;
+    }
+    .matrix-table tr.matrix-group-row td {
+        display: block !important;
+        padding: 0 !important;
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
+        color: var(--accent) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        border: none !important;
+    }
+
+    .matrix-table tr td:first-child {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        padding: 0 0 8px 0 !important;
+        border: none !important;
+        position: static !important;
+        background: transparent !important;
+        border-bottom: 1px dashed var(--border) !important;
+        margin-bottom: 8px !important;
+    }
+
+    .matrix-table tr td:not(:first-child) {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 4px 0 !important;
+        border: none !important;
+        width: 100% !important;
+        background: transparent !important;
+    }
+
+    .matrix-table tr td:not(:first-child) > span {
+        display: none !important;
+    }
+    .matrix-table tr td:not(:first-child):has(span) {
+        display: none !important;
+    }
+
+    .matrix-table tr td:not(:first-child)::before {
+        content: attr(data-label) ":";
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .modal-overlay {
+        padding: 0 !important;
+        align-items: flex-end !important;
+    }
+
+    .modal {
+        max-height: 100% !important;
+        height: 100% !important;
+        border-radius: 0 !important;
+        border: none !important;
+        max-width: 100% !important;
+        animation: modalMobileIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .modal.large {
+        height: 100% !important;
+        max-height: 100% !important;
+    }
+
+    @keyframes modalMobileIn {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+
+    .modal-header {
+        padding: 1rem 1.25rem !important;
+    }
+    .modal-body {
+        padding: 1.25rem !important;
+    }
+    .modal-footer {
+        padding: 1rem 1.25rem !important;
+    }
+
+    .btn, .icon-btn, .sidebar-item, .close-btn, .back-btn {
+        min-height: 44px !important;
+    }
+    .btn {
+        padding: 0.7rem 1.2rem !important;
+    }
+
+    .inv-layout {
+        flex-direction: column !important;
+    }
+    .inv-equip {
+        flex-direction: row !important;
+        justify-content: center !important;
+    }
+    .inv-grid {
+        grid-template-columns: repeat(9, 1fr) !important;
+        gap: 2px !important;
+    }
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════════
+   RESPONSIVE OVERFLOW FIXES
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Page header always wraps and never clips */
+
+/* Header button groups wrap */
+
+/* Server header actions always wrap */
+
+/* List item action buttons always wrap */
+
+/* General: any inline flex button group should wrap */
+
+
+/* Prevent any button from shrinking below its content */
+
+
+/* Content area never overflows horizontally */
+.content-area {
+overflow-x: hidden;
+    min-width: 0;
+}
+
+
+
+/* Cards never overflow */
+
+
+/* List items: actions column wraps and doesn't clip */
+
+
+
+/* Server header card: actions wrap below info on small screens */
+@media (max-width: 900px) {
+.server-header-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .sh-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .page-header > div {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    .page-header > div > .btn {
+        flex: 1 1 auto;
+        min-width: 120px;
+    }
+}
+
+
+
+/* List items on medium screens: actions wrap below content */
+@media (max-width: 700px) {
+.list-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    .list-item .col {
+        width: 100%;
+        flex: none;
+        white-space: normal;
+        text-overflow: clip;
+        overflow: visible;
+    }
+    .list-item .col.actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        border-top: 1px solid var(--border);
+        padding-top: 0.6rem;
+        margin-top: 0.25rem;
+    }
+    .list-item .col.actions .btn {
+        flex: 1 1 auto;
+        min-width: 100px;
+        justify-content: center;
+    }
+}
+
+
+
+@media (max-width: 500px) {
+.page-header > div > .btn {
+        width: 100%;
+    }
+    .sh-actions .btn {
+        flex: 1 1 calc(50% - 0.25rem);
+        min-width: 0;
+        justify-content: center;
+    }
+}
+
+
+
+/* ── Fluid typography — titluri nu ies din ecran la nicio lățime ─────────────── */
+/* Page header title + butoane stau în coloană, nu se suprapun */
+/* Server name în header nu taie */
+/* Card titluri */
+/* Stat values nu depășesc cardul */
+/* Sidebar server names */
+/* Badge-uri nu ies din container */
+/* fm-breadcrumb (path-ul din file manager) se taie */
+/* Toolbar-uri: stânga și dreapta se duc una sub alta */
+/* Prop items: label și input se duc vertical */
+/* Plugin cards se afișează complet */
+/* Modal footer butoane se wrap */
+/* Backups list */
+/* Sub-nav tabs scroll orizontal fără wrap (deja are overflow-x:auto) */
+@media (max-width: 768px) {
+h1 { font-size: clamp(1.25rem, 5vw, 2rem); }
+    h2 { font-size: clamp(1.1rem, 4.5vw, 1.5rem); }
+    h3 { font-size: clamp(1rem, 4vw, 1.2rem); }
+    h4 { font-size: clamp(0.9rem, 3.5vw, 1.05rem); }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    .page-header h2 {
+        font-size: clamp(1.1rem, 5vw, 1.5rem);
+        word-break: break-word;
+    }
+    .page-header > div {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .page-header > div > .btn {
+        flex: 1 1 auto;
+        min-width: 120px;
+        justify-content: center;
+    }
+
+    #sh-name {
+        font-size: clamp(1rem, 4vw, 1.35rem);
+        word-break: break-word;
+        white-space: normal;
+    }
+    .sh-meta {
+        font-size: 0.78rem;
+        word-break: break-all;
+    }
+
+    .card h3 {
+        font-size: clamp(0.9rem, 3.5vw, 1.05rem);
+        word-break: break-word;
+    }
+
+    .stat-val {
+        font-size: clamp(1rem, 4vw, 1.4rem);
+        word-break: break-all;
+    }
+
+    .sidebar-item span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+    }
+
+    .status-badge {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+
+    .fm-breadcrumb {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 50vw;
+    }
+
+    .logs-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .logs-toolbar-left,
+    .logs-toolbar-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .prop-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    .prop-input input {
+        width: 100%;
+    }
+
+    .plugin-card {
+        min-width: 0;
+    }
+    .plugin-title, .plugin-author {
+        word-break: break-word;
+        white-space: normal;
+    }
+    .plugins-header,
+    .plugins-installed-header,
+    .plugins-pagination,
+    .plugin-detail-toolbar,
+    .plugin-version-actions {
+        flex-wrap: wrap;
+    }
+    .plugins-header .search-bar {
+        min-width: 0;
+        flex: 1 1 220px;
+    }
+    .plugin-detail-hero,
+    .plugin-detail-columns,
+    .plugin-version-item {
+        grid-template-columns: 1fr;
+    }
+    .plugin-detail-icon {
+        width: 64px;
+        height: 64px;
+    }
+    .plugin-versions-list {
+        max-height: none;
+    }
+
+    .modal-footer {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .modal-footer .btn {
+        flex: 1 1 auto;
+        min-width: 100px;
+        justify-content: center;
+    }
+
+    .list-header {
+        display: none;
+    }
+    .list-item {
+        flex-direction: column;
+        align-items: flex-start;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 0.85rem;
+        margin-bottom: 0.6rem;
+        background: var(--bg-surface);
+    }
+    .list-item .col {
+        width: 100%;
+        flex: none;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        padding: 0.25rem 0;
+    }
+    .list-item .col.col-wide {
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0.25rem;
+    }
+    .list-item .col.actions {
+        justify-content: flex-start;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--border);
+        margin-top: 0.25rem;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+    .list-item .col.actions .btn {
+        flex: 1 1 auto;
+        min-width: 90px;
+        justify-content: center;
+    }
+
+    .sub-nav {
+        padding: 0 0.5rem;
+    }
+    .sub-nav-item {
+        padding: 8px 12px;
+        font-size: 12.5px;
+    }
+    .tab-icon {
+        display: none;
+    }
+}
+
+
+
+@media (max-width: 400px) {
+.content-area {
+        padding: 0.85rem !important;
+    }
+    .card {
+        padding: 14px;
+    }
+    .server-header-card {
+        padding: 0.85rem;
+    }
+    .sh-actions .btn {
+        flex: 1 1 100%;
+    }
+    .page-header > div > .btn {
+        flex: 1 1 100%;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+html[data-theme="light"] .accent-circle.active {
+border-color: #111;
+    box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px #111, 0 4px 14px rgba(0,0,0,0.2);
+}
+
+
+
+
+
+
+/* Custom accent color button */
+
+/* Delete button on custom accent swatches */
+
+/* Custom color picker modal overlay */
+/* Brightness slider row */
+/* RGB + HEX row */
+/* hide number spinners */
+
+
+/* Responsive: tighter grid on small screens */
+@media (max-width: 480px) {
+.accent-picker {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.85rem 0.25rem;
+    }
+    .accent-circle {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+
+
+/* ── CodeMirror light-mode overrides ──────────────────────────────────────── */
+html[data-theme="light"] .CodeMirror {
+background: hsl(220, 20%, 97%) !important;
+    color: hsl(220, 25%, 12%) !important;
+    border-color: hsl(220, 15%, 82%) !important;
+}
+
+
+html[data-theme="light"] .CodeMirror-gutters {
+background: hsl(220, 15%, 91%) !important;
+    border-right-color: hsl(220, 15%, 82%) !important;
+}
+
+
+html[data-theme="light"] .CodeMirror-linenumber {
+color: hsl(220, 10%, 55%) !important;
+}
+
+
+html[data-theme="light"] .CodeMirror-cursor {
+border-left-color: hsl(220, 25%, 12%) !important;
+}
+
+
+html[data-theme="light"] .CodeMirror-selected {
+background: hsla(149, 100%, 35%, 0.15) !important;
+}
+
+
+html[data-theme="light"] .CodeMirror-activeline-background {
+background: hsla(220, 15%, 88%, 0.5) !important;
+}
+
+
+
+/* ── Overview Tab Rework ──────────────────────────────────────────────────── */
+
+/* Stat cards row */
+@media (max-width: 900px) {
+.ov-stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+
+@media (max-width: 500px) {
+.ov-stats-row { grid-template-columns: 1fr; }
+}
+
+
+
+
+
+
+/* Main grid: chart | players | activity */
+@media (max-width: 1100px) {
+.ov-main-grid { grid-template-columns: 1fr 1fr; }
+}
+
+
+@media (max-width: 700px) {
+.ov-main-grid { grid-template-columns: 1fr; }
+}
+
+
+
+
+
+/* Players list */
+
+/* Activity feed */
+
+/* Bottom row: backups + ftp */
+@media (max-width: 700px) {
+.ov-bottom-grid { grid-template-columns: 1fr; }
+}
+
+
+
+
+
+/* FTP compact */
+
+/* Empty state shared */
+
+/* ── Users Table Column Alignment Fix ──────────────────────────────────────── */
+/* Force all columns in the users list to use identical flex-basis values
+   so header and row cells stay perfectly aligned */
+
+
+/* Username — wide column */
+
+/* Rank */
+
+/* Status */
+
+/* Created */
+
+/* Actions — let it grow to fill remaining space, right-aligned */
+
+/* On narrower screens fall back to wrap */
+@media (max-width: 900px) {
+#view-users .list-header .col-wide,
+    #view-users .list-item .col-wide   { flex: 0 0 140px; }
+    #view-users .list-header .col:nth-child(2),
+    #view-users .list-item .col:nth-child(2) { flex: 0 0 80px; }
+    #view-users .list-header .col:nth-child(3),
+    #view-users .list-item .col:nth-child(3) { flex: 0 0 70px; }
+    #view-users .list-header .col:nth-child(4),
+    #view-users .list-item .col:nth-child(4) { flex: 0 0 90px; }
+}
+
+
+
+@media (max-width: 650px) {
+#view-users .list-header { display: none; }
+    #view-users .list-item {
+        flex-direction: column;
+        align-items: flex-start;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 1rem;
+        margin-bottom: 0.6rem;
+        background: var(--bg-surface);
+        gap: 0.4rem;
+    }
+    #view-users .list-item .col-wide,
+    #view-users .list-item .col:nth-child(2),
+    #view-users .list-item .col:nth-child(3),
+    #view-users .list-item .col:nth-child(4) {
+        flex: none;
+        width: 100%;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+    }
+    #view-users .list-item .col.actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        border-top: 1px solid var(--border);
+        padding-top: 0.6rem;
+        margin-top: 0.25rem;
+        width: 100%;
+    }
+    #view-users .list-item .col.actions .btn {
+        flex: 1 1 auto;
+        min-width: 90px;
+        justify-content: center;
+    }
+}
+
+
+/* ── End Users Table Column Alignment Fix ────────────────────────────────── */
+
+
+/* ── Users Table Column Alignment Fix ──────────────────────────────────────── */
+
+/* Username — wide column */
+
+/* Rank */
+
+/* Status */
+
+/* Created */
+
+/* Actions — grows to fill remaining space, right-aligned */
+
+/* Responsive fallback */
+@media (max-width: 900px) {
+#view-users .list-header .col-wide,
+    #view-users .list-item .col-wide { flex: 0 0 140px; }
+    #view-users .list-header .col:nth-child(2),
+    #view-users .list-item .col:nth-child(2) { flex: 0 0 90px; }
+    #view-users .list-header .col:nth-child(3),
+    #view-users .list-item .col:nth-child(3) { flex: 0 0 70px !important; }
+    #view-users .list-header .col:nth-child(4),
+    #view-users .list-item .col:nth-child(4) { flex: 0 0 90px; }
+}
+
+
+
+@media (max-width: 650px) {
+#view-users .list-header { display: none !important; }
+    #view-users .list-item {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-lg) !important;
+        padding: 1rem !important;
+        margin-bottom: 0.6rem !important;
+        background: var(--bg-surface) !important;
+        gap: 0.4rem !important;
+    }
+    #view-users .list-item .col-wide,
+    #view-users .list-item .col:nth-child(2),
+    #view-users .list-item .col:nth-child(3),
+    #view-users .list-item .col:nth-child(4) {
+        flex: none !important;
+        width: 100% !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: normal !important;
+    }
+    #view-users .list-item .col.actions {
+        justify-content: flex-start !important;
+        flex-wrap: wrap !important;
+        border-top: 1px solid var(--border) !important;
+        padding-top: 0.6rem !important;
+        margin-top: 0.25rem !important;
+        width: 100% !important;
+    }
+    #view-users .list-item .col.actions .btn {
+        flex: 1 1 auto !important;
+        min-width: 90px !important;
+        justify-content: center !important;
+    }
+}
+
+
+/* ── End Users Table Column Alignment Fix ────────────────────────────────── */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   ANIMATIONS — MinePanel UI Enhancement Layer
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Keyframes ───────────────────────────────────────────────────── */
+@keyframes mp-slideInLeft {
+from { opacity: 0; transform: translateX(-14px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+
+@keyframes mp-slideInUp {
+from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+
+@keyframes mp-scaleIn {
+from { opacity: 0; transform: scale(0.94); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+
+@keyframes mp-fadeSlideDown {
+from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+
+@keyframes mp-shimmer {
+0%   { background-position: -600px 0; }
+    100% { background-position: 600px 0; }
+}
+
+
+
+/* ── Auth Box entrance ───────────────────────────────────────────── */
+
+/* ── Sidebar items stagger ───────────────────────────────────────── */
+
+/* Hover micro-lift on sidebar items */
+
+/* ── Server cards stagger ────────────────────────────────────────── */
+
+/* ── Overview stat cards ─────────────────────────────────────────── */
+
+
+/* ── Cards ───────────────────────────────────────────────────────── */
+
+
+
+/* Server header card entrance */
+
+/* Sub-nav entrance */
+
+/* ── Plugin cards stagger ────────────────────────────────────────── */
+
+/* ── Rank cards ──────────────────────────────────────────────────── */
+
+/* ── List items stagger ──────────────────────────────────────────── */
+
+/* ── FM items ────────────────────────────────────────────────────── */
+
+/* ── Modal entrance override (spring feel) ───────────────────────── */
+
+/* ── Toast entrance ──────────────────────────────────────────────── */
+/* Already handled by existing toastIn/toastOut — just adding slide */
+
+/* ── Accent swatch hover spring ──────────────────────────────────── */
+
+/* ── Installed plugin items ──────────────────────────────────────── */
+
+/* ── Backup list rows ────────────────────────────────────────────── */
+
+/* ── Prop items ──────────────────────────────────────────────────── */
+
+/* ── Perm items ──────────────────────────────────────────────────── */
+
+/* ── Sidebar brand logo pulse on hover ───────────────────────────── */
+
+/* ── Icon button spring ──────────────────────────────────────────── */
+
+/* ── Matrix checkbox spring ──────────────────────────────────────── */
+
+/* ── Prevent animations for users who prefer reduced motion ──────── */
+@media (prefers-reduced-motion: reduce) {
+*, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════════
+   END ANIMATIONS
+   ══════════════════════════════════════════════════════════════════ */
+
+
+/* ── Page wrapper ── */
+.page {
+max-width: none;
+    width: 100%;
+    animation: fadeIn 0.22s ease-out;
+}
+
+
+
+/* ── Server view wrapper ── */
+
+
+/* ── .btn.success ── */
+
+
+html[data-theme="dark"] .btn.success {
+color: #ffffff !important;
+}
+
+
+html[data-theme="light"] .btn.success {
+color: #ffffff !important;
+}
+
+
+
+/* ── .plugin-installed-note ── */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   RESPONSIVE / MOBILE — Full breakpoint system
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Mobile top bar (hidden on desktop) ─────────────────────────── */
+
+/* ── Content padding wrapper ─────────────────────────────────────── */
+
+/* ── Large desktop (1400px+) ─────────────────────────────────────── */
+@media (min-width: 1400px) {
+.page,
+    .server-view {
+        max-width: none;
+    }
+}
+
+
+
+/* ── Medium desktop / split screen (900px–1200px) ───────────────── */
+@media (max-width: 1200px) {
+.overview-grid {
+        grid-template-columns: 1fr;
+    }
+    .plugin-detail-columns {
+        grid-template-columns: 1fr;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .props-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+
+/* ── Small desktop / large tablet / split screen (768px–1024px) ─── */
+@media (max-width: 1024px) {
+.page {
+        padding: 1.5rem 1.5rem;
+    }
+    .servers-grid {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    }
+    .plugins-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+    .terminal-container {
+        height: 460px;
+    }
+}
+
+
+
+/* ── Tablet (768px) — sidebar collapses to drawer ───────────────── */
+/* Show mobile top bar */
+/* Sidebar becomes off-canvas drawer */
+/* Overlay behind drawer */
+/* Content area gets top padding for the mobile bar */
+/* Page padding */
+/* Grids go single column */
+/* Server header card stacks */
+/* Terminal shorter on mobile */
+/* Sub-nav scrollable */
+/* Page header stacks */
+/* Toolbar stacks */
+/* Auth box full width */
+/* Props grid single col */
+@media (max-width: 768px) {
+.mobile-top-bar {
+        display: flex;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 56px;
+        z-index: 200;
+        background: var(--bg-surface);
+        border-bottom: 1px solid var(--border);
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 1rem;
+        gap: 0.75rem;
+    }
+    .mobile-hamburger {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        font-size: 20px;
+        cursor: pointer;
+        padding: 0.4rem;
+        border-radius: var(--radius);
+        transition: var(--transition);
+        flex-shrink: 0;
+    }
+    .mobile-hamburger:hover {
+        background: var(--bg-elevated);
+    }
+    .mobile-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--text-primary);
+        flex: 1;
+        justify-content: center;
+    }
+    .mobile-user-circle {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--accent-subtle);
+        border: 1px solid var(--accent-glow);
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .mobile-user-dropdown {
+        position: absolute;
+        top: 56px;
+        right: 1rem;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 0.5rem;
+        min-width: 160px;
+        box-shadow: var(--shadow-md);
+        z-index: 210;
+    }
+    .mobile-user-dropdown .dropdown-username {
+        padding: 0.5rem 0.75rem;
+        font-weight: 700;
+        font-size: 13px;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0.35rem;
+    }
+    .mobile-user-dropdown .dropdown-item {
+        display: block;
+        width: 100%;
+        padding: 0.55rem 0.75rem;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-family: var(--font-ui);
+        font-size: 13px;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+        border-radius: var(--radius);
+        transition: var(--transition);
+    }
+    .mobile-user-dropdown .dropdown-item:hover {
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+    }
+
+    .sidebar {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 280px !important;
+        z-index: 300;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: none;
+    }
+    .sidebar.drawer-open {
+        transform: translateX(0);
+        box-shadow: var(--shadow-lg);
+    }
+    .sidebar-close-btn {
+        display: flex;
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 22px;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        border-radius: var(--radius);
+        transition: var(--transition);
+        z-index: 10;
+        align-items: center;
+        justify-content: center;
+    }
+    .sidebar-close-btn:hover {
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+    }
+
+    .mobile-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 250;
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+    }
+
+    .content-area {
+        padding-top: 56px !important;
+        width: 100% !important;
+    }
+
+    .page,
+    .server-view {
+        padding: 1.25rem 1rem;
+    }
+
+    .overview-grid,
+    .quick-actions-grid,
+    .stats-grid,
+    .props-grid {
+        grid-template-columns: 1fr;
+    }
+    .servers-grid {
+        grid-template-columns: 1fr;
+    }
+    .plugins-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+
+    .server-header-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .sh-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .terminal-container {
+        height: 380px;
+    }
+
+    .sub-nav {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .toolbar-left,
+    .toolbar-right {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .auth-box {
+        max-width: 100%;
+        margin: 1rem;
+        padding: 32px 24px;
+    }
+
+    .prop-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    .prop-input input {
+        width: 100%;
+    }
+}
+
+
+
+/* ── Mobile (480px) ──────────────────────────────────────────────── */
+/* Stats side by side even on small */
+/* Auth box */
+/* Logs toolbar stacks */
+@media (max-width: 480px) {
+.page,
+    .server-view {
+        padding: 1rem 0.75rem;
+    }
+    .card {
+        padding: 16px;
+    }
+    .server-header-card {
+        padding: 14px 16px;
+    }
+    .sh-info h2 {
+        font-size: 1.1rem;
+    }
+    .page-header h2 {
+        font-size: 1.25rem;
+    }
+    .terminal-container {
+        height: 320px;
+    }
+    #terminal-output {
+        font-size: 12px;
+        padding: 1rem;
+    }
+    .btn {
+        padding: 8px 13px;
+        font-size: 12.5px;
+    }
+    .btn.small {
+        padding: 4px 9px;
+        font-size: 11px;
+    }
+    .sub-nav-item {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+    .plugins-grid {
+        grid-template-columns: 1fr;
+    }
+    .fm-list-header {
+        display: none;
+    }
+    .fm-item {
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+    .fm-col.actions {
+        flex: 0 0 100%;
+        text-align: left;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .auth-box {
+        padding: 24px 18px;
+        margin: 0.75rem;
+    }
+    .logs-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .logs-toolbar-left,
+    .logs-toolbar-right {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+}
+
+
+
+/* ── Extra small (360px) ─────────────────────────────────────────── */
+@media (max-width: 360px) {
+.page,
+    .server-view {
+        padding: 0.75rem 0.5rem;
+    }
+    .mobile-top-bar {
+        padding: 0 0.75rem;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    .sh-actions .btn {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}
+
+
+
+/* ── Landscape mobile fix ────────────────────────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+.sidebar {
+        overflow-y: auto;
+    }
+    .terminal-container {
+        height: 260px;
+    }
+    .auth-box {
+        padding: 20px 24px;
+    }
+    .auth-blob {
+        display: none;
+    }
+}
+
+
+
+/* ── Split screen / narrow window safe ──────────────────────────── */
+/* Ensures nothing breaks when window is <600px wide regardless of device */
+@media (max-width: 600px) {
+.overview-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .quick-actions-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .plugin-detail-columns {
+        grid-template-columns: 1fr !important;
+    }
+    .plugin-detail-hero {
+        grid-template-columns: auto 1fr;
+    }
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════════
+   END RESPONSIVE
+   ══════════════════════════════════════════════════════════════════ */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   LAYOUT FIX — Sticky server header + tab bar, sidebar fix
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Content area: flex child care umple restul și scrollează intern */
+.content-area {
+flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+
+
+/* server-view: umple întreaga content-area, fără scroll propriu */
+
+/* Zona sticky: back btn + header card + sub-nav */
+
+
+
+
+/* Tab body: scrollabil, padding normal */
+
+/* Page (non-server pages) rămâne la fel dar cu padding corect */
+.page {
+padding: 2rem;
+    max-width: none;
+    width: 100%;
+    animation: fadeIn 0.22s ease-out;
+}
+
+
+
+/* Sidebar — fix min-width să nu se comprime în flexbox */
+
+/* main-view — fix overflow pe fereastra split */
+#main-view {
+overflow: hidden !important;
+}
+
+
+
+/* ── Responsive overrides pentru sticky layout ───────────────────── */
+@media (max-width: 1024px) {
+.server-view-sticky {
+        padding: 1rem 1.5rem 0;
+    }
+    .server-tab-body {
+        padding: 1.25rem 1.5rem 1.5rem;
+    }
+    .page {
+        padding: 1.5rem;
+    }
+}
+
+
+
+/* content-area pe mobile: lasă loc pentru top bar */
+/* server-view umple restul după top bar */
+@media (max-width: 768px) {
+.server-view-sticky {
+        padding: 1rem 1rem 0;
+        top: 56px; /* sub mobile top bar */
+    }
+    .server-tab-body {
+        padding: 1rem 1rem 1.5rem;
+    }
+    .page {
+        padding: 1.25rem 1rem;
+    }
+    .content-area {
+        padding-top: 56px;
+        height: calc(100vh - 0px);
+    }
+    .server-view {
+        height: calc(100vh - 56px);
+        min-height: calc(100vh - 56px);
+    }
+}
+
+
+
+@media (max-width: 480px) {
+.server-view-sticky {
+        padding: 0.75rem 0.75rem 0;
+    }
+    .server-tab-body {
+        padding: 0.75rem 0.75rem 1rem;
+    }
+    .page {
+        padding: 1rem 0.75rem;
+    }
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════════
+   END LAYOUT FIX
+   ══════════════════════════════════════════════════════════════════ */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   SIDEBAR DEFINITIVE FIX
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Sidebar — lățime fixă, nu se comprimă NICIODATĂ */
+
+/* main-view — sidebar + content side by side, fără comprimare */
+div[id="main-view"] {
+display: flex !important;
+    flex-direction: row !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+}
+
+
+
+/* content-area — ia restul spațiului, scroll intern */
+.content-area {
+flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: block !important;
+}
+
+
+
+/* sidebar-section — mereu vertical, items unul sub altul */
+
+/* sidebar-section-title — mereu pe linie proprie, sus */
+
+/* sidebar-item — mereu pe linie proprie, niciodată pe orizontală */
+
+/* sidebar-server-name — trunchiază dacă e prea lung */
+
+/* sidebar spacer */
+
+/* sidebar footer — mereu jos, nu se comprimă */
+
+/* ══════════════════════════════════════════════════════════════════
+   END SIDEBAR DEFINITIVE FIX
+   ══════════════════════════════════════════════════════════════════ */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   MOBILE SIDEBAR HIDE FIX
+   ══════════════════════════════════════════════════════════════════ */
+/* Pe mobile sidebar e drawer — nu ocupă spațiu în flow */
+/* content-area pe mobile ia tot 100% lățimea */
+/* main-view pe mobile nu mai are sidebar în flow */
+@media (max-width: 768px) {
+.sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        height: 100vh !important;
+        width: 280px !important;
+        min-width: 280px !important;
+        max-width: 280px !important;
+        z-index: 300 !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s ease !important;
+        flex-shrink: 0 !important;
+    }
+    .sidebar.drawer-open {
+        transform: translateX(0) !important;
+        box-shadow: var(--shadow-lg) !important;
+    }
+    .content-area {
+        width: 100% !important;
+        height: calc(100vh - 56px) !important;
+        padding-top: 0 !important;
+        margin-top: 56px !important;
+    }
+    #main-view {
+        flex-direction: column !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════ */
+
+
+/* ── Mobile dropdown extras ─────────────────────────────────────── */
+
+/* sidebar-close-btn — vizibil mereu în drawer (controlat de JS prin clasa drawer-open) */
+
+
+/* ── Touch fix — elimină delay 300ms pe toate elementele interactive ── */
+/* ── End touch fix ── */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   STRICT LAYOUT LOCK — previne haosul pe orice screen size
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Rădăcina app — niciodată mai mică de 320px ── */
+html, body {
+min-width: 320px;
+    overflow-x: hidden;
+}
+
+
+#app {
+min-width: 320px;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+
+
+/* ── 2. Main view — sidebar + content, strict side-by-side pe desktop ── */
+#main-view {
+display: flex !important;
+    flex-direction: row !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    position: relative !important;
+}
+
+
+
+/* ── 3. Sidebar — dimensiuni fixe, nu se mișcă NICIODATĂ pe desktop ── */
+/* Sidebar la 1024px — puțin mai îngust */
+@media (min-width: 769px) {
+.sidebar {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        transform: none !important;
+        width: 240px !important;
+        min-width: 240px !important;
+        max-width: 240px !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        max-height: 100vh !important;
+        flex: 0 0 240px !important;
+        flex-shrink: 0 !important;
+        flex-grow: 0 !important;
+        z-index: 1 !important;
+        background: var(--bg-surface) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    @media (max-width: 1024px) {
+        .sidebar {
+            width: 200px !important;
+            min-width: 200px !important;
+            max-width: 200px !important;
+            flex: 0 0 200px !important;
+        }
+    }
+}
+
+
+
+/* ── 4. Content area — ia EXACT ce rămâne după sidebar ── */
+@media (min-width: 769px) {
+.content-area {
+        flex: 1 1 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        display: block !important;
+        position: relative !important;
+    }
+    @media (max-width: 1024px) {
+        .content-area {
+            max-width: calc(100vw - 200px) !important;
+        }
+    }
+}
+
+
+
+/* ── 5. Page wrapper — nu depășește niciodată container-ul ── */
+
+/* ── 6. Cards, grids — nu ies din container ── */
+
+/* ── 7. Grids — nu permit coloane mai înguste de 200px ── */
+
+/* ── 8. Pe screen-uri între 600px–768px (gap între breakpoints) ── */
+@media (min-width: 601px) and (max-width: 768px) {
+.sidebar {
+        position: fixed !important;
+        transform: translateX(-100%) !important;
+        z-index: 300 !important;
+        width: 280px !important;
+        min-width: 280px !important;
+        max-width: 280px !important;
+    }
+    .sidebar.drawer-open {
+        transform: translateX(0) !important;
+    }
+    .content-area {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-top: 56px !important;
+        height: calc(100vh - 56px) !important;
+    }
+    .mobile-top-bar {
+        display: flex !important;
+    }
+    .mobile-hamburger {
+        display: flex !important;
+    }
+    #main-view {
+        flex-direction: column !important;
+    }
+}
+
+
+
+/* ── 9. Butoane și inputs — niciodată mai late decât containerul ── */
+textarea {
+max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+
+
+/* ── 10. Sub-nav — scroll orizontal, niciodată wrap ciudat ── */
+
+/* ── 11. Modals — centrate, nu ies din viewport ── */
+
+/* ── 12. Terminal — nu depășește containerul pe nicio dimensiune ── */
+
+/* ── 13. File manager — coloane nu se rup ciudat ── */
+
+/* ── 14. Page header — nu se rupe pe linie separată ciudat ── */
+
+/* ── 15. Auth container — centrat și sigur pe orice dimensiune ── */
+
+/* ══════════════════════════════════════════════════════════════════
+   END STRICT LAYOUT LOCK
+   ══════════════════════════════════════════════════════════════════ */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   MOBILE SERVER VIEW FIX — aliniere corectă header + tabs + content
+   ══════════════════════════════════════════════════════════════════ */
+
+/* content-area pe mobile: flex column, scroll intern */
+/* server-view: umple content-area, flex column */
+/* sticky zone: nu mai e sticky pe mobile, rămâne în flow normal */
+/* back button — padding corect */
+/* server header card — fără margin extra */
+/* sub-nav — lipit de header card, fără gap */
+/* tab body — scrollabil, padding confortabil */
+/* sh-actions butoane — mai mici pe mobile */
+/* server header card — stacked pe mobile */
+/* sh-info — nu se taie pe mobile */
+/* sub-nav items — mai compacte */
+/* page (non-server) pe mobile */
+@media (max-width: 768px) {
+.content-area {
+        display: flex !important;
+        flex-direction: column !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        height: calc(100vh - 56px) !important;
+        max-height: calc(100vh - 56px) !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding-top: 0 !important;
+        margin-top: 56px !important;
+        position: relative !important;
+    }
+
+    .server-view {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        min-height: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .server-view-sticky {
+        position: relative !important;
+        top: auto !important;
+        z-index: 10 !important;
+        background: var(--bg-base) !important;
+        border-bottom: 1px solid var(--border) !important;
+        padding: 0.75rem 0.75rem 0 !important;
+        flex-shrink: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .server-view-sticky .back-btn {
+        margin-bottom: 0.6rem !important;
+        padding-left: 0 !important;
+    }
+
+    .server-view-sticky .server-header-card {
+        margin: 0 0 0 0 !important;
+        border-radius: var(--radius) var(--radius) 0 0 !important;
+        border-bottom: none !important;
+        padding: 12px 14px !important;
+    }
+
+    .server-view-sticky .sub-nav {
+        margin: 0 !important;
+        border-radius: 0 0 var(--radius) var(--radius) !important;
+        border-top: 1px solid var(--border) !important;
+        padding: 4px 4px !important;
+        gap: 2px !important;
+    }
+
+    .server-tab-body {
+        flex: 1 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding: 0.85rem 0.75rem 1.5rem !important;
+        min-height: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .sh-actions {
+        width: 100% !important;
+        justify-content: flex-start !important;
+        gap: 0.4rem !important;
+        flex-wrap: wrap !important;
+    }
+    .sh-actions .btn {
+        padding: 7px 11px !important;
+        font-size: 12px !important;
+        flex: 1 1 auto !important;
+        min-width: 60px !important;
+        max-width: 90px !important;
+        justify-content: center !important;
+    }
+
+    .server-header-card {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.65rem !important;
+    }
+
+    .sh-info {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    .sh-info h2 {
+        font-size: 1rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 100% !important;
+    }
+    .sh-meta {
+        font-size: 0.75rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 100% !important;
+    }
+
+    .sub-nav-item {
+        padding: 6px 10px !important;
+        font-size: 11.5px !important;
+        gap: 4px !important;
+    }
+    .tab-icon {
+        width: 12px !important;
+        height: 12px !important;
+    }
+
+    .page {
+        padding: 0.85rem 0.75rem !important;
+    }
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════════
+   END MOBILE SERVER VIEW FIX
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Overview stat cards responsive ── */
+@media (max-width: 768px) {
+.ov-stats-row {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+
+@media (max-width: 480px) {
+.ov-stats-row {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+
+
+
+/* ══════════════════════════════════════════════════════════════════
+   DOCS SIDEBAR
+   ══════════════════════════════════════════════════════════════════ */
+
+
+
+/* Category header button */
+
+
+/* When the category contains the active doc, highlight it slightly */
+
+/* File items inside an open category */
+
+
+
+
+/* ══════════════════════════════════════════════════════════════════
+   DOC CONTENT — rendered markdown
+   ══════════════════════════════════════════════════════════════════ */
+
+
+
+
+
+
+
+
+
+@media (max-width: 768px) {
+.docs-sidebar {
+        width: 100%;
+        position: static;
+        max-height: none;
+    }
+    .doc-content h1 { font-size: 1.2rem; }
+    .doc-content table { font-size: 0.78rem; }
+    .doc-content th, .doc-content td { padding: 4px 6px; }
+}
+
+
+
+/* Markdown plugin description styling */
+
+/* ── Automation ────────────────────────────────────────────────────────────── */
+/* Block editor */
+/* Actions */
+/* Editor footer */
+/* Empty state */
+/* Small buttons */
+
+
+/* Section header */
+
+/* ── Blockly Theme Custom Overrides ── */
+
+/* Main toolbox */
+
+
+
+
+
+
+
+/* Hide tree folder/category icons */
+
+/* Accent stripes */
+
+/* Flyout panel background */
+
+/* Scrollbars */
+
+/* Field input rectangles (Not editing) */
+
+/* HTML text input when editing */
+
+
+
+

@@ -25,6 +25,16 @@ MinePanel is a lightweight, self-hosted web panel for managing Minecraft servers
 
 ---
 
+## Demo
+
+A live demo is available at:
+
+**https://xst3x.github.io/minepanel/**
+
+> The demo is a standalone React SPA (no backend) showcasing the panel UI. It's built with Vite and auto-deploys to GitHub Pages on every push to `main` that changes files in `src/demo/`.
+
+---
+
 ## Features
 
 <details>

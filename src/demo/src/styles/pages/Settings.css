@@ -1,0 +1,368 @@
+.effect-badge {
+transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: default;
+}
+
+.effect-badge:hover {
+background: rgba(255, 255, 255, 0.06) !important;
+    transform: translateY(-1.5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.accent-appearance-card {
+min-width: 260px;
+}
+
+.accent-picker {
+display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1.1rem 0.5rem;
+    margin-bottom: 1.1rem;
+}
+
+.accent-swatch-item {
+display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.accent-circle {
+width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    outline: none;
+    padding: 0;
+    position: relative;
+    flex-shrink: 0;
+    transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1),
+                box-shadow 0.18s ease,
+                border-color 0.18s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+
+.accent-circle::after {
+content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    transition: border-color 0.18s ease;
+}
+
+.accent-circle:hover {
+transform: scale(1.18);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+}
+
+.accent-circle.active {
+border-color: #fff;
+    transform: scale(1.12);
+    box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px #fff, 0 4px 14px rgba(0,0,0,0.4);
+}
+
+.accent-label {
+font-size: 0.65rem;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.25;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+    max-width: 58px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.accent-selected-label {
+font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.1rem;
+}
+
+.accent-selected-label span {
+color: var(--accent);
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.accent-custom-btn {
+width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px dashed var(--border-hover);
+    background: var(--bg-input);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: var(--transition);
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.accent-custom-btn:hover {
+border-color: var(--accent);
+    color: var(--accent);
+    transform: scale(1.1);
+}
+
+.accent-delete-btn {
+position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+    line-height: 1;
+}
+
+.accent-swatch-item:hover .accent-delete-btn {
+opacity: 1;
+}
+
+.accent-delete-btn:hover {
+background: var(--red, #ef4444);
+    color: #fff;
+    border-color: var(--red, #ef4444);
+}
+
+.color-well-overlay {
+position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.color-well-modal {
+background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    width: 100%;
+    max-width: 340px;
+    box-shadow: var(--shadow-lg);
+    animation: modalSpringIn 0.28s cubic-bezier(0.34,1.3,0.64,1) forwards;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.color-well-modal h3 {
+font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.color-well-wheel-wrap {
+position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: crosshair;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+.color-well-wheel-wrap canvas {
+display: block;
+    width: 200px;
+    height: 200px;
+}
+
+.color-well-cursor {
+position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 4px rgba(0,0,0,0.6);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    top: 50%;
+    left: 50%;
+}
+
+.color-well-preview {
+width: 44px;
+    height: 44px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    transition: background 0.1s;
+}
+
+.cw-preview-row {
+display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.cw-preview-row .color-well-name-input {
+flex: 1;
+}
+
+.cw-brightness-row {
+display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.cw-slider-label {
+font-size: 11.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    min-width: 60px;
+}
+
+.cw-brightness-val {
+font-size: 11.5px;
+    color: var(--text-muted);
+    min-width: 32px;
+    text-align: right;
+}
+
+.cw-brightness-track {
+flex: 1;
+    border-radius: 999px;
+    height: 8px;
+    background: linear-gradient(to right, #111, #fff);
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.cw-brightness-track input[type=range] {
+-webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    margin: 0;
+}
+
+.cw-brightness-track input[type=range]::-webkit-slider-thumb {
+-webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid rgba(0,0,0,0.3);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    cursor: pointer;
+}
+
+.cw-brightness-track input[type=range]::-moz-range-thumb {
+width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid rgba(0,0,0,0.3);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    cursor: pointer;
+}
+
+.cw-rgb-row {
+display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.cw-rgb-field, .cw-hex-field {
+display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cw-rgb-field {
+flex: 1;
+}
+
+.cw-hex-field {
+flex: 1.6;
+}
+
+.cw-rgb-field label, .cw-hex-field label {
+font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.cw-rgb-field input, .cw-hex-field input {
+width: 100%;
+    padding: 6px 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace, inherit;
+    font-size: 12.5px;
+    outline: none;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.cw-rgb-field input:focus, .cw-hex-field input:focus {
+border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.cw-rgb-field input::-webkit-inner-spin-button {
+-webkit-appearance: none; margin: 0;
+}
+
+.cw-rgb-field input[type=number] {
+-moz-appearance: textfield;
+}
+
+.color-well-name-input {
+padding: 9px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13.5px;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.color-well-name-input:focus {
+border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.color-well-footer {
+display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.accent-circle {
+transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}

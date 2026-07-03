@@ -1,0 +1,46 @@
+.log-select {
+width: 100%; 
+    padding: 10px 14px; 
+    background: var(--bg-input); 
+    border: 1px solid var(--border);
+    border-radius: var(--radius); 
+    color: var(--text-primary); 
+    font-family: inherit; 
+    font-size: 13.5px; 
+    outline: none; 
+    transition: var(--transition);
+}
+
+.logs-toolbar {
+display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.logs-toolbar-left, .logs-toolbar-right {
+display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.log-viewer {
+background: hsl(0, 0%, 5%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    max-height: 520px;
+    overflow: auto;
+}
+
+.log-viewer pre {
+padding: 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: hsl(0, 0%, 90%);
+    line-height: 1.55;
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}

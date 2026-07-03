@@ -1,0 +1,117 @@
+.page-header {
+display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.75rem;
+}
+
+.page-header h2 {
+font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.servers-grid {
+display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1.5rem;
+}
+
+.server-card {
+background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    cursor: pointer;
+    transition: var(--transition);
+    animation: slideInUp 0.28s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.server-card:hover {
+border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg), 0 0 8px var(--accent-glow);
+}
+
+.server-card h4 {
+font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+    letter-spacing: -0.02em;
+}
+
+.server-card p {
+color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+}
+
+.page-header {
+flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.page-header > .btn {
+flex-shrink: 0;
+}
+
+.page-header > div[style*="display: flex"] {
+flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+}
+
+.server-card:nth-child(1) {
+animation: mp-slideInUp 0.3s 0.05s ease both;
+}
+
+.server-card:nth-child(2) {
+animation: mp-slideInUp 0.3s 0.10s ease both;
+}
+
+.server-card:nth-child(3) {
+animation: mp-slideInUp 0.3s 0.15s ease both;
+}
+
+.server-card:nth-child(4) {
+animation: mp-slideInUp 0.3s 0.20s ease both;
+}
+
+.server-card:nth-child(5) {
+animation: mp-slideInUp 0.3s 0.25s ease both;
+}
+
+.server-card:nth-child(6) {
+animation: mp-slideInUp 0.3s 0.30s ease both;
+}
+
+.server-card:nth-child(7) {
+animation: mp-slideInUp 0.3s 0.35s ease both;
+}
+
+.server-card:nth-child(8) {
+animation: mp-slideInUp 0.3s 0.40s ease both;
+}
+
+.server-card:nth-child(9) {
+animation: mp-slideInUp 0.3s 0.45s ease both;
+}
+
+.servers-grid {
+grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)) !important;
+}
+
+.page-header {
+max-width: 100% !important;
+    min-width: 0 !important;
+}
+
+.page-header h2 {
+min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+}
