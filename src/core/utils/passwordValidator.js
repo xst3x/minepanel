@@ -1,3 +1,4 @@
+"use strict";
 // Password strength validator
 const validatePasswordStrength = (password) => {
     if (!password || typeof password !== 'string') {
@@ -14,5 +15,5 @@ const validatePasswordStrength = (password) => {
     }
     return { valid: true, error: null };
 };
-
 module.exports = { validatePasswordStrength };
+//# sourceMappingURL=passwordValidator.js.map

@@ -8,14 +8,15 @@
     "src/frontend"
   ],
   "scripts": {
+    "compile": "npx tsc",
     "start": "node minepanel_main.js",
     "dev": "nodemon src/minepanel.js",
     "test": "jest --runInBand --detectOpenHandles",
-    "db": "node db-cli.js",
-    "db:status": "node db-cli.js status",
-    "db:migrate": "node db-cli.js migrate",
-    "db:integrity": "node db-cli.js integrity",
-    "db:backup": "node db-cli.js backup"
+    "db": "node src/db/db-cli.js",
+    "db:status": "node src/db/db-cli.js status",
+    "db:migrate": "node src/db/db-cli.js migrate",
+    "db:integrity": "node src/db/db-cli.js integrity",
+    "db:backup": "node src/db/db-cli.js backup"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
@@ -53,8 +54,25 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@types/adm-zip": "^0.5.8",
+    "@types/archiver": "^8.0.0",
+    "@types/argon2": "^0.14.1",
+    "@types/bcrypt": "^6.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^26.1.0",
+    "@types/node-fetch": "^2.6.13",
+    "@types/pidusage": "^2.0.5",
+    "@types/qrcode": "^1.5.6",
+    "@types/ssh2": "^1.15.5",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
     "jest": "^29.7.0",
     "nodemon": "^3.1.9",
-    "supertest": "^7.1.0"
+    "supertest": "^7.1.0",
+    "typescript": "^6.0.3"
   }
 }

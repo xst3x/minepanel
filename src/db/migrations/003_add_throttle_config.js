@@ -1,4 +1,4 @@
-// Migration 003 — Add throttle_config column to servers table
+"use strict";
 module.exports = {
     version: 3,
     description: 'Add throttle_config column to servers for RAM/CPU throttle settings',
@@ -11,3 +11,4 @@ module.exports = {
         // On modern SQLite (>=3.35) you could run: ALTER TABLE servers DROP COLUMN throttle_config
     },
 };
+//# sourceMappingURL=003_add_throttle_config.js.map

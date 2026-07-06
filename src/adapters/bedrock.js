@@ -10,17 +10,12 @@
  * The rest of the system (processManager, WebSocket, file routes, backup routes)
  * is reused unchanged.
  */
-
 'use strict';
-
 const path = require('path');
-const fs   = require('fs');
-
+const fs = require("fs");
 // ─── Constants ───────────────────────────────────────────────────────────────
-
-const BEDROCK_EXECUTABLE_WIN   = 'bedrock_server.exe';
+const BEDROCK_EXECUTABLE_WIN = 'bedrock_server.exe';
 const BEDROCK_EXECUTABLE_LINUX = 'bedrock_server';
-
 /**
  * Default server.properties for a fresh Bedrock server.
  * Port is injected at creation time.
@@ -63,9 +58,7 @@ block-network-ids-are-hashes=true
 disable-persona=false
 disable-custom-skins=false
 `;
-
 // ─── Console Output Parser ────────────────────────────────────────────────────
-
 /**
  * Bedrock log lines look like:
  *   [2024-07-15 12:00:00:123 INFO] Starting Server
@@ -75,27 +68,21 @@ disable-custom-skins=false
  */
 function parseBedrockOutput(raw) {
     const line = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
     // Server ready
     if (line.includes('Server started.') || line.includes('IPv4 supported')) {
         return line + '\n[MinePanel] ✔  Bedrock server is ready to accept connections.\n';
     }
-
     // Graceful shutdown
     if (line.includes('Server stop requested.') || line.includes('Quit correctly')) {
         return line + '\n[MinePanel] Bedrock server is shutting down...\n';
     }
-
     // Port already in use
     if (line.includes('Failed to bind') || line.includes('already in use')) {
         return line + '\n[MinePanel] ⚠  Port is already in use. Change server-port in server.properties.\n';
     }
-
     return line;
 }
-
 // ─── Installation helper ──────────────────────────────────────────────────────
-
 /**
  * Extract the downloaded Bedrock ZIP into serverDir, write default configs,
  * and chmod the binary on Linux.
@@ -108,32 +95,29 @@ async function installBedrock(zipPath, serverDir, port) {
     const AdmZip = require('adm-zip');
     const zip = new AdmZip(zipPath);
     zip.extractAllTo(serverDir, true /* overwrite */);
-
     // Write server.properties if not already present (fresh install)
     const propertiesPath = path.join(serverDir, 'server.properties');
     if (!fs.existsSync(propertiesPath)) {
         let props = DEFAULT_BEDROCK_PROPERTIES;
         props = props.replace(/^server-port=.*/m, `server-port=${port}`);
         fs.writeFileSync(propertiesPath, props, 'utf8');
-    } else {
+    }
+    else {
         // Update port in existing properties
         let props = fs.readFileSync(propertiesPath, 'utf8');
         props = props.replace(/^server-port=.*/m, `server-port=${port}`);
         fs.writeFileSync(propertiesPath, props, 'utf8');
     }
-
     // Ensure permissions.json exists (Bedrock equivalent of ops.json)
     const permsPath = path.join(serverDir, 'permissions.json');
     if (!fs.existsSync(permsPath)) {
         fs.writeFileSync(permsPath, '[]', 'utf8');
     }
-
     // Ensure allowlist.json exists
     const allowlistPath = path.join(serverDir, 'allowlist.json');
     if (!fs.existsSync(allowlistPath)) {
         fs.writeFileSync(allowlistPath, '[]', 'utf8');
     }
-
     // On Linux, chmod +x the binary
     if (process.platform !== 'win32') {
         const exePath = path.join(serverDir, BEDROCK_EXECUTABLE_LINUX);
@@ -142,9 +126,7 @@ async function installBedrock(zipPath, serverDir, port) {
         }
     }
 }
-
 // ─── Launch descriptor ────────────────────────────────────────────────────────
-
 /**
  * Returns a launch descriptor understood by the patched getStartInfo() in
  * serverRoutes.js.  Instead of java + JVM args + jar, we return the native
@@ -161,38 +143,33 @@ function getBedrockLaunchDescriptor(server, serverDir) {
     const isWin = process.platform === 'win32';
     const exeName = isWin ? BEDROCK_EXECUTABLE_WIN : BEDROCK_EXECUTABLE_LINUX;
     const executable = path.join(serverDir, exeName);
-
     const env = { ...process.env };
     if (!isWin) {
         // BDS on Linux requires LD_LIBRARY_PATH to point at its own directory
         const existingLd = env.LD_LIBRARY_PATH || '';
         env.LD_LIBRARY_PATH = existingLd ? `${serverDir}:${existingLd}` : serverDir;
     }
-
     return {
         isBedrock: true,
         serverDir,
         executable,
         env,
         // These mirror the Java signature so processManager.start() needs no changes:
-        jarFile: executable,    // "jar" = the binary itself
-        customArgs: [],         // BDS takes no extra CLI args by default
-        javaArgs: []            // no JVM flags
+        jarFile: executable, // "jar" = the binary itself
+        customArgs: [], // BDS takes no extra CLI args by default
+        javaArgs: [] // no JVM flags
     };
 }
-
 /**
  * Returns true when server.software is a native Bedrock binary type
  * (bedrock or bedrock-preview), case-insensitive.
  */
 function isBedrock(software) {
-    if (typeof software !== 'string') return false;
+    if (typeof software !== 'string')
+        return false;
     const s = software.toLowerCase();
     return s === 'bedrock' || s === 'bedrock-preview';
 }
-
-// ─── Exports ─────────────────────────────────────────────────────────────────
-
 module.exports = {
     installBedrock,
     getBedrockLaunchDescriptor,
@@ -202,3 +179,4 @@ module.exports = {
     BEDROCK_EXECUTABLE_WIN,
     BEDROCK_EXECUTABLE_LINUX
 };
+//# sourceMappingURL=bedrock.js.map

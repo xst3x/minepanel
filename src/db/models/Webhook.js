@@ -1,34 +1,34 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../sequelize');
-
+"use strict";
+const sequelize_1 = require("sequelize");
+const sequelize = require("../sequelize");
 const Webhook = sequelize.define('Webhook', {
     id: {
-        type: DataTypes.INTEGER,
+        type: sequelize_1.DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
     server_id: {
-        type: DataTypes.STRING,
+        type: sequelize_1.DataTypes.STRING,
         allowNull: false
     },
     event: {
-        type: DataTypes.STRING,
+        type: sequelize_1.DataTypes.STRING,
         allowNull: false
     },
     url: {
-        type: DataTypes.STRING,
+        type: sequelize_1.DataTypes.STRING,
         allowNull: false
     },
     active: {
-        type: DataTypes.INTEGER,
+        type: sequelize_1.DataTypes.INTEGER,
         defaultValue: 1
     },
     created_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
+        type: sequelize_1.DataTypes.DATE,
+        defaultValue: sequelize_1.DataTypes.NOW
     }
 }, {
     tableName: 'webhooks'
 });
-
 module.exports = Webhook;
+//# sourceMappingURL=Webhook.js.map

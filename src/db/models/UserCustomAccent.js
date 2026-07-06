@@ -1,30 +1,30 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../sequelize');
-
+"use strict";
+const sequelize_1 = require("sequelize");
+const sequelize = require("../sequelize");
 const UserCustomAccent = sequelize.define('UserCustomAccent', {
     id: {
-        type: DataTypes.INTEGER,
+        type: sequelize_1.DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
     user_id: {
-        type: DataTypes.INTEGER,
+        type: sequelize_1.DataTypes.INTEGER,
         allowNull: false
     },
     label: {
-        type: DataTypes.STRING,
+        type: sequelize_1.DataTypes.STRING,
         allowNull: false
     },
     value: {
-        type: DataTypes.STRING,
+        type: sequelize_1.DataTypes.STRING,
         allowNull: false
     },
     created_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
+        type: sequelize_1.DataTypes.DATE,
+        defaultValue: sequelize_1.DataTypes.NOW
     }
 }, {
     tableName: 'user_custom_accents'
 });
-
 module.exports = UserCustomAccent;
+//# sourceMappingURL=UserCustomAccent.js.map

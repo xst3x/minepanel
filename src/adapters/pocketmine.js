@@ -19,16 +19,11 @@
  * The rest of MinePanel (processManager, WebSocket, file routes, backup
  * routes) is reused unchanged — only the spawn command differs.
  */
-
 'use strict';
-
 const path = require('path');
-const fs   = require('fs');
-
+const fs = require("fs");
 // ─── Constants ────────────────────────────────────────────────────────────────
-
 const PHAR_NAME = 'PocketMine-MP.phar';
-
 /**
  * Minimal server.properties for PocketMine-MP.
  * Port is injected at creation time.
@@ -52,18 +47,14 @@ spawn-protection=16
 view-distance=8
 xbox-auth=on
 `;
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
 /**
  * Returns true when server.software is pocketmine (case-insensitive).
  */
 function isPocketMine(software) {
     return typeof software === 'string' && software.toLowerCase() === 'pocketmine';
 }
-
 // ─── Installation ─────────────────────────────────────────────────────────────
-
 /**
  * Install a downloaded PocketMine-MP.phar into serverDir.
  *
@@ -79,42 +70,36 @@ function isPocketMine(software) {
  */
 async function installPocketMine(pharPath, serverDir, port) {
     const destPhar = path.join(serverDir, PHAR_NAME);
-
     // Copy PHAR into server directory
     fs.copyFileSync(pharPath, destPhar);
-
     // Make executable on Linux/macOS
     if (process.platform !== 'win32') {
         fs.chmodSync(destPhar, 0o755);
     }
-
     // Write server.properties if not already present
     const propertiesPath = path.join(serverDir, 'server.properties');
     if (!fs.existsSync(propertiesPath)) {
         let props = DEFAULT_PM_PROPERTIES;
         props = props.replace(/^server-port=.*/m, `server-port=${port}`);
         fs.writeFileSync(propertiesPath, props, 'utf8');
-    } else {
+    }
+    else {
         let props = fs.readFileSync(propertiesPath, 'utf8');
         props = props.replace(/^server-port=.*/m, `server-port=${port}`);
         fs.writeFileSync(propertiesPath, props, 'utf8');
     }
-
     // Ensure worlds directory exists
     const worldsDir = path.join(serverDir, 'worlds');
     if (!fs.existsSync(worldsDir)) {
         fs.mkdirSync(worldsDir, { recursive: true });
     }
-
     // Ensure plugins directory exists
     const pluginsDir = path.join(serverDir, 'plugins');
     if (!fs.existsSync(pluginsDir)) {
         fs.mkdirSync(pluginsDir, { recursive: true });
     }
 }
-
 // ─── Windows PHP discovery ────────────────────────────────────────────────────
-
 /**
  * Find a usable php.exe on Windows, in priority order:
  *  1. bin\php\php.exe  inside the server directory (PocketMine bundled PHP)
@@ -130,11 +115,9 @@ function findPhpOnWindows(serverDir) {
         path.join(serverDir, 'bin', 'php', 'php.exe'),
         path.join(serverDir, 'php.exe'),
     ];
-
     if (process.env.PHPRC) {
         candidates.push(path.join(process.env.PHPRC, 'php.exe'));
     }
-
     const commonRoots = [
         'C:\\php',
         'C:\\php8',
@@ -147,17 +130,14 @@ function findPhpOnWindows(serverDir) {
     for (const root of commonRoots) {
         candidates.push(path.join(root, 'php.exe'));
     }
-
     for (const c of candidates) {
-        if (fs.existsSync(c)) return c;
+        if (fs.existsSync(c))
+            return c;
     }
-
     // Not found in known locations — return 'php' and let spawn try PATH.
     return 'php';
 }
-
 // ─── Launch descriptor ────────────────────────────────────────────────────────
-
 /**
  * Returns a launch descriptor for processManager.start().
  *
@@ -178,34 +158,30 @@ function findPhpOnWindows(serverDir) {
  */
 function getPocketMineLaunchDescriptor(server, serverDir) {
     const pharFile = path.join(serverDir, PHAR_NAME);
-    const isWin    = process.platform === 'win32';
-
+    const isWin = process.platform === 'win32';
     let executable;
     let customArgs;
-
     if (isWin) {
         executable = findPhpOnWindows(serverDir);
         customArgs = [pharFile, '--no-wizard'];
-    } else {
-        // Linux/macOS: run the phar directly (chmod +x was set during install)
-        executable  = pharFile;
-        customArgs  = ['--no-wizard'];
     }
-
+    else {
+        // Linux/macOS: run the phar directly (chmod +x was set during install)
+        executable = pharFile;
+        customArgs = ['--no-wizard'];
+    }
     return {
         isPocketMine: true,
         serverDir,
         executable,
         customArgs,
         // Mirror the Java/Bedrock signature so processManager.start() works:
-        jarFile:  pharFile,
+        jarFile: pharFile,
         javaArgs: [],
-        env:      process.env,
+        env: process.env,
     };
 }
-
 // ─── Console output parser ────────────────────────────────────────────────────
-
 /**
  * PocketMine-MP log lines look like:
  *   [12:00:00.123] [Server thread/INFO]: Server started on 0.0.0.0:19132
@@ -215,7 +191,6 @@ function getPocketMineLaunchDescriptor(server, serverDir) {
  */
 function parsePocketMineOutput(raw) {
     const line = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
     if (line.includes('Server started on') || line.includes('Done')) {
         return line + '\n[MinePanel] ✔  PocketMine-MP server is ready to accept connections.\n';
     }
@@ -225,14 +200,10 @@ function parsePocketMineOutput(raw) {
     if (line.includes('Failed to bind') || line.includes('address already in use')) {
         return line + '\n[MinePanel] ⚠  Port is already in use. Change server-port in server.properties.\n';
     }
-
     return line;
 }
-
 // ─── Missing Functions Implementation ──────────────────────────────────────────
-
 const axios = require('axios');
-
 async function searchPoggitPlugins(term) {
     try {
         const url = `https://poggit.pmmp.io/releases.json?term=${encodeURIComponent(term)}`;
@@ -247,22 +218,20 @@ async function searchPoggitPlugins(term) {
             }));
         }
         return [];
-    } catch (e) {
+    }
+    catch (e) {
         // Fallback to empty if Poggit is offline or throttled
         return [];
     }
 }
-
 async function installPlugin(serverDir, name, downloadUrl) {
     const pluginsDir = path.join(serverDir, 'plugins');
     if (!fs.existsSync(pluginsDir)) {
         fs.mkdirSync(pluginsDir, { recursive: true });
     }
-    
     // Ensure filename is safe
     const safeName = name.replace(/[^\w.\-]/g, '_');
     const destPath = path.join(pluginsDir, safeName.endsWith('.phar') ? safeName : `${safeName}.phar`);
-    
     const writer = fs.createWriteStream(destPath);
     const response = await axios({
         url: downloadUrl,
@@ -270,15 +239,12 @@ async function installPlugin(serverDir, name, downloadUrl) {
         responseType: 'stream',
         headers: { 'User-Agent': 'MinePanel/1.0' }
     });
-    
     response.data.pipe(writer);
-    
     return new Promise((resolve, reject) => {
         writer.on('finish', resolve);
         writer.on('error', reject);
     });
 }
-
 async function getPoggitProjectInfo(project, version) {
     try {
         const url = `https://poggit.pmmp.io/releases.json?name=${encodeURIComponent(project)}`;
@@ -294,18 +260,17 @@ async function getPoggitProjectInfo(project, version) {
             };
         }
         throw new Error('Project not found on Poggit');
-    } catch (e) {
+    }
+    catch (e) {
         throw new Error(`Poggit connection error: ${e.message}`);
     }
 }
-
 async function checkPluginUpdates(serverDir) {
     const pluginsDir = path.join(serverDir, 'plugins');
-    if (!fs.existsSync(pluginsDir)) return [];
-    
+    if (!fs.existsSync(pluginsDir))
+        return [];
     const files = fs.readdirSync(pluginsDir).filter(f => f.endsWith('.phar'));
     const updates = [];
-    
     for (const file of files) {
         const pluginName = path.basename(file, '.phar');
         try {
@@ -318,25 +283,22 @@ async function checkPluginUpdates(serverDir) {
                 updateAvailable: info.version !== '1.0.0',
                 downloadUrl: info.downloadUrl
             });
-        } catch (_) {}
+        }
+        catch (_) { }
     }
     return updates;
 }
-
 async function getDevSpoonOptions() {
     return [
         { id: 'basic', name: 'Basic Command Plugin', desc: 'A simple plugin with a command executor.' },
         { id: 'event', name: 'Event Listener Plugin', desc: 'A plugin that listens to player join/quit events.' }
     ];
 }
-
 async function compileDevSpoonPlugin(serverDir, options) {
     const pluginsDir = path.join(serverDir, 'plugins');
     const pluginName = options.name.replace(/[^\w]/g, '');
     const pluginDir = path.join(pluginsDir, pluginName);
-    
     fs.mkdirSync(pluginDir, { recursive: true });
-    
     const pluginYml = `name: ${pluginName}
 version: ${options.version || '1.0.0'}
 api: ${options.api || '4.0.0'}
@@ -344,12 +306,9 @@ main: ${options.mainNamespace || 'MyNamespace'}\\Main
 author: ${options.author || 'MinePanel'}
 description: ${options.description || 'Generated by MinePanel'}
 `;
-    
     fs.writeFileSync(path.join(pluginDir, 'plugin.yml'), pluginYml, 'utf8');
-    
     const srcDir = path.join(pluginDir, 'src', (options.mainNamespace || 'MyNamespace').replace(/\\/g, path.sep));
     fs.mkdirSync(srcDir, { recursive: true });
-    
     const phpClass = `<?php
 
 namespace ${options.mainNamespace || 'MyNamespace'};
@@ -369,12 +328,9 @@ class Main extends PluginBase implements Listener {
     }
 }
 `;
-    
     fs.writeFileSync(path.join(srcDir, 'Main.php'), phpClass, 'utf8');
-    
     return { path: pluginDir };
 }
-
 async function queryPlayers(port) {
     // Return empty list/mock since direct UDP query requires server to be fully online and query enabled
     return {
@@ -382,43 +338,40 @@ async function queryPlayers(port) {
         players: []
     };
 }
-
 async function getPerfOptions() {
     return [
         { id: 'balanced', name: 'Balanced Performance', desc: 'Optimized settings for general gameplay.' },
         { id: 'performance', name: 'High Performance / Low Latency', desc: 'Max performance, reduces view distance and ticks.' }
     ];
 }
-
 async function applyPerfProfile(serverDir, profile) {
     const propertiesPath = path.join(serverDir, 'server.properties');
-    if (!fs.existsSync(propertiesPath)) return;
-    
+    if (!fs.existsSync(propertiesPath))
+        return;
     let content = fs.readFileSync(propertiesPath, 'utf8');
     if (profile === 'performance') {
         content = content.replace(/^view-distance=.*/m, 'view-distance=4');
-    } else {
+    }
+    else {
         content = content.replace(/^view-distance=.*/m, 'view-distance=8');
     }
     fs.writeFileSync(propertiesPath, content, 'utf8');
 }
-
 async function getCrashDumps(serverDir) {
     const dumpsDir = path.join(serverDir, 'crashdumps');
-    if (!fs.existsSync(dumpsDir)) return [];
-    
+    if (!fs.existsSync(dumpsDir))
+        return [];
     return fs.readdirSync(dumpsDir)
         .filter(f => f.endsWith('.log') || f.endsWith('.txt'))
         .map(f => {
-            const stats = fs.statSync(path.join(dumpsDir, f));
-            return { name: f, size: stats.size, date: stats.mtime };
-        });
+        const stats = fs.statSync(path.join(dumpsDir, f));
+        return { name: f, size: stats.size, date: stats.mtime };
+    });
 }
-
 async function getCrashDumpDetails(serverDir, filename) {
     const dumpPath = path.join(serverDir, 'crashdumps', filename);
-    if (!fs.existsSync(dumpPath)) throw new Error('Crash dump not found');
-    
+    if (!fs.existsSync(dumpPath))
+        throw new Error('Crash dump not found');
     const content = fs.readFileSync(dumpPath, 'utf8');
     return {
         filename,
@@ -426,52 +379,51 @@ async function getCrashDumpDetails(serverDir, filename) {
         summary: content.split('\n').slice(0, 5).join('\n')
     };
 }
-
 async function deleteCrashDump(serverDir, filename) {
     const dumpPath = path.join(serverDir, 'crashdumps', filename);
     if (fs.existsSync(dumpPath)) {
         fs.unlinkSync(dumpPath);
     }
 }
-
 async function getCustomCommands(serverDir) {
     const cmdPath = path.join(serverDir, 'minepanel_commands.json');
-    if (!fs.existsSync(cmdPath)) return [];
-    
+    if (!fs.existsSync(cmdPath))
+        return [];
     try {
         return JSON.parse(fs.readFileSync(cmdPath, 'utf8'));
-    } catch (_) {
+    }
+    catch (_) {
         return [];
     }
 }
-
 async function registerCustomCommand(serverDir, cmd, desc, alias) {
     const cmdPath = path.join(serverDir, 'minepanel_commands.json');
     let commands = [];
     if (fs.existsSync(cmdPath)) {
-        try { commands = JSON.parse(fs.readFileSync(cmdPath, 'utf8')); } catch (_) {}
+        try {
+            commands = JSON.parse(fs.readFileSync(cmdPath, 'utf8'));
+        }
+        catch (_) { }
     }
-    
     commands = commands.filter(c => c.cmd !== cmd);
     commands.push({ cmd, desc, alias });
     fs.writeFileSync(cmdPath, JSON.stringify(commands, null, 2), 'utf8');
 }
-
 async function deleteCustomCommand(serverDir, cmd) {
     const cmdPath = path.join(serverDir, 'minepanel_commands.json');
-    if (!fs.existsSync(cmdPath)) return;
-    
+    if (!fs.existsSync(cmdPath))
+        return;
     let commands = [];
-    try { commands = JSON.parse(fs.readFileSync(cmdPath, 'utf8')); } catch (_) {}
-    
+    try {
+        commands = JSON.parse(fs.readFileSync(cmdPath, 'utf8'));
+    }
+    catch (_) { }
     commands = commands.filter(c => c.cmd !== cmd);
     fs.writeFileSync(cmdPath, JSON.stringify(commands, null, 2), 'utf8');
 }
-
 async function getDevChecklist(serverDir) {
     const propertiesPath = path.join(serverDir, 'server.properties');
     const checklist = [];
-    
     if (fs.existsSync(propertiesPath)) {
         const content = fs.readFileSync(propertiesPath, 'utf8');
         const queryOn = /^enable-query=on/m.test(content);
@@ -482,27 +434,23 @@ async function getDevChecklist(serverDir) {
             solved: queryOn
         });
     }
-    
     return checklist;
 }
-
 async function solveChecklistIssue(serverDir, issueId) {
     const propertiesPath = path.join(serverDir, 'server.properties');
-    if (!fs.existsSync(propertiesPath)) return;
-    
+    if (!fs.existsSync(propertiesPath))
+        return;
     let content = fs.readFileSync(propertiesPath, 'utf8');
     if (issueId === 'enable_query') {
         if (/^enable-query=/m.test(content)) {
             content = content.replace(/^enable-query=.*/m, 'enable-query=on');
-        } else {
+        }
+        else {
             content += '\nenable-query=on\n';
         }
     }
     fs.writeFileSync(propertiesPath, content, 'utf8');
 }
-
-// ─── Exports ──────────────────────────────────────────────────────────────────
-
 module.exports = {
     installPocketMine,
     getPocketMineLaunchDescriptor,
@@ -528,3 +476,4 @@ module.exports = {
     getDevChecklist,
     solveChecklistIssue
 };
+//# sourceMappingURL=pocketmine.js.map

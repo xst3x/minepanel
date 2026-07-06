@@ -1,9 +1,9 @@
-// src/db/migrations/003_add_webhooks_table.js
+"use strict";
 module.exports = {
-  version: 3,
-  description: 'Webhooks table',
-  up: async (dbRun) => {
-    await dbRun(`
+    version: 3,
+    description: 'Webhooks table',
+    up: async (dbRun) => {
+        await dbRun(`
       CREATE TABLE IF NOT EXISTS webhooks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         server_id TEXT NOT NULL,
@@ -13,8 +13,9 @@ module.exports = {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
-  },
-  down: async (dbRun) => {
-    await dbRun('DROP TABLE IF EXISTS webhooks');
-  }
+    },
+    down: async (dbRun) => {
+        await dbRun('DROP TABLE IF EXISTS webhooks');
+    }
 };
+//# sourceMappingURL=003_add_webhooks_table.js.map

@@ -1,15 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 // src/worker.js
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
-const processManager = require('./core/processManager');
-const logger = require('./core/utils/logger');
-
+const processManager = require("./core/processManager");
+const logger = require("./core/utils/logger");
 logger.info(`[Worker] Started worker process on PID ${process.pid}`);
-
 if (!process.send) {
     logger.error('[Worker] Fatal: Worker process was not spawned with IPC enabled.');
     process.exit(1);
 }
-
 // Periodically gather and send stats for all online servers
 const statsInterval = setInterval(async () => {
     for (const [serverId, child] of processManager.processes.entries()) {
@@ -20,17 +19,17 @@ const statsInterval = setInterval(async () => {
                 serverId,
                 stats
             });
-        } catch (err) {
+        }
+        catch (err) {
             // Ignore stats errors
         }
     }
 }, 2000);
-
 // Setup IPC handlers
 process.on('message', async (message) => {
-    if (!message || typeof message !== 'object') return;
+    if (!message || typeof message !== 'object')
+        return;
     const { type, requestId, serverId } = message;
-
     try {
         switch (type) {
             case 'start-server': {
@@ -77,7 +76,8 @@ process.on('message', async (message) => {
             default:
                 logger.warn(`[Worker] Unhandled message type: ${type}`);
         }
-    } catch (err) {
+    }
+    catch (err) {
         logger.error(`[Worker] Error handling ${type} for server ${serverId}:`, err);
         process.send({
             type: `${type}-response`,
@@ -87,35 +87,30 @@ process.on('message', async (message) => {
         });
     }
 });
-
 // Event forwarding from ProcessManager
 processManager.on('console', (serverId, data) => {
     process.send({ type: 'log', serverId, data });
 });
-
 processManager.on('status', (serverId, status) => {
     // If we recovered a process, we also send its PID
     const child = processManager.processes.get(serverId);
     process.send({ type: 'status', serverId, status, pid: child ? child.pid : null });
 });
-
 processManager.on('clear_console', (serverId) => {
     process.send({ type: 'clear-console', serverId });
 });
-
 processManager.on('crash', (serverId, info) => {
     process.send({ type: 'crash', serverId, info });
 });
-
 const shutdown = () => {
     clearInterval(statsInterval);
     logger.info('[Worker] Shutting down worker...');
     process.exit(0);
 };
-
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 process.on('disconnect', () => {
     logger.warn('[Worker] IPC channel disconnected. Shutting down...');
     shutdown();
 });
+//# sourceMappingURL=worker.js.map

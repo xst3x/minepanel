@@ -1,10 +1,9 @@
+"use strict";
 // Migration 016: Logic-block automation rules
 // Creates automation_rules table for per-server IF/THEN automation
-
 module.exports = {
     version: 16,
     description: 'Add automation_rules table',
-
     up: async (dbRun) => {
         await dbRun(`
             CREATE TABLE IF NOT EXISTS automation_rules (
@@ -24,8 +23,8 @@ module.exports = {
             ON automation_rules (server_id, enabled)
         `);
     },
-
     down: async (dbRun) => {
         await dbRun(`DROP TABLE IF EXISTS automation_rules`);
     },
 };
+//# sourceMappingURL=016_automation_rules.js.map

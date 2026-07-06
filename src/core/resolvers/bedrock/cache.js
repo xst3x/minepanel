@@ -12,18 +12,14 @@
  *   cache.isFresh(hit)                 // bool
  *   cache.write({ version, ... });
  */
-
 'use strict';
-
-const fs   = require('fs');
-const path = require('path');
-
+const fs = require('fs');
+const path = require("path");
 const CACHE_DIR = path.join(__dirname, '../../../../cache/resolvers');
-
 function ensureDir() {
-    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+    if (!fs.existsSync(CACHE_DIR))
+        fs.mkdirSync(CACHE_DIR, { recursive: true });
 }
-
 /**
  * Create a cache handle for a named resolver.
  * @param {string} name    - filename stem, e.g. 'pocketmine'  → cache/resolvers/pocketmine.json
@@ -31,31 +27,32 @@ function ensureDir() {
  */
 function makeCache(name, ttlMs) {
     const file = path.join(CACHE_DIR, `${name}.json`);
-
     return {
         read() {
             try {
-                if (!fs.existsSync(file)) return null;
+                if (!fs.existsSync(file))
+                    return null;
                 return JSON.parse(fs.readFileSync(file, 'utf8'));
-            } catch {
+            }
+            catch {
                 return null;
             }
         },
-
         write(data) {
             try {
                 ensureDir();
                 fs.writeFileSync(file, JSON.stringify({ ...data, _cachedAt: Date.now() }, null, 2), 'utf8');
-            } catch (e) {
+            }
+            catch (e) {
                 console.warn(`[cache:${name}] Write failed: ${e.message}`);
             }
         },
-
         isFresh(cached) {
-            if (!cached?._cachedAt) return false;
+            if (!cached?._cachedAt)
+                return false;
             return Date.now() - cached._cachedAt < ttlMs;
         }
     };
 }
-
 module.exports = { makeCache };
+//# sourceMappingURL=cache.js.map

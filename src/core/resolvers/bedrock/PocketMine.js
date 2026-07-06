@@ -7,20 +7,15 @@
  * PocketMine-MP distributes as a self-contained PHAR (PHP Archive).
  * The release asset is named PocketMine-MP.phar on GitHub.
  */
-
 'use strict';
-
 const https = require('https');
 const { fetchLatestVersion, normaliseRelease } = require('./github');
 const { makeCache } = require('./cache');
-
-const NAME  = 'PocketMine-MP';
+const NAME = 'PocketMine-MP';
 const OWNER = 'pmmp';
-const REPO  = 'PocketMine-MP';
+const REPO = 'PocketMine-MP';
 const cache = makeCache('pocketmine', 45 * 60 * 1000);
-
 // ─── HTTP helper ──────────────────────────────────────────────────────────────
-
 function fetchText(url, redirectsLeft = 5) {
     return new Promise((resolve, reject) => {
         const req = https.get(url, {
@@ -42,7 +37,6 @@ function fetchText(url, redirectsLeft = 5) {
         req.setTimeout(15000, () => { req.destroy(); reject(new Error('Request timeout')); });
     });
 }
-
 /**
  * Resolve the GitHub release download URL for a given tag.
  * PocketMine-MP assets follow: PocketMine-MP.phar (primary) or PocketMine-MP-<version>.phar
@@ -57,34 +51,34 @@ async function resolveDownloadUrl(version) {
         if (data.assets && data.assets.length > 0) {
             // Prefer PocketMine-MP.phar
             const asset = data.assets.find(a => /PocketMine-MP.*\.phar$/i.test(a.name));
-            if (asset?.browser_download_url) return asset.browser_download_url;
+            if (asset?.browser_download_url)
+                return asset.browser_download_url;
         }
-    } catch (_) { /* fall through to constructed URL */ }
-
+    }
+    catch (_) { /* fall through to constructed URL */ }
     // Fallback: construct the predictable URL GitHub generates for release assets
     return `https://github.com/${OWNER}/${REPO}/releases/download/${tag}/PocketMine-MP.phar`;
 }
-
 // ─── Resolver class ───────────────────────────────────────────────────────────
-
 class PocketMineResolver {
     async getLatestRelease() {
         const cached = cache.read();
-        if (cache.isFresh(cached)) return cached.data;
-
+        if (cache.isFresh(cached))
+            return cached.data;
         try {
             const version = await fetchLatestVersion(OWNER, REPO);
             const data = normaliseRelease({ tag_name: version }, { name: NAME });
             console.log(`[PocketMine] → ${data.version}`);
             cache.write({ data });
             return data;
-        } catch (e) {
+        }
+        catch (e) {
             console.warn(`[PocketMine] Fetch failed: ${e.message}`);
-            if (cached?.data) return cached.data;
+            if (cached?.data)
+                return cached.data;
             throw e;
         }
     }
-
     /**
      * Resolves an installable build.
      * Returns the same shape as other resolvers so downloadJar() works unchanged.
@@ -93,15 +87,15 @@ class PocketMineResolver {
     async resolveBuild(version, _build = 'latest') {
         const url = await resolveDownloadUrl(version);
         return {
-            type:     'pocketmine',
+            type: 'pocketmine',
             version,
-            build:    'latest',
+            build: 'latest',
             url,
             provider: 'github',
-            isPhar:   true,   // signals installer: this is a PHAR, not a JAR/ZIP
-            isZip:    false,
+            isPhar: true, // signals installer: this is a PHAR, not a JAR/ZIP
+            isZip: false,
         };
     }
 }
-
 module.exports = new PocketMineResolver();
+//# sourceMappingURL=PocketMine.js.map

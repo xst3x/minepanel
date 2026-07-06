@@ -1,3 +1,4 @@
+"use strict";
 module.exports = {
     version: 15,
     description: 'Add auto update settings columns to servers table',
@@ -15,9 +16,12 @@ module.exports = {
         for (const sql of cols) {
             try {
                 await dbRun(sql);
-            } catch (e) {
-                if (!e.message.includes('duplicate column')) throw e;
+            }
+            catch (e) {
+                if (!e.message.includes('duplicate column'))
+                    throw e;
             }
         }
     },
 };
+//# sourceMappingURL=015_auto_update_settings.js.map

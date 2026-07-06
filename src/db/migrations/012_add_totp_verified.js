@@ -1,6 +1,4 @@
-// Migration 012 — add totp_verified column to users
-// totp_verified = 1 means authenticator app is configured (secret verified)
-// totp_enabled  = 1 means 2FA is enforced at login (requires totp_verified = 1)
+"use strict";
 module.exports = {
     version: 12,
     description: 'Add totp_verified to users table',
@@ -10,3 +8,4 @@ module.exports = {
         await db(`UPDATE users SET totp_verified = 1 WHERE totp_enabled = 1`);
     },
 };
+//# sourceMappingURL=012_add_totp_verified.js.map

@@ -1,7 +1,7 @@
-const fs = require('fs');
+"use strict";
+const fs = require("fs");
 const fsp = fs.promises;
-const logger = require('./logger');
-
+const logger = require("./logger");
 /**
  * Retry an async operation with configurable attempts and delay.
  * Handles EPERM, EBUSY, EACCES errors common on Windows when files are locked.
@@ -11,7 +11,8 @@ async function retryOperation(operation, { retries = 10, delay = 500, label = 'f
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             return await operation();
-        } catch (err) {
+        }
+        catch (err) {
             lastError = err;
             const retryable = ['EPERM', 'EBUSY', 'EACCES', 'ENOTEMPTY'].includes(err.code);
             if (!retryable || attempt === retries) {
@@ -23,47 +24,30 @@ async function retryOperation(operation, { retries = 10, delay = 500, label = 'f
     }
     throw lastError;
 }
-
 /**
  * Rename a file/directory with retry logic for locked files on Windows.
  */
 async function retryRename(oldPath, newPath, opts = {}) {
-    return retryOperation(
-        () => fsp.rename(oldPath, newPath),
-        { ...opts, label: `rename ${oldPath} -> ${newPath}` }
-    );
+    return retryOperation(() => fsp.rename(oldPath, newPath), { ...opts, label: `rename ${oldPath} -> ${newPath}` });
 }
-
 /**
  * Delete a file/directory recursively with retry logic.
  */
 async function retryDelete(targetPath, opts = {}) {
-    return retryOperation(
-        () => fsp.rm(targetPath, { recursive: true, force: true }),
-        { ...opts, label: `delete ${targetPath}` }
-    );
+    return retryOperation(() => fsp.rm(targetPath, { recursive: true, force: true }), { ...opts, label: `delete ${targetPath}` });
 }
-
 /**
  * Copy a file with retry logic.
  */
 async function retryCopy(src, dest, opts = {}) {
-    return retryOperation(
-        () => fsp.copyFile(src, dest),
-        { ...opts, label: `copy ${src} -> ${dest}` }
-    );
+    return retryOperation(() => fsp.copyFile(src, dest), { ...opts, label: `copy ${src} -> ${dest}` });
 }
-
 /**
  * Unlink a single file with retry logic.
  */
 async function retryUnlink(filePath, opts = {}) {
-    return retryOperation(
-        () => fsp.unlink(filePath),
-        { ...opts, label: `unlink ${filePath}` }
-    );
+    return retryOperation(() => fsp.unlink(filePath), { ...opts, label: `unlink ${filePath}` });
 }
-
 module.exports = {
     retryOperation,
     retryRename,
@@ -71,3 +55,4 @@ module.exports = {
     retryCopy,
     retryUnlink
 };
+//# sourceMappingURL=fsRetry.js.map

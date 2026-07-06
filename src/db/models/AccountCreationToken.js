@@ -1,39 +1,39 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../sequelize');
-
+"use strict";
+const sequelize_1 = require("sequelize");
+const sequelize = require("../sequelize");
 const AccountCreationToken = sequelize.define('AccountCreationToken', {
     id: {
-        type: DataTypes.INTEGER,
+        type: sequelize_1.DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
     token: {
-        type: DataTypes.STRING,
+        type: sequelize_1.DataTypes.STRING,
         unique: true,
         allowNull: false
     },
     created_by: {
-        type: DataTypes.INTEGER,
+        type: sequelize_1.DataTypes.INTEGER,
         allowNull: false
     },
     expires_at: {
-        type: DataTypes.DATE,
+        type: sequelize_1.DataTypes.DATE,
         allowNull: false
     },
     permissions: {
-        type: DataTypes.TEXT,
+        type: sequelize_1.DataTypes.TEXT,
         allowNull: false
     },
     ranks: {
-        type: DataTypes.TEXT,
+        type: sequelize_1.DataTypes.TEXT,
         allowNull: false
     },
     used: {
-        type: DataTypes.INTEGER,
+        type: sequelize_1.DataTypes.INTEGER,
         defaultValue: 0
     }
 }, {
     tableName: 'account_creation_tokens'
 });
-
 module.exports = AccountCreationToken;
+//# sourceMappingURL=AccountCreationToken.js.map

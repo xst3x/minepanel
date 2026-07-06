@@ -1,7 +1,5 @@
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
-
+"use strict";
+const https = require("https");
 const fetchJson = (url) => {
     return new Promise((resolve, reject) => {
         https.get(url, (res) => {
@@ -11,47 +9,42 @@ const fetchJson = (url) => {
                 if (res.statusCode >= 200 && res.statusCode < 300) {
                     try {
                         resolve(JSON.parse(data));
-                    } catch (e) {
+                    }
+                    catch (e) {
                         reject(new Error('Invalid JSON response'));
                     }
-                } else {
+                }
+                else {
                     reject(new Error(`HTTP ${res.statusCode}: ${data}`));
                 }
             });
         }).on('error', reject);
     });
 };
-
 class VanillaResolver {
     constructor() {
         this.manifestUrl = 'https://piston-meta.mojang.com/mc/game/version_manifest.json';
     }
-
     async listVersions() {
         const manifest = await fetchJson(this.manifestUrl);
         return manifest.versions
             .filter(v => v.type === 'release' || v.type === 'snapshot')
             .map(v => ({
-                version: v.id,
-                type: v.type,
-                releaseTime: v.releaseTime
-            }));
+            version: v.id,
+            type: v.type,
+            releaseTime: v.releaseTime
+        }));
     }
-
     async resolveBuild(version) {
         const manifest = await fetchJson(this.manifestUrl);
         const versionInfo = manifest.versions.find(v => v.id === version);
-        
         if (!versionInfo) {
             throw new Error(`Version ${version} not found in Vanilla manifest`);
         }
-
         const details = await fetchJson(versionInfo.url);
-        
         if (!details.downloads || !details.downloads.server) {
             throw new Error(`Server download not available for Vanilla version ${version}`);
         }
-
         return {
             type: 'vanilla',
             version: version,
@@ -62,5 +55,5 @@ class VanillaResolver {
         };
     }
 }
-
 module.exports = new VanillaResolver();
+//# sourceMappingURL=vanilla.js.map

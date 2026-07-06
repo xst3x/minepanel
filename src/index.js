@@ -1,3 +1,3 @@
-// src/index.js
-// Export the Express app and Server from minepanel.js
+"use strict";
 module.exports = require('./minepanel');
+//# sourceMappingURL=index.js.map

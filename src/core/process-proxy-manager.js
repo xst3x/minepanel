@@ -1,47 +1,35 @@
+"use strict";
 /**
  * Proxy Process Manager — communicates with the worker process via IPC.
  * Used in the API process.
  * Extracted from processManager.js — single responsibility.
  */
-const { fork } = require('child_process');
-const EventEmitter = require('events');
-const path = require('path');
-
+const child_process_1 = require("child_process");
+const EventEmitter = require("events");
+const path = require("path");
 class ProxyProcessManager extends EventEmitter {
     constructor() {
         super();
-        /** @type {Map<string, {pid: number}>} */
         this.processes = new Map();
-        /** @type {Map<string, string[]>} */
         this.histories = new Map();
-        /** @type {Set<string>} */
         this.locks = new Set();
-        /** @type {Map<string, NodeJS.Timeout>} */
         this.lockTimers = new Map();
-        /** @type {Map<string, string>} */
         this.statuses = new Map();
-        /** @type {Map<string, {cpu: number, ram: number}>} */
         this.stats = new Map();
-
         this.worker = null;
-        /** @type {Map<string, {resolve: Function, reject: Function}>} */
         this.pendingRequests = new Map();
         this.requestIdCounter = 0;
-
         this.startWorker();
     }
-
     // ─── Locking ─────────────────────────────────────────────────────────
-
     acquireLock(serverId, timeoutMs = 60000) {
         const idStr = serverId.toString();
-        if (this.locks.has(idStr)) return false;
+        if (this.locks.has(idStr))
+            return false;
         this.locks.add(idStr);
-
         if (this.lockTimers.has(idStr)) {
             clearTimeout(this.lockTimers.get(idStr));
         }
-
         const timer = setTimeout(() => {
             if (this.locks.has(idStr)) {
                 console.warn(`[ProxyProcessManager] Lock for server ${idStr} auto-released after ${timeoutMs}ms`);
@@ -52,7 +40,6 @@ class ProxyProcessManager extends EventEmitter {
         this.lockTimers.set(idStr, timer);
         return true;
     }
-
     acquireLockForce(serverId) {
         const idStr = serverId.toString();
         this.locks.add(idStr);
@@ -66,7 +53,6 @@ class ProxyProcessManager extends EventEmitter {
         this.lockTimers.set(idStr, timer);
         return true;
     }
-
     releaseLock(serverId) {
         const idStr = serverId.toString();
         this.locks.delete(idStr);
@@ -75,28 +61,23 @@ class ProxyProcessManager extends EventEmitter {
             this.lockTimers.delete(idStr);
         }
     }
-
     isLocked(serverId) {
         return this.locks.has(serverId.toString());
     }
-
     // ─── Worker lifecycle ────────────────────────────────────────────────
-
     startWorker() {
         const workerPath = path.resolve(__dirname, '../worker.js');
         const logger = require('./utils/logger');
         logger.info(`[API] Forking worker process from ${workerPath}`);
-
-        this.worker = fork(workerPath, [], {
+        this.worker = (0, child_process_1.fork)(workerPath, [], {
             env: { ...process.env, MINEPANEL_PROCESS: 'worker' },
             stdio: 'inherit'
         });
-
         this.worker.on('message', (message) => {
-            if (!message || typeof message !== 'object') return;
+            if (!message || typeof message !== 'object')
+                return;
             this.handleWorkerMessage(message);
         });
-
         this.worker.on('exit', (code, signal) => {
             logger.error(`[API] Worker process exited (code: ${code}, signal: ${signal}). Re-spawning in 2s...`);
             this.worker = null;
@@ -106,28 +87,24 @@ class ProxyProcessManager extends EventEmitter {
             }
             setTimeout(() => this.startWorker(), 2000);
         });
-
         this.worker.on('error', (err) => {
             logger.error(`[API] Worker process error:`, err);
         });
     }
-
     // ─── IPC ─────────────────────────────────────────────────────────────
-
     handleWorkerMessage(message) {
         const { type, serverId, requestId } = message;
-
         if (requestId && this.pendingRequests.has(requestId)) {
             const { resolve, reject } = this.pendingRequests.get(requestId);
             this.pendingRequests.delete(requestId);
             if (message.error) {
                 reject(new Error(message.error));
-            } else {
+            }
+            else {
                 resolve(message.result);
             }
             return;
         }
-
         switch (type) {
             case 'log': {
                 const { data } = message;
@@ -141,7 +118,8 @@ class ProxyProcessManager extends EventEmitter {
                 this.statuses.set(idStr, status);
                 if (status === 'online') {
                     this.processes.set(idStr, { pid });
-                } else {
+                }
+                else {
                     this.processes.delete(idStr);
                     this.stats.delete(idStr);
                 }
@@ -165,7 +143,6 @@ class ProxyProcessManager extends EventEmitter {
             }
         }
     }
-
     sendIpcRequest(type, serverId, payload = {}) {
         return new Promise((resolve, reject) => {
             if (!this.worker) {
@@ -173,14 +150,12 @@ class ProxyProcessManager extends EventEmitter {
             }
             const requestId = `${type}-${serverId}-${this.requestIdCounter++}-${Date.now()}`;
             this.pendingRequests.set(requestId, { resolve, reject });
-
             const timeout = setTimeout(() => {
                 if (this.pendingRequests.has(requestId)) {
                     this.pendingRequests.delete(requestId);
                     reject(new Error(`IPC request ${type} timed out`));
                 }
             }, 35000);
-
             this.worker.send({
                 type,
                 requestId,
@@ -195,14 +170,11 @@ class ProxyProcessManager extends EventEmitter {
             });
         });
     }
-
     // ─── Lifecycle (via IPC) ─────────────────────────────────────────────
-
     start(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, customArgs = null, javaPath = 'java', spawnEnv = null, mode = 'java') {
         const idStr = serverId.toString();
         this.clearHistory(idStr);
         this.statuses.set(idStr, 'online');
-
         this.sendIpcRequest('start-server', idStr, {
             serverDir, javaArgs, jarFile, ramMb: maxMemoryMb, customArgs, javaPath, spawnEnv, mode
         }).catch(err => {
@@ -212,44 +184,36 @@ class ProxyProcessManager extends EventEmitter {
             this.emit('status', idStr, 'offline');
         });
     }
-
     stop(serverId) {
         this.sendIpcRequest('stop-server', serverId.toString()).catch(() => { });
     }
-
     gracefulStop(serverId, timeoutMs = 15000) {
         return this.sendIpcRequest('graceful-stop', serverId.toString(), { timeoutMs });
     }
-
     restartGraceful(serverId, serverDir, javaArgs, jarFile, maxMemoryMb, timeoutMs = 15000, customArgs = null, javaPath = 'java', spawnEnv = null, mode = 'java') {
         return this.sendIpcRequest('restart-graceful', serverId.toString(), {
             serverDir, javaArgs, jarFile, ramMb: maxMemoryMb, timeoutMs, customArgs, javaPath, spawnEnv, mode
         });
     }
-
     kill(serverId) {
         this.sendIpcRequest('kill-server', serverId.toString()).catch(() => { });
     }
-
     sendCommand(serverId, command) {
-        if (!this.worker) throw new Error('Worker process is not running');
+        if (!this.worker)
+            throw new Error('Worker process is not running');
         this.worker.send({ type: 'send-command', serverId: serverId.toString(), command });
     }
-
     // ─── Stats & Status ──────────────────────────────────────────────────
-
     getStats(serverId) {
         return this.stats.get(serverId.toString()) || { cpu: 0, ram: 0 };
     }
-
     getStatus(serverId) {
         return this.statuses.get(serverId.toString()) || 'offline';
     }
-
     waitForExit(serverId, timeoutMs = 10000) {
         return new Promise((resolve) => {
-            if (this.getStatus(serverId.toString()) === 'offline') return resolve(true);
-
+            if (this.getStatus(serverId.toString()) === 'offline')
+                return resolve(true);
             let resolved = false;
             const onStatus = (emittedId, status) => {
                 if (emittedId.toString() === serverId.toString() && status === 'offline' && !resolved) {
@@ -260,7 +224,6 @@ class ProxyProcessManager extends EventEmitter {
                 }
             };
             this.on('status', onStatus);
-
             const timer = setTimeout(() => {
                 if (!resolved) {
                     resolved = true;
@@ -270,9 +233,7 @@ class ProxyProcessManager extends EventEmitter {
             }, timeoutMs);
         });
     }
-
     // ─── History ─────────────────────────────────────────────────────────
-
     clearHistory(serverId) {
         const idStr = serverId.toString();
         this.histories.set(idStr, []);
@@ -281,7 +242,6 @@ class ProxyProcessManager extends EventEmitter {
             this.worker.send({ type: 'clear-history', serverId: idStr });
         }
     }
-
     appendHistory(serverId, data) {
         const idStr = serverId.toString();
         if (!this.histories.has(idStr)) {
@@ -289,7 +249,6 @@ class ProxyProcessManager extends EventEmitter {
         }
         const history = this.histories.get(idStr);
         history.push(data);
-
         let totalBytes = 0;
         for (const chunk of history) {
             totalBytes += Buffer.byteLength(chunk, 'utf8');
@@ -299,10 +258,9 @@ class ProxyProcessManager extends EventEmitter {
             totalBytes -= Buffer.byteLength(removed, 'utf8');
         }
     }
-
     getHistory(serverId) {
         return this.histories.get(serverId.toString()) || [];
     }
 }
-
 module.exports = ProxyProcessManager;
+//# sourceMappingURL=process-proxy-manager.js.map

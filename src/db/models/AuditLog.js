@@ -1,38 +1,38 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../sequelize');
-
+"use strict";
+const sequelize_1 = require("sequelize");
+const sequelize = require("../sequelize");
 const AuditLog = sequelize.define('AuditLog', {
     id: {
-        type: DataTypes.INTEGER,
+        type: sequelize_1.DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
     event: {
-        type: DataTypes.STRING,
+        type: sequelize_1.DataTypes.STRING,
         allowNull: false
     },
     user_id: {
-        type: DataTypes.INTEGER,
+        type: sequelize_1.DataTypes.INTEGER,
         allowNull: true
     },
     username: {
-        type: DataTypes.STRING,
+        type: sequelize_1.DataTypes.STRING,
         allowNull: true
     },
     ip: {
-        type: DataTypes.STRING,
+        type: sequelize_1.DataTypes.STRING,
         allowNull: true
     },
     detail: {
-        type: DataTypes.TEXT,
+        type: sequelize_1.DataTypes.TEXT,
         allowNull: true
     },
     created_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
+        type: sequelize_1.DataTypes.DATE,
+        defaultValue: sequelize_1.DataTypes.NOW
     }
 }, {
     tableName: 'audit_log'
 });
-
 module.exports = AuditLog;
+//# sourceMappingURL=AuditLog.js.map

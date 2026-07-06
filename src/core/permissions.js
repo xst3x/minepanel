@@ -1,6 +1,6 @@
-const { db, dbGet, dbAll } = require('../db/database');
+"use strict";
+const database_1 = require("../db/database");
 const { E, sendError } = require('./errors');
-
 const AVAILABLE_PERMISSIONS = [
     { key: 'server.start', label: 'Start Server', group: 'Server Control' },
     { key: 'server.stop', label: 'Stop Server', group: 'Server Control' },
@@ -33,54 +33,51 @@ const AVAILABLE_PERMISSIONS = [
     { key: 'account.manage', label: 'Manage Accounts', group: 'Administration', globalOnly: true },
     { key: 'panel.settings', label: 'Manage Panel Settings', group: 'Administration', globalOnly: true }
 ];
-
 async function getEffectivePermissions(userId, serverId) {
-    const user = await dbGet('SELECT role, rank_id, global_permissions FROM users WHERE id = ?', [userId]);
-    if (!user) return [];
-    if (user.role === 'admin') return ['*'];
-
+    const user = await (0, database_1.dbGet)('SELECT role, rank_id, global_permissions FROM users WHERE id = ?', [userId]);
+    if (!user)
+        return [];
+    if (user.role === 'admin')
+        return ['*'];
     const permSet = new Set();
-
     if (user.global_permissions) {
-        try { JSON.parse(user.global_permissions).forEach(p => permSet.add(p)); } catch (e) {}
+        try {
+            JSON.parse(user.global_permissions).forEach(p => permSet.add(p));
+        }
+        catch (e) { }
     }
-
     if (user.rank_id) {
-        const rank = await dbGet('SELECT permissions, global_permissions FROM ranks WHERE id = ?', [user.rank_id]);
+        const rank = await (0, database_1.dbGet)('SELECT permissions, global_permissions FROM ranks WHERE id = ?', [user.rank_id]);
         if (rank) {
             if (rank.global_permissions) {
-                try { JSON.parse(rank.global_permissions).forEach(p => permSet.add(p)); } catch (e) {}
+                try {
+                    JSON.parse(rank.global_permissions).forEach(p => permSet.add(p));
+                }
+                catch (e) { }
             }
             if (rank.permissions && serverId) {
                 try {
                     const serverMap = JSON.parse(rank.permissions);
                     const serverPerms = serverMap[serverId] || [];
                     serverPerms.forEach(p => permSet.add(p));
-                } catch (e) {}
+                }
+                catch (e) { }
             }
         }
     }
-
     if (serverId) {
-        const individualPerms = await dbAll(
-            'SELECT permission FROM user_server_permissions WHERE user_id = ? AND server_id = ?',
-            [userId, serverId]
-        );
+        const individualPerms = await (0, database_1.dbAll)('SELECT permission FROM user_server_permissions WHERE user_id = ? AND server_id = ?', [userId, serverId]);
         individualPerms.forEach(p => permSet.add(p.permission));
     }
-
     return [...permSet];
 }
-
 const checkPermission = (requiredPermission) => {
     return async (req, res, next) => {
         const userId = req.user.id;
         const serverId = req.params.serverId || req.body.serverId;
-
         if (!serverId) {
             return sendError(res, E.BAD_REQUEST, 400, 'Server ID is required');
         }
-
         try {
             if (req.user && req.user.internal === true) {
                 return next();
@@ -90,18 +87,17 @@ const checkPermission = (requiredPermission) => {
                 return next();
             }
             return sendError(res, E.FORBIDDEN, 403, `Missing permission: ${requiredPermission}`);
-        } catch (e) {
+        }
+        catch (e) {
             console.error(`[Permissions] checkPermission error (User: ${userId}, Server: ${serverId}):`, e);
             return sendError(res, E.INTERNAL_ERROR, 500);
         }
     };
 };
-
 const hasPermission = async (userId, serverId, requiredPermission) => {
     const perms = await getEffectivePermissions(userId, serverId);
     return perms.includes('*') || perms.includes('root') || perms.includes(requiredPermission);
 };
-
 const checkGlobalPermission = (requiredPermission) => {
     return async (req, res, next) => {
         const userId = req.user.id;
@@ -111,11 +107,12 @@ const checkGlobalPermission = (requiredPermission) => {
                 return next();
             }
             return sendError(res, E.FORBIDDEN, 403, `Missing global permission: ${requiredPermission}`);
-        } catch (e) {
+        }
+        catch (e) {
             console.error(`[Permissions] checkGlobalPermission error (User: ${userId}):`, e);
             return sendError(res, E.INTERNAL_ERROR, 500);
         }
     };
 };
-
 module.exports = { checkPermission, hasPermission, checkGlobalPermission, getEffectivePermissions, AVAILABLE_PERMISSIONS };
+//# sourceMappingURL=permissions.js.map

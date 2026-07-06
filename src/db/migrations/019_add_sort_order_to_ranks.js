@@ -1,10 +1,9 @@
+"use strict";
 module.exports = {
     version: 19,
     description: 'Add sort_order column to ranks for custom ordering',
-
     up: async (dbRun, dbGet, dbAll) => {
         await dbRun('ALTER TABLE ranks ADD COLUMN sort_order INTEGER DEFAULT 999');
-
         // Set a sensible initial order for the built-in ranks
         const PRIORITY = { owner: 0, admin: 1, manager: 2, helper: 3, player: 4 };
         const ranks = await dbAll('SELECT id, name FROM ranks');
@@ -13,7 +12,6 @@ module.exports = {
             await dbRun('UPDATE ranks SET sort_order = ? WHERE id = ?', [order, r.id]);
         }
     },
-
     down: async (dbRun) => {
         // SQLite doesn't support DROP COLUMN on older versions — recreate without it
         await dbRun('ALTER TABLE ranks RENAME TO ranks_backup');
@@ -35,3 +33,4 @@ module.exports = {
         await dbRun('DROP TABLE ranks_backup');
     },
 };
+//# sourceMappingURL=019_add_sort_order_to_ranks.js.map

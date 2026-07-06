@@ -1,4 +1,4 @@
-// Migration 004 — Add threshold_rules column to servers table
+"use strict";
 module.exports = {
     version: 4,
     description: 'Add threshold_rules column to servers for multi-threshold escalation system',
@@ -9,3 +9,4 @@ module.exports = {
         // Column removal not supported in SQLite < 3.35 — no-op rollback.
     },
 };
+//# sourceMappingURL=004_add_threshold_rules.js.map

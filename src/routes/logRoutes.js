@@ -1,24 +1,29 @@
-const express = require('express');
-const fs = require('fs');
+"use strict";
+const express = require("express");
+const fs = require("fs");
 const fsp = require('fs').promises;
-const path = require('path');
-const zlib = require('zlib');
-const { promisify } = require('util');
-const { authenticateToken } = require('../core/auth');
-const { checkPermission } = require('../core/permissions');
-const { getServer, getServerDir } = require('../core/serverHelper');
-const { E, sendError } = require('../core/errors');
-const logger = require('../core/utils/logger');
-
+const path = require("path");
+const zlib = require("zlib");
+const util_1 = require("util");
+const authModule = require("../core/auth");
+const { authenticateToken } = authModule;
+const permissionsModule = require("../core/permissions");
+const { checkPermission } = permissionsModule;
+const serverHelperModule = require("../core/serverHelper");
+const { getServer, getServerDir } = serverHelperModule;
+const errorsModule = require("../core/errors");
+const { E, sendError } = errorsModule;
+const logger = require("../core/utils/logger");
 const router = express.Router({ mergeParams: true });
-const gunzip = promisify(zlib.gunzip);
-
+const gunzip = (0, util_1.promisify)(zlib.gunzip);
 router.get('/', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        if (!server)
+            return sendError(res, E.SERVER_NOT_FOUND, 404);
         const logsDir = path.join(getServerDir(server), 'logs');
-        if (!fs.existsSync(logsDir)) return res.json([]);
+        if (!fs.existsSync(logsDir))
+            return res.json([]);
         const files = await fsp.readdir(logsDir);
         const logFiles = [];
         for (const f of files) {
@@ -29,57 +34,70 @@ router.get('/', authenticateToken, checkPermission('server.files.read'), async (
         }
         logFiles.sort((a, b) => b.date - a.date);
         res.json(logFiles);
-    } catch (e) {
+    }
+    catch (e) {
         logger.error(`[logRoutes] List logs error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
-
 router.get('/read', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
     const { file, page, filter } = req.query;
     const LINES_PER_PAGE = 500;
-    if (!file) return sendError(res, E.BAD_REQUEST, 400, 'File required');
+    if (!file)
+        return sendError(res, E.BAD_REQUEST, 400, 'File required');
     if (file.includes('..') || file.includes('/') || file.includes('\\')) {
         return sendError(res, E.FILE_INVALID_NAME, 400, 'Invalid filename');
     }
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        if (!server)
+            return sendError(res, E.SERVER_NOT_FOUND, 404);
         const logPath = path.join(getServerDir(server), 'logs', file);
-        if (!fs.existsSync(logPath)) return sendError(res, E.FILE_NOT_FOUND, 404);
+        if (!fs.existsSync(logPath))
+            return sendError(res, E.FILE_NOT_FOUND, 404);
         const buffer = await fsp.readFile(logPath);
         let content;
-        if (file.endsWith('.log.gz')) { content = (await gunzip(buffer)).toString('utf8'); }
-        else { content = buffer.toString('utf8'); }
+        if (file.endsWith('.log.gz')) {
+            content = (await gunzip(buffer)).toString('utf8');
+        }
+        else {
+            content = buffer.toString('utf8');
+        }
         let lines = content.split('\n');
-        if (filter) { const fl = filter.toLowerCase(); lines = lines.filter(l => l.toLowerCase().includes(fl)); }
+        if (filter) {
+            const fl = filter.toLowerCase();
+            lines = lines.filter(l => l.toLowerCase().includes(fl));
+        }
         const totalLines = lines.length;
         const totalPages = Math.ceil(totalLines / LINES_PER_PAGE) || 1;
         const currentPage = Math.max(1, Math.min(parseInt(page) || totalPages, totalPages));
         const startIdx = (currentPage - 1) * LINES_PER_PAGE;
         const pageLines = lines.slice(startIdx, startIdx + LINES_PER_PAGE);
         res.json({ content: pageLines.join('\n'), page: currentPage, totalPages, totalLines, filtered: !!filter });
-    } catch (e) {
+    }
+    catch (e) {
         logger.error(`[logRoutes] Read log file error (Server: ${req.params.serverId}, User: ${req.user.id}, File: ${file}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
-
 router.get('/tail', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
     const lines = parseInt(req.query.lines) || 100;
     try {
         const server = await getServer(req.params.serverId);
-        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        if (!server)
+            return sendError(res, E.SERVER_NOT_FOUND, 404);
         const logPath = path.join(getServerDir(server), 'logs', 'latest.log');
-        if (!fs.existsSync(logPath)) return res.json({ content: '', lines: 0 });
+        if (!fs.existsSync(logPath))
+            return res.json({ content: '', lines: 0 });
         const content = await fsp.readFile(logPath, 'utf8');
         const allLines = content.split('\n');
         const tailLines = allLines.slice(Math.max(0, allLines.length - lines));
         res.json({ content: tailLines.join('\n'), lines: tailLines.length, totalLines: allLines.length });
-    } catch (e) {
+    }
+    catch (e) {
         logger.error(`[logRoutes] Tail log error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
-
 module.exports = router;
+//# sourceMappingURL=logRoutes.js.map

@@ -1,39 +1,39 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../sequelize');
-
+"use strict";
+const sequelize_1 = require("sequelize");
+const sequelize = require("../sequelize");
 const Rank = sequelize.define('Rank', {
     id: {
-        type: DataTypes.INTEGER,
+        type: sequelize_1.DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
     name: {
-        type: DataTypes.STRING,
+        type: sequelize_1.DataTypes.STRING,
         unique: true,
         allowNull: false
     },
     permissions: {
-        type: DataTypes.TEXT,
+        type: sequelize_1.DataTypes.TEXT,
         allowNull: false
     },
     global_permissions: {
-        type: DataTypes.TEXT,
+        type: sequelize_1.DataTypes.TEXT,
         defaultValue: '[]'
     },
     is_builtin: {
-        type: DataTypes.INTEGER,
+        type: sequelize_1.DataTypes.INTEGER,
         defaultValue: 0
     },
     color: {
-        type: DataTypes.STRING,
+        type: sequelize_1.DataTypes.STRING,
         defaultValue: '#3b82f6'
     },
     created_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
+        type: sequelize_1.DataTypes.DATE,
+        defaultValue: sequelize_1.DataTypes.NOW
     }
 }, {
     tableName: 'ranks'
 });
-
 module.exports = Rank;
+//# sourceMappingURL=Rank.js.map

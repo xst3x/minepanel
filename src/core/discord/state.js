@@ -1,3 +1,4 @@
+"use strict";
 /**
  * Shared mutable state for Discord modules.
  * All discord/* modules import this to share clients and integrationMap.
@@ -5,5 +6,5 @@
  */
 const clients = new Map();
 const integrationMap = new Map();
-
 module.exports = { clients, integrationMap };
+//# sourceMappingURL=state.js.map

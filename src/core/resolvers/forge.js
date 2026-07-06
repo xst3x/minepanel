@@ -1,11 +1,10 @@
-const https = require('https');
-const { fetchJson } = require('./utils');
-
+"use strict";
+const utilsModule = require("./utils");
+const { fetchJson } = utilsModule;
 class ForgeResolver {
     constructor() {
         this.id = 'forge';
     }
-
     async listVersions() {
         try {
             const promotionsUrl = 'https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json';
@@ -21,34 +20,28 @@ class ForgeResolver {
                 }
             }
             return Array.from(mcVersions);
-        } catch (e) {
+        }
+        catch (e) {
             console.error('[ForgeResolver] listVersions failed:', e.message);
             return [];
         }
     }
-
     async resolveBuild(version, build = 'latest') {
         try {
             // Forge doesn't have a clean JSON API for all versions in a single endpoint.
             // Modern Forge provides a promotions JSON which tracks recommended/latest versions.
             const promotionsUrl = 'https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json';
             const promos = await fetchJson(promotionsUrl);
-
             // Check if there is a recommended or latest build for this exact MC version
             const recommended = promos.promos[`${version}-recommended`];
             const latest = promos.promos[`${version}-latest`];
-            
             const forgeVersion = recommended || latest;
-
             if (!forgeVersion) {
                 throw new Error(`Forge does not have a promoted build for Minecraft version ${version}. You may need to manually specify the Forge version string.`);
             }
-
             const fullVersionString = `${version}-${forgeVersion}`;
-            
             // Forge maven structure: net/minecraftforge/forge/{version}-{forge_version}/forge-{version}-{forge_version}-installer.jar
             const downloadUrl = `https://maven.minecraftforge.net/net/minecraftforge/forge/${fullVersionString}/forge-${fullVersionString}-installer.jar`;
-
             return {
                 type: 'forge',
                 version: version,
@@ -56,10 +49,11 @@ class ForgeResolver {
                 url: downloadUrl,
                 provider: 'minecraftforge'
             };
-        } catch (err) {
+        }
+        catch (err) {
             throw new Error(`Forge Resolver failed: ${err.message}`);
         }
     }
 }
-
 module.exports = new ForgeResolver();
+//# sourceMappingURL=forge.js.map

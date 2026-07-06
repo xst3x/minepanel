@@ -1,3 +1,4 @@
+"use strict";
 /**
  * Discord Bot Manager — thin wrapper that re-exports all Discord functionality
  * from modular sub-modules. Keeps the exact same API for backwards compatibility.
@@ -12,15 +13,13 @@
  *   - command-registrar.js  — registerCommands
  *   - legacy-api.js         — getStatusForServer, getStatus, connect, disconnect, toggleEnabled, reprovision
  */
-
 const lifecycle = require('./client-lifecycle');
-const provisioner = require('./provisioner');
-const crud = require('./crud');
-const queries = require('./bot-queries');
-const interactions = require('./interactions');
-const registrar = require('./command-registrar');
-const legacy = require('./legacy-api');
-
+const provisioner = require("./provisioner");
+const crud = require("./crud");
+const queries = require("./bot-queries");
+const interactions = require("./interactions");
+const registrar = require("./command-registrar");
+const legacy = require("./legacy-api");
 // Merge all modules into a single object that preserves the original API
 const discordManager = {
     ...lifecycle,
@@ -31,5 +30,5 @@ const discordManager = {
     ...registrar,
     ...legacy
 };
-
 module.exports = discordManager;
+//# sourceMappingURL=discordManager.js.map

@@ -1,14 +1,12 @@
+"use strict";
 // Migration 001: Initial Schema
 // Captures the full baseline schema as it existed before the migration system was introduced.
 // Safe to run on both fresh installs and existing databases (uses IF NOT EXISTS + ALTER TABLE
 // with error-swallowing for columns that already exist).
-
 module.exports = {
     version: 1,
     description: 'Initial schema — users, servers, permissions, ranks, discord, tokens',
-
     up: async (dbRun) => {
-
         // ── Users ─────────────────────────────────────────────────────────────
         await dbRun(`
             CREATE TABLE IF NOT EXISTS users (
@@ -22,7 +20,6 @@ module.exports = {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
         // ── Servers ───────────────────────────────────────────────────────────
         await dbRun(`
             CREATE TABLE IF NOT EXISTS servers (
@@ -50,7 +47,6 @@ module.exports = {
                 FOREIGN KEY(owner_id) REFERENCES users(id)
             )
         `);
-
         // ── User-Server Permissions ───────────────────────────────────────────
         await dbRun(`
             CREATE TABLE IF NOT EXISTS user_server_permissions (
@@ -62,7 +58,6 @@ module.exports = {
                 FOREIGN KEY(server_id) REFERENCES servers(id)
             )
         `);
-
         // ── Ranks ─────────────────────────────────────────────────────────────
         await dbRun(`
             CREATE TABLE IF NOT EXISTS ranks (
@@ -75,7 +70,6 @@ module.exports = {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
         // ── User-Server-Rank Assignments ──────────────────────────────────────
         await dbRun(`
             CREATE TABLE IF NOT EXISTS user_server_ranks (
@@ -88,7 +82,6 @@ module.exports = {
                 FOREIGN KEY(rank_id) REFERENCES ranks(id)
             )
         `);
-
         // ── Global Settings ───────────────────────────────────────────────────
         await dbRun(`
             CREATE TABLE IF NOT EXISTS settings (
@@ -96,7 +89,6 @@ module.exports = {
                 value TEXT
             )
         `);
-
         // ── Account Creation Tokens ───────────────────────────────────────────
         await dbRun(`
             CREATE TABLE IF NOT EXISTS account_creation_tokens (
@@ -110,7 +102,6 @@ module.exports = {
                 FOREIGN KEY(created_by) REFERENCES users(id)
             )
         `);
-
         // ── Discord Bots ──────────────────────────────────────────────────────
         await dbRun(`
             CREATE TABLE IF NOT EXISTS discord_bots (
@@ -125,7 +116,6 @@ module.exports = {
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
         // ── Discord Bot-Server Assignments ────────────────────────────────────
         await dbRun(`
             CREATE TABLE IF NOT EXISTS discord_bot_servers (
@@ -136,7 +126,6 @@ module.exports = {
                 FOREIGN KEY(server_id) REFERENCES servers(id) ON DELETE CASCADE
             )
         `);
-
         // ── Discord Integrations ──────────────────────────────────────────────
         await dbRun(`
             CREATE TABLE IF NOT EXISTS discord_integrations (
@@ -157,7 +146,6 @@ module.exports = {
                 FOREIGN KEY(server_id) REFERENCES servers(id) ON DELETE CASCADE
             )
         `);
-
         // ── User Custom Accent Colors ─────────────────────────────────────────
         await dbRun(`
             CREATE TABLE IF NOT EXISTS user_custom_accents (
@@ -169,7 +157,6 @@ module.exports = {
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         `);
-
         // ── Backfill columns for existing databases ───────────────────────────
         const backfill = [
             `ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0`,
@@ -191,12 +178,10 @@ module.exports = {
             `ALTER TABLE discord_integrations ADD COLUMN bot_id INTEGER`,
             `ALTER TABLE discord_integrations ADD COLUMN category_id TEXT`,
         ];
-
         for (const sql of backfill) {
-            await dbRun(sql).catch(() => {}); // column already exists — safe to ignore
+            await dbRun(sql).catch(() => { }); // column already exists — safe to ignore
         }
     },
-
     down: async (dbRun) => {
         // Drop tables in reverse dependency order
         await dbRun(`DROP TABLE IF EXISTS user_custom_accents`);
@@ -212,3 +197,4 @@ module.exports = {
         await dbRun(`DROP TABLE IF EXISTS users`);
     },
 };
+//# sourceMappingURL=001_initial_schema.js.map
