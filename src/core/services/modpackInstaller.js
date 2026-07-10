@@ -127,7 +127,7 @@ async function createModpackServer({ name, ram_mb, port, projectId, versionId, u
     if (!software) {
         throw new Error(`Unsupported mod loader(s): ${(versionData.loaders || []).join(', ') || 'none'}`);
     }
-    const mcVersion = pickMcVersion(versionData);
+    const mcVersion = pickMcVersion(versionData, null);
     if (!mcVersion)
         throw new Error('Could not determine Minecraft version from modpack');
     const uuid = crypto.randomUUID();

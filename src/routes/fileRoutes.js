@@ -92,22 +92,22 @@ const upload = multer({
             try {
                 const server = await getServer(req.params.serverId);
                 if (!server)
-                    return cb(new Error('Server not found'));
+                    return cb(new Error('Server not found'), '');
                 const safePath = getSafePath(getServerDir(server), req.body.path || '');
                 cb(null, safePath);
             }
             catch (e) {
-                cb(e);
+                cb(e, '');
             }
         },
         filename: (req, file, cb) => {
             const safeName = path.basename(file.originalname).replace(/[^\w.\-]/g, '_');
             if (!safeName || safeName === '.' || safeName === '..') {
-                return cb(new Error('Invalid filename'));
+                return cb(new Error('Invalid filename'), '');
             }
             const ext = path.extname(safeName).toLowerCase();
             if (BLOCKED_EXTENSIONS.has(ext)) {
-                return cb(Object.assign(new Error(`File extension '${ext}' is blocked for security reasons`), { code: 'BLOCKED_EXTENSION' }));
+                return cb(Object.assign(new Error(`File extension '${ext}' is blocked for security reasons`), { code: 'BLOCKED_EXTENSION' }), '');
             }
             cb(null, safeName);
         }

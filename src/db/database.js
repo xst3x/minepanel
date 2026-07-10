@@ -128,7 +128,7 @@ const listBackups = () => {
         .map(f => ({
         filename: f,
         path: path.join(backupDir, f),
-        size: fs.statSync(path.join(backupDir, f)).size,
+        size: Number(fs.statSync(path.join(backupDir, f)).size),
     }));
 };
 exports.listBackups = listBackups;
@@ -200,7 +200,7 @@ const ensureAdminAccount = async () => {
     const crypto = require('crypto');
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*';
     const bytes = crypto.randomBytes(15);
-    const password = Array.from(bytes, b => chars[b % chars.length]).join('');
+    const password = Array.from(bytes, (b) => chars[b % chars.length]).join('');
     // ── Hash and insert — errors propagate up to initDb (→ process.exit(1)) ──
     const hash = await bcrypt.hash(password, 12);
     await dbRun('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', ['admin', hash, 'admin']);

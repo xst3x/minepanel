@@ -186,7 +186,7 @@ router.post('/settings', authenticateToken, validate(V.panelSettings), async (re
         if (updated.ftpEnabled === true) {
             if (!ftpRunning) {
                 try {
-                    await initFtpServer(updated.ftpPort);
+                    await initFtpServer();
                 }
                 catch (ftpErr) {
                     logger.error('[FTP] Failed to start FTP service:', ftpErr);
@@ -343,7 +343,7 @@ function checkPortFree(port) {
     return new Promise((resolve) => {
         const server = net.createServer();
         server.once('error', () => resolve(false));
-        server.once('listening', () => { server.close(() => resolve(true)); });
+        server.once('listening', () => { server.close(); resolve(true); });
         server.listen(port);
     });
 }

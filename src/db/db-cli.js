@@ -32,7 +32,7 @@ const dbAll = (sql, params = []) => new Promise((resolve, reject) => {
     db.all(sql, params, (err, rows) => { err ? reject(err) : resolve(rows || []); });
 });
 const { runMigrations, rollbackTo, getMigrationStatus } = require('./src/db/migrationRunner');
-const database_1 = require("./src/db/database");
+const database_1 = require("../db/database");
 const cmd = process.argv[2];
 async function main() {
     switch (cmd) {

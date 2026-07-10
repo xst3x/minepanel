@@ -64,7 +64,7 @@ router.put('/', authenticateToken, checkPermission('server.properties.write'), a
         const merged = { ...existing };
         for (const [metric, cfg] of Object.entries(incoming)) {
             merged[metric] = {
-                enabled: !!cfg.enabled,
+                enabled: !!(cfg.enabled),
                 thresholds: (cfg.thresholds || []).map(t => ({
                     id: t.id || genId(),
                     value: Number(t.value),

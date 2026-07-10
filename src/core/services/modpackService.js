@@ -107,8 +107,8 @@ async function getGameVersions() {
             .filter(t => t.version_type === 'release' && /^(\d+\.)+\d+$/.test(t.version))
             .map(t => t.version)
             .sort((a, b) => {
-            const pa = a.split('.').map(Number);
-            const pb = b.split('.').map(Number);
+            const pa = String(a).split('.').map(Number);
+            const pb = String(b).split('.').map(Number);
             for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
                 const diff = (pb[i] || 0) - (pa[i] || 0);
                 if (diff !== 0)
@@ -163,7 +163,7 @@ async function getProjectVersions(projectId) {
         loaders: (v.loaders || []).filter(l => LOADERS.includes(l)),
         source: 'modrinth',
     }))
-        .sort((a, b) => new Date(b.date_published) - new Date(a.date_published));
+        .sort((a, b) => new Date(b.date_published).getTime() - new Date(a.date_published).getTime());
 }
 async function getVersion(versionId) {
     return fetchJson(`${MODRINTH_BASE}/version/${encodeURIComponent(versionId)}`);

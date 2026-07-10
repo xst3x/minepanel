@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
 import { toast, showConfirm } from '../../components/Toast.tsx';
 import Select from '../../components/Select.tsx';
+import ColorWell from '../../components/ColorWell.tsx';
 import '../../styles/pages/server/Properties.css';
 
 const MC_COLORS = [
@@ -61,223 +62,7 @@ const normalizeVal = (raw) => {
   return map[String(raw).toLowerCase()] || String(raw).toLowerCase();
 };
 
-// ── Color Picker Component ────────────────────────────────────────────────────
-function CustomColorPicker({ onClose, onApply }) {
-  const canvasRef = useRef(null);
-  const cursorRef = useRef(null);
-  const [brightness, setBrightness] = useState(50);
-  const [wheelH, setWheelH] = useState(0);
-  const [wheelS, setWheelS] = useState(0);
-  const [hex, setHex] = useState('#6366f1');
-  const [colorName, setColorName] = useState('');
-  const dragging = useRef(false);
-  const hRef = useRef(0);
-  const sRef = useRef(0);
 
-  function hslToRgb(h, s, l) {
-    s /= 100; l /= 100;
-    const k = n => (n + h / 30) % 12;
-    const a = s * Math.min(l, 1 - l);
-    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-    return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
-  }
-  function rgbToHsl(r, g, b) {
-    r /= 255; g /= 255; b /= 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    let h = 0, s = 0, l = (max + min) / 2;
-    if (max !== min) {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      switch (max) {
-        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-        case g: h = ((b - r) / d + 2) / 6; break;
-        case b: h = ((r - g) / d + 4) / 6; break;
-      }
-    }
-    return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
-  }
-  function toHex(r, g, b) {
-    return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-  }
-  function hexToRgb(h) {
-    const c = h.replace('#', '');
-    if (c.length !== 6) return null;
-    return [parseInt(c.slice(0, 2), 16), parseInt(c.slice(2, 4), 16), parseInt(c.slice(4, 6), 16)];
-  }
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const cx = canvas.width / 2, cy = canvas.height / 2, r = cx - 2;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let angle = 0; angle < 360; angle++) {
-      const startAngle = (angle - 0.5) * Math.PI / 180;
-      const endAngle = (angle + 1.5) * Math.PI / 180;
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      grad.addColorStop(0, `hsl(${angle},0%,50%)`);
-      grad.addColorStop(1, `hsl(${angle},100%,50%)`);
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, r, startAngle, endAngle);
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
-    }
-    const radGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.15);
-    radGrad.addColorStop(0, 'rgba(128,128,128,1)');
-    radGrad.addColorStop(1, 'rgba(128,128,128,0)');
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = radGrad; ctx.fill();
-  }, []);
-
-  const syncFromHSL = useCallback((h, s, l) => {
-    const [r, g, b] = hslToRgb(h, s, l);
-    setHex(toHex(r, g, b));
-    const canvas = canvasRef.current;
-    if (canvas && cursorRef.current) {
-      const cx = canvas.width / 2;
-      const rad = h * Math.PI / 180;
-      const dist = (s / 100) * (cx - 4);
-      cursorRef.current.style.left = (cx + Math.cos(rad) * dist) + 'px';
-      cursorRef.current.style.top  = (cx + Math.sin(rad) * dist) + 'px';
-    }
-  }, []);
-
-  useEffect(() => { syncFromHSL(wheelH, wheelS, brightness); }, [wheelH, wheelS, brightness]);
-
-  function pickWheel(x, y) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const cx = canvas.width / 2;
-    const dx = x - cx, dy = y - cx;
-    const dist = Math.min(Math.sqrt(dx * dx + dy * dy), cx - 4);
-    const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
-    const sat = dist / (cx - 4) * 100;
-    hRef.current = angle;
-    sRef.current = sat;
-    setWheelH(angle);
-    setWheelS(sat);
-  }
-
-  function onMouseDown(e) {
-    dragging.current = true;
-    const rc = canvasRef.current.getBoundingClientRect();
-    pickWheel(e.clientX - rc.left, e.clientY - rc.top);
-  }
-
-  useEffect(() => {
-    function onMove(e) {
-      if (!dragging.current) return;
-      const rc = canvasRef.current?.getBoundingClientRect();
-      if (rc) pickWheel(e.clientX - rc.left, e.clientY - rc.top);
-    }
-    function onUp() { dragging.current = false; }
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-  }, []);
-
-  const [r2, g2, b2] = hslToRgb(wheelH, wheelS, 10);
-  const [r3, g3, b3] = hslToRgb(wheelH, wheelS, 90);
-  const trackGrad = `linear-gradient(to right, rgb(${r2},${g2},${b2}), rgb(${r3},${g3},${b3}))`;
-
-  return (
-    <div className="modal-overlay active" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Pick a Custom Color</h3>
-          <button className="close-btn" onClick={onClose}>&times;</button>
-        </div>
-        <div className="modal-body" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', gap: '2rem' }}>
-            {/* Color wheel */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-              <canvas
-                ref={canvasRef}
-                width={200}
-                height={200}
-                onMouseDown={onMouseDown}
-                style={{ cursor: 'crosshair', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', display: 'block' }}
-              />
-              <div
-                ref={cursorRef}
-                style={{
-                  position: 'absolute',
-                  width: '12px',
-                  height: '12px',
-                  border: '2px solid white',
-                  borderRadius: '50%',
-                  pointerEvents: 'none',
-                  marginTop: '-216px',
-                  boxShadow: '0 0 0 1px rgba(0,0,0,0.5)',
-                  transform: 'translate(-6px, -6px)'
-                }}
-              />
-            </div>
-
-            {/* Controls */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
-              {/* Brightness slider */}
-              <div>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>Brightness</label>
-                <input
-                  type="range"
-                  min="0" max="100" value={brightness}
-                  onChange={e => setBrightness(Number(e.target.value))}
-                  style={{ width: '100%' }}
-                />
-              </div>
-
-              {/* Hex input */}
-              <div>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Hex</label>
-                <input
-                  type="text"
-                  value={hex}
-                  onChange={e => {
-                    setHex(e.target.value);
-                    const rgb = hexToRgb(e.target.value);
-                    if (rgb) {
-                      const [h, s, l] = rgbToHsl(...rgb);
-                      setWheelH(h);
-                      setWheelS(s);
-                      setBrightness(l);
-                    }
-                  }}
-                  style={{ width: '100%', padding: '8px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'var(--font-mono)' }}
-                />
-              </div>
-
-              {/* Color preview */}
-              <div style={{
-                width: '100%',
-                height: '60px',
-                background: hex,
-                border: '2px dashed var(--border)',
-                borderRadius: 'var(--radius)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                color: 'var(--text)',
-                textShadow: '0 0 2px rgba(0,0,0,0.5)'
-              }}>
-                {hex.toUpperCase()}
-              </div>
-
-              {/* Action buttons */}
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button className="btn outline" onClick={onClose}>Cancel</button>
-                <button className="btn primary" onClick={() => onApply(hex)} style={{ flex: 1 }}>Apply Color</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function ServerProperties() {
   const { serverId } = useOutletContext();
@@ -297,11 +82,11 @@ export default function ServerProperties() {
   const [motdVal, setMotdVal] = useState('');
   const [motdPreviewHtml, setMotdPreviewHtml] = useState('');
   const [showSpecialChars, setShowSpecialChars] = useState(false);
+  const [pickedCustomColor, setPickedCustomColor] = useState('');
+  const [showColorWell, setShowColorWell] = useState(false);
   const motdTextareaRef = useRef(null);
 
-  // Custom Color States
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [customColor, setCustomColor] = useState('');
+
 
   useEffect(() => {
     loadProperties();
@@ -413,25 +198,88 @@ export default function ServerProperties() {
     let html = '';
     let i = 0;
     let currentColor = '#aaa';
+    let bold = false;
+    let italic = false;
+    let underline = false;
+    let strikethrough = false;
+    let obfuscated = false;
+
+    const getSpanOpen = (color, b, it, u, s, ob) => {
+      let styles = `color: ${color};`;
+      if (b) styles += ' font-weight: bold;';
+      if (it) styles += ' font-style: italic;';
+      let dec = '';
+      if (u) dec += ' underline';
+      if (s) dec += ' line-through';
+      if (dec) styles += ` text-decoration:${dec};`;
+      const className = ob ? 'class="motd-obfuscated"' : '';
+      return `<span style="${styles}" ${className}>`;
+    };
+
+    let currentSpanContent = '';
+
+    const closeAndStartNew = (newColor, newB, newIt, newU, newS, newOb) => {
+      if (currentSpanContent) {
+        html += getSpanOpen(currentColor, bold, italic, underline, strikethrough, obfuscated) + currentSpanContent + '</span>';
+        currentSpanContent = '';
+      }
+      currentColor = newColor;
+      bold = newB;
+      italic = newIt;
+      underline = newU;
+      strikethrough = newS;
+      obfuscated = newOb;
+    };
+
     while (i < text.length) {
       if (text[i] === '&' && i + 1 < text.length) {
-        const code = text[i + 1];
+        // Hex color: &#RRGGBB
+        if (text[i + 1] === '#' && i + 7 < text.length) {
+          const hexCode = text.substring(i + 2, i + 8);
+          if (/^[0-9a-fA-F]{6}$/.test(hexCode)) {
+            closeAndStartNew('#' + hexCode, bold, italic, underline, strikethrough, obfuscated);
+            i += 8;
+            continue;
+          }
+        }
+
+        const code = text[i + 1].toLowerCase();
         if (code === 'r') {
-          currentColor = '#aaa';
+          closeAndStartNew('#aaa', false, false, false, false, false);
           i += 2;
         } else if (colorMap[code]) {
-          currentColor = colorMap[code];
+          closeAndStartNew(colorMap[code], false, false, false, false, false);
+          i += 2;
+        } else if (code === 'l') {
+          closeAndStartNew(currentColor, true, italic, underline, strikethrough, obfuscated);
+          i += 2;
+        } else if (code === 'o') {
+          closeAndStartNew(currentColor, bold, true, underline, strikethrough, obfuscated);
+          i += 2;
+        } else if (code === 'n') {
+          closeAndStartNew(currentColor, bold, italic, true, strikethrough, obfuscated);
+          i += 2;
+        } else if (code === 'm') {
+          closeAndStartNew(currentColor, bold, italic, underline, true, obfuscated);
+          i += 2;
+        } else if (code === 'k') {
+          closeAndStartNew(currentColor, bold, italic, underline, strikethrough, true);
           i += 2;
         } else {
-          html += text[i];
+          currentSpanContent += text[i];
           i++;
         }
       } else {
-        html += text[i];
+        currentSpanContent += text[i];
         i++;
       }
     }
-    return `<span style="color:${currentColor}">${html}</span>`;
+
+    if (currentSpanContent) {
+      html += getSpanOpen(currentColor, bold, italic, underline, strikethrough, obfuscated) + currentSpanContent + '</span>';
+    }
+
+    return html;
   }, []);
 
   useEffect(() => {
@@ -473,6 +321,9 @@ export default function ServerProperties() {
     const categoryKeys = keys.filter(k => {
       if (activeCat === 'other') {
         return !Object.values(CATEGORIES).some(arr => arr.includes(k)) && k !== 'motd';
+      }
+      if (activeCat === 'world') {
+        return CATEGORIES[activeCat]?.includes(k) && k !== 'motd' && !['level-type', 'level-seed', 'generator-settings', 'generate-structures'].includes(k);
       }
       return CATEGORIES[activeCat]?.includes(k) && k !== 'motd';
     });
@@ -634,119 +485,118 @@ export default function ServerProperties() {
               ))}
             </div>
 
-            {/* Custom MOTD Editor */}
+            {/* Custom MOTD Editor Refinement */}
             {activeCat === 'gameplay' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
                 <span className="prop-label" style={{ fontWeight: 600 }}>Message of the Day (MOTD)</span>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {/* Colors */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                    {MC_COLORS.map(c => (
+                  {/* Compact formatting toolbar */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                    {/* Compact Color Palette */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginRight: '6px' }}>
+                      {MC_COLORS.map(c => (
+                        <button
+                          key={c.code}
+                          type="button"
+                          title={`&${c.code} - ${c.name}`}
+                          onClick={() => insertTextAtCursor(`&${c.code}`)}
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: c.hex,
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            cursor: 'pointer',
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '8px',
+                            fontWeight: 'bold',
+                            color: ['0','1','2','3','4','5','8'].includes(c.code) ? '#fff' : '#000',
+                            transition: 'transform 0.1s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
+                          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          {c.code}
+                        </button>
+                      ))}
+                      
+                      {/* Custom color button */}
                       <button
-                        key={c.code}
                         type="button"
-                        title={`&${c.code} - ${c.name}`}
-                        onClick={() => insertTextAtCursor(`&${c.code}`)}
+                        title="Custom Color"
+                        onClick={() => {
+                          setShowColorWell(true);
+                        }}
                         style={{
-                          width: '22px',
-                          height: '22px',
-                          borderRadius: 'var(--radius-sm)',
-                          background: c.hex,
-                          border: '1px solid rgba(255,255,255,0.12)',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: pickedCustomColor || 'linear-gradient(135deg, #ff2400, #e81d1d, #e8b01d, #1de840, #1ddde8, #2b1de8, #dd1de8)',
+                          border: '1px solid rgba(255,255,255,0.2)',
                           cursor: 'pointer',
                           padding: 0,
-                          flexShrink: 0,
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: '9px',
-                          fontWeight: 700,
-                          color: ['0','1','2','3','4','5','8'].includes(c.code) ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          color: '#fff',
+                          textShadow: '0px 0px 2px rgba(0,0,0,0.8)',
+                          transition: 'transform 0.1s ease',
+                          flexShrink: 0
                         }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                       >
-                        {c.code}
+                        +
                       </button>
-                    ))}
-                    <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 2px' }} />
-                  </div>
+                    </div>
 
-                  {/* Formats */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center' }}>
+                    <div style={{ width: '1px', height: '16px', background: 'var(--border)', margin: '0 4px' }} />
+
+                    {/* Compact style buttons */}
                     {MC_FORMATS.map(f => (
                       <button
                         key={f.code}
                         type="button"
                         title={f.title}
                         className="btn outline small"
-                        style={{ minWidth: '30px' }}
+                        style={{ padding: '2px 8px', fontSize: '0.75rem', height: '24px', minWidth: '24px' }}
                         dangerouslySetInnerHTML={{ __html: f.label }}
                         onClick={() => insertTextAtCursor(`&${f.code}`)}
                       />
                     ))}
-                    <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 2px' }} />
+
+                    <div style={{ width: '1px', height: '16px', background: 'var(--border)', margin: '0 4px' }} />
+
                     <button
                       type="button"
                       className="btn outline small"
+                      style={{ padding: '2px 8px', fontSize: '0.75rem', height: '24px' }}
                       onClick={() => setMotdVal(prev => prev.replace(/&[0-9a-fk-or]/gi, ''))}
                     >
-                      Clear codes
+                      Clear Codes
                     </button>
-                  </div>
-
-                  {/* Input Textarea */}
-                  <textarea
-                    ref={motdTextareaRef}
-                    rows="2"
-                    spellcheck="false"
-                    placeholder="e.g. &aWelcome to &6My Server!"
-                    value={motdVal}
-                    onChange={(e) => setMotdVal(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius)',
-                      color: 'var(--text)',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '13px',
-                      resize: 'vertical',
-                      outline: 'none',
-                      lineHeight: 1.5
-                    }}
-                  />
-
-                  {/* Preview Box */}
-                  <div
-                    style={{
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius)',
-                      padding: '9px 14px',
-                      minHeight: '36px',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '13.5px',
-                      lineHeight: 1.5,
-                      wordBreak: 'break-all',
-                      color: '#aaa'
-                    }}
-                    dangerouslySetInnerHTML={{ __html: motdPreviewHtml || '<span style="color:#444">preview...</span>' }}
-                  />
-
-                  {/* Special Chars Toggle */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button
                       type="button"
                       className="btn outline small"
+                      style={{ padding: '2px 8px', fontSize: '0.75rem', height: '24px' }}
+                      onClick={() => setMotdVal(properties.motd || '')}
+                    >
+                      Reset
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${showSpecialChars ? 'primary' : 'outline'} small`}
+                      style={{ padding: '2px 8px', fontSize: '0.75rem', height: '24px' }}
                       onClick={() => setShowSpecialChars(!showSpecialChars)}
                     >
-                      Special chars {showSpecialChars ? '▲' : '▼'}
+                      Chars {showSpecialChars ? '▲' : '▼'}
                     </button>
-                    <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                      Click a color or format to insert at cursor
-                    </span>
                   </div>
 
                   {/* Special Chars Panel */}
@@ -755,8 +605,8 @@ export default function ServerProperties() {
                       background: 'var(--bg-input)',
                       border: '1px solid var(--border)',
                       borderRadius: 'var(--radius)',
-                      padding: '8px',
-                      maxHeight: '120px',
+                      padding: '6px',
+                      maxHeight: '100px',
                       overflowY: 'auto'
                     }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
@@ -766,14 +616,14 @@ export default function ServerProperties() {
                             type="button"
                             onClick={() => insertTextAtCursor(ch)}
                             style={{
-                              width: '26px',
-                              height: '26px',
+                              width: '24px',
+                              height: '24px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               cursor: 'pointer',
                               borderRadius: 'var(--radius-sm)',
-                              fontSize: '14px',
+                              fontSize: '0.85rem',
                               background: 'none',
                               border: '1px solid transparent',
                               color: 'var(--text)',
@@ -786,51 +636,222 @@ export default function ServerProperties() {
                       </div>
                     </div>
                   )}
+
+                  {/* Input Textarea with character counter inside wrapper */}
+                  <div style={{ position: 'relative' }}>
+                    <textarea
+                      ref={motdTextareaRef}
+                      rows={2}
+                      spellCheck="false"
+                      placeholder="e.g. &aWelcome to &6My Server!"
+                      value={motdVal}
+                      onChange={(e) => setMotdVal(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px 24px 12px',
+                        background: 'var(--bg-input)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius)',
+                        color: 'var(--text)',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.85rem',
+                        resize: 'vertical',
+                        outline: 'none',
+                        lineHeight: 1.4
+                      }}
+                    />
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '6px',
+                      right: '12px',
+                      fontSize: '0.7rem',
+                      color: 'var(--text-secondary)',
+                      fontFamily: 'var(--font-mono)',
+                      pointerEvents: 'none'
+                    }}>
+                      {motdVal.length} chars
+                    </div>
+                  </div>
+
+                  {/* Compact Live Preview inspired by Minecraft list */}
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em', marginTop: '4px' }}>
+                    MULTIPLAYER PREVIEW
+                  </div>
+                  <div className="motd-live-preview-box">
+                    <div className="motd-preview-icon-container">
+                      {iconUrl ? (
+                        <img
+                          src={iconUrl}
+                          alt="Server Icon"
+                          className="motd-preview-icon-img"
+                        />
+                      ) : (
+                        <span style={{ fontSize: '1.2rem' }}>⛏️</span>
+                      )}
+                    </div>
+                    <div className="motd-preview-text-col">
+                      <div className="motd-preview-top-row">
+                        <span className="motd-preview-server-title">
+                          {properties['level-name'] || 'Minecraft Server'}
+                        </span>
+                        <div className="motd-preview-status-group">
+                          <span className="motd-preview-players">
+                            0 / {properties['max-players'] || '20'}
+                          </span>
+                          <div className="motd-preview-ping" title="0ms latency">
+                            <span className="motd-preview-ping-bar"></span>
+                            <span className="motd-preview-ping-bar"></span>
+                            <span className="motd-preview-ping-bar"></span>
+                            <span className="motd-preview-ping-bar"></span>
+                            <span className="motd-preview-ping-bar"></span>
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        className="motd-preview-rendered-body"
+                        dangerouslySetInnerHTML={{ __html: motdPreviewHtml || '<span style="color:#aaa">A Minecraft Server</span>' }}
+                      />
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}
 
-            {/* Custom Color Picker Section */}
-            {activeCat === 'gameplay' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
-                <span className="prop-label" style={{ fontWeight: 600 }}>Custom Color</span>
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  Pick a custom color for your server branding or panel theme (stored locally).
-                </p>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <div
-                    style={{
-                      width: '60px',
-                      height: '60px',
-                      borderRadius: 'var(--radius)',
-                      background: customColor || '#6366f1',
-                      border: '2px solid var(--border)',
-                      boxShadow: 'var(--shadow-sm)',
-                      flexShrink: 0
-                    }}
-                  />
-                  <button
-                    className="btn primary"
-                    onClick={() => setShowColorPicker(true)}
-                  >
-                    Open Color Picker
-                  </button>
-                  {customColor && (
+            {/* Custom World Generator Configuration */}
+            {activeCat === 'world' && (() => {
+              const GENERATOR_TYPES = [
+                { id: 'minecraft:normal', label: 'Normal', desc: 'Standard Minecraft terrain generation.' },
+                { id: 'minecraft:flat', label: 'Flat', desc: 'A completely flat world, useful for creative builds.' },
+                { id: 'minecraft:large_biomes', label: 'Large Biomes', desc: 'Standard terrain but biomes are much larger.' },
+                { id: 'minecraft:amplified', label: 'Amplified', desc: 'Massive mountains and deep valleys.' },
+                { id: 'minecraft:single_biome_surface', label: 'Single Biome', desc: 'A world consisting entirely of one biome.' }
+              ];
+              const activeType = properties['level-type'] || 'minecraft:normal';
+              const isKnown = GENERATOR_TYPES.some(g => g.id === activeType);
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
+                  <div>
+                    <span className="prop-label" style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>World Generator Type (level-type)</span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Select the generator style for this world. Data-driven to support future types.</span>
+                  </div>
+
+                  {/* Compact selector grid */}
+                  <div className="generator-selector-grid">
+                    {GENERATOR_TYPES.map(g => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        className={`generator-type-btn ${activeType === g.id ? 'active' : ''}`}
+                        onClick={() => handlePropChange('level-type', g.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handlePropChange('level-type', g.id);
+                          }
+                        }}
+                      >
+                        <span className="generator-type-label">{g.label}</span>
+                        <span className="generator-type-desc">{g.desc}</span>
+                      </button>
+                    ))}
                     <button
-                      className="btn outline"
-                      onClick={() => setCustomColor('')}
+                      type="button"
+                      className={`generator-type-btn ${!isKnown ? 'active' : ''}`}
+                      onClick={() => {
+                        if (isKnown) {
+                          handlePropChange('level-type', 'custom');
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          if (isKnown) {
+                            handlePropChange('level-type', 'custom');
+                          }
+                        }
+                      }}
                     >
-                      Reset
+                      <span className="generator-type-label">Custom</span>
+                      <span className="generator-type-desc">Specify a custom or modded world type manually.</span>
                     </button>
+                  </div>
+
+                  {/* Conditional Text Input for Custom Generator Key */}
+                  {(!isKnown || activeType === 'custom') && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', padding: '12px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Custom Generator Key</span>
+                      <input
+                        type="text"
+                        value={activeType === 'custom' ? '' : activeType}
+                        onChange={(e) => handlePropChange('level-type', e.target.value)}
+                        placeholder="e.g. minecraft:flat"
+                        style={{ width: '100%', padding: '8px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)' }}
+                      />
+                    </div>
                   )}
+
+                  {/* Conditional UI: generator-settings */}
+                  {(activeType === 'minecraft:flat' || !isKnown) && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', padding: '12px', background: 'var(--bg-input)', border: '1px dashed var(--border)', borderRadius: 'var(--radius)' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Flat Generator Layer Configurations (generator-settings)</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Configure flat layers or structures (e.g. layers of dirt, stone, bedrock).</span>
+                      <input
+                        type="text"
+                        value={properties['generator-settings'] || ''}
+                        onChange={(e) => handlePropChange('generator-settings', e.target.value)}
+                        placeholder="e.g. 3;minecraft:bedrock,2*minecraft:dirt,minecraft:grass_block;1;village"
+                        style={{ width: '100%', padding: '8px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'var(--font-mono)' }}
+                      />
+                    </div>
+                  )}
+
+                  {/* World Seed */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                    <span className="prop-label" style={{ fontWeight: 600 }}>World Seed (level-seed)</span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>A seed for reproducible world generation. Leave blank for random.</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        value={properties['level-seed'] || ''}
+                        onChange={(e) => handlePropChange('level-seed', e.target.value)}
+                        style={{ flex: 1, padding: '8px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'var(--font-mono)' }}
+                        placeholder="Random seed"
+                      />
+                      <button
+                        type="button"
+                        className="btn outline"
+                        onClick={() => {
+                          const randomSeed = Math.floor(Math.random() * 20000000000000) - 10000000000000;
+                          handlePropChange('level-seed', String(randomSeed));
+                          toast('Seed rolled: ' + randomSeed, 'info');
+                        }}
+                      >
+                        Roll Seed
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Generate Structures */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                    <div>
+                      <span className="prop-label" style={{ fontWeight: 600, display: 'block' }}>Generate Structures</span>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Generate villages, dungeons, and mineshafts.</span>
+                    </div>
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={properties['generate-structures'] === 'true'}
+                        onChange={(e) => handlePropChange('generate-structures', e.checked ? 'true' : 'false')}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+
                 </div>
-                {customColor && (
-                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                    {customColor.toUpperCase()}
-                  </p>
-                )}
-              </div>
-            )}
+              );
+            })()}
 
             {/* Properties List Grid */}
             <div className="props-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
@@ -903,15 +924,15 @@ export default function ServerProperties() {
           </div>
         </div>
       )}
-
-      {/* Custom Color Picker Modal */}
-      {showColorPicker && (
-        <CustomColorPicker
-          onClose={() => setShowColorPicker(false)}
+      {/* Color Well Modal */}
+      {showColorWell && (
+        <ColorWell
+          onClose={() => setShowColorWell(false)}
           onApply={(hex) => {
-            setCustomColor(hex);
-            setShowColorPicker(false);
-            toast(`Custom color set to ${hex}`, 'success');
+            setPickedCustomColor(hex);
+            insertTextAtCursor(`&#${hex.replace('#', '')}`);
+            setShowColorWell(false);
+            toast(`Custom color: ${hex}`, 'success');
           }}
         />
       )}

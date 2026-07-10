@@ -14,7 +14,7 @@ const logger = require("../utils/logger");
  */
 async function registerCommands(token, clientId, guildId) {
     const rest = new discord_js_1.REST({ version: '10' }).setToken(token);
-    const commandData = commands.map(cmd => cmd.data.toJSON());
+    const commandData = commands.map((cmd) => cmd.data.toJSON());
     await rest.put(discord_js_1.Routes.applicationGuildCommands(clientId, guildId), { body: commandData });
     logger.info(`[Discord] Registered ${commandData.length} slash commands for guild ${guildId}`);
 }

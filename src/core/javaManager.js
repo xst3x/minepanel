@@ -44,8 +44,7 @@ function checkJavaVersion(javaExe) {
         // java -version writes to stderr; capture both streams
         const out = (0, child_process_1.execFileSync)(javaExe, ['-version'], {
             encoding: 'utf8',
-            stdio: ['pipe', 'pipe', 'pipe'],
-            stderr: 'pipe'
+            stdio: ['pipe', 'pipe', 'pipe']
         });
         const combined = out;
         const m = combined.match(/version "(\d+)/);
@@ -75,7 +74,7 @@ function download(url, dest) {
                     return reject(new Error(`HTTP ${res.statusCode} for ${u}`));
                 const out = fs.createWriteStream(dest);
                 res.pipe(out);
-                out.on('finish', () => out.close(resolve));
+                out.on('finish', () => out.close(() => resolve(null)));
                 out.on('error', reject);
             }).on('error', reject);
         };

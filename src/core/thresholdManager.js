@@ -389,7 +389,8 @@ async function checkThresholds() {
         const child = processManager.processes.get(sid);
         const pid = child && child.pid;
         for (const [metric, cfg] of Object.entries(rules)) {
-            if (!cfg.enabled)
+            const config = cfg;
+            if (!config.enabled)
                 continue;
             let currentValue = null;
             if (metric === 'cpu_temperature') {

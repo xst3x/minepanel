@@ -21,7 +21,7 @@
  */
 'use strict';
 const path = require('path');
-const fs = require("fs");
+const fs = require('fs');
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PHAR_NAME = 'PocketMine-MP.phar';
 /**
@@ -274,7 +274,7 @@ async function checkPluginUpdates(serverDir) {
     for (const file of files) {
         const pluginName = path.basename(file, '.phar');
         try {
-            const info = await getPoggitProjectInfo(pluginName);
+            const info = await getPoggitProjectInfo(pluginName, undefined);
             // In a real scenario, parse phar for local version. For now, mock check:
             updates.push({
                 name: pluginName,
