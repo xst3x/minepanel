@@ -87,6 +87,11 @@ export default function ServerLayout() {
 
   // Lifecycle control functions
   const sendControl = async (action) => {
+    const requiredPerm = `server.${action}`;
+    if (!hasPerm(requiredPerm)) {
+      toast("You don't have permission to do this.", 'error');
+      return;
+    }
     try {
       if (action === 'kill') {
         if (!await showConfirm('Force-kill the server process? This may cause data loss.', 'Force Kill')) return;
@@ -292,10 +297,10 @@ export default function ServerLayout() {
             </div>
           </div>
           <div className="sh-actions" style={{ flexWrap: 'nowrap', gap: '0.4rem' }}>
-            {hasPerm('server.start') && <button className="btn success" onClick={() => sendControl('start')} disabled={status === 'online' || status === 'starting' || status === 'stopping'}>Start</button>}
-            {hasPerm('server.stop') && <button className="btn danger" onClick={() => sendControl('stop')} disabled={status === 'offline' || status === 'stopping'}>Stop</button>}
-            {hasPerm('server.stop') && <button className="btn outline" onClick={() => sendControl('restart')} disabled={status === 'offline' || status === 'starting' || status === 'stopping'}>Restart</button>}
-            {hasPerm('server.stop') && <button className="btn danger" onClick={() => sendControl('kill')} title="Force-kill process" disabled={status === 'offline'}>Kill</button>}
+            <button className="btn success" onClick={() => sendControl('start')} disabled={status === 'online' || status === 'starting' || status === 'stopping'}>Start</button>
+            <button className="btn danger" onClick={() => sendControl('stop')} disabled={status === 'offline' || status === 'stopping'}>Stop</button>
+            <button className="btn outline" onClick={() => sendControl('restart')} disabled={status === 'offline' || status === 'starting' || status === 'stopping'}>Restart</button>
+            <button className="btn danger" onClick={() => sendControl('kill')} title="Force-kill process" disabled={status === 'offline'}>Kill</button>
           </div>
         </div>
 

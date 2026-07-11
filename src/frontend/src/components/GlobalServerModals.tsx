@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { api } from '../lib/api.ts';
+import { api, extractApiErrorMessage } from '../lib/api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { toast, toastProgress } from '../components/Toast.tsx';
 import Select from '../components/Select.tsx';
@@ -30,7 +30,6 @@ export default function GlobalServerModals() {
   const [impSoftware, setImpSoftware] = useState('paper');
   const [impVersion, setImpVersion] = useState('');
   const [impRam, setImpRam] = useState(2048);
-  const [impJar, setImpJar] = useState('');
   const [impRoot, setImpRoot] = useState('');
   const [importProgress, setImportProgress] = useState(null);
   const [impBusy, setImpBusy] = useState(false);
@@ -67,7 +66,6 @@ export default function GlobalServerModals() {
       setImpPort(25565);
       setImpSoftware('paper');
       setImpRam(2048);
-      setImpJar('');
       setImpRoot('');
       setImportProgress(null);
     }
@@ -140,9 +138,20 @@ export default function GlobalServerModals() {
   const handleImportServer = async (e) => {
     e.preventDefault();
     if (!impFile) return toast('Please select a .zip archive first.', 'error');
-    if (!impName) return toast('Server name is required.', 'error');
+    if (!(impFile.name.toLowerCase().endsWith('.zip') || impFile.type === 'application/zip')) {
+      return toast('Only .zip archives are accepted.', 'error');
+    }
+    if (!impName.trim()) return toast('Server name is required.', 'error');
     if (!impVersion) return toast('Minecraft version is required.', 'error');
-    if (!impJar) return toast('Executable path is required.', 'error');
+    if (impRoot.includes('..')) return toast('Server root path cannot contain "..".', 'error');
+    const ramNum = Number(impRam);
+    if (!Number.isFinite(ramNum) || ramNum < 512 || ramNum > 16384) {
+      return toast('RAM must be between 512 and 16384 MB.', 'error');
+    }
+    const portNum = Number(impPort);
+    if (!Number.isFinite(portNum) || portNum < 1024 || portNum > 65535) {
+      return toast('Port must be between 1024 and 65535.', 'error');
+    }
 
     setImpBusy(true);
     setImportProgress({ label: 'Uploading...', pct: 0 });
@@ -154,7 +163,6 @@ export default function GlobalServerModals() {
     fd.append('software', impSoftware);
     fd.append('version', impVersion);
     fd.append('ram_mb', impRam);
-    fd.append('jar_path', impJar);
     fd.append('root_path', impRoot);
 
     const token = localStorage.getItem('mp_token');
@@ -171,21 +179,37 @@ export default function GlobalServerModals() {
 
     xhr.onload = () => {
       setImportProgress({ label: 'Finished', pct: 100 });
-      let data;
-      try { data = JSON.parse(xhr.responseText); } catch { data = { error: 'Invalid server response' }; }
+      let data = null;
+      let parseFailed = false;
+      try { data = JSON.parse(xhr.responseText); } catch { parseFailed = true; }
+
       if (xhr.status >= 200 && xhr.status < 300) {
         close();
         window.dispatchEvent(new Event('mp:server-status-changed'));
-        toast('Server imported successfully.', 'success');
+        toast((data && data.message) || 'Server imported successfully.', 'success');
       } else {
-        toast(data.error || 'Import failed.', 'error');
+        const message = parseFailed
+          ? `Import failed (server returned an unexpected response, status ${xhr.status}).`
+          : extractApiErrorMessage(data, xhr.status);
+        toast(message, 'error');
         setImportProgress(null);
       }
       setImpBusy(false);
     };
 
     xhr.onerror = () => {
-      toast('Network error during import. Please try again.', 'error');
+      toast('Network error during import — check your connection and try again.', 'error');
+      setImportProgress(null);
+      setImpBusy(false);
+    };
+
+    xhr.ontimeout = () => {
+      toast('Import timed out. Large archives can take a while — try again or check server logs.', 'error');
+      setImportProgress(null);
+      setImpBusy(false);
+    };
+
+    xhr.onabort = () => {
       setImportProgress(null);
       setImpBusy(false);
     };
@@ -419,6 +443,13 @@ export default function GlobalServerModals() {
                   <input type="file" ref={fileInputRef} accept=".zip,application/zip" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.[0]) setFileImp(e.target.files[0]); }} />
                 </div>
 
+                <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.75rem 1rem', fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px', color: 'var(--accent)' }}>
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <span>Only your world(s), <code>plugins</code>/<code>mods</code>, <code>config</code> and server config files (server.properties, eula.txt, ops.json, whitelist, bans, permissions.yml, etc.) are imported from the archive. The server executable is never taken from the zip — MinePanel downloads a fresh, official binary for the software and version you select below, exactly like when creating a new server.</span>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Server Name</label>
@@ -472,17 +503,10 @@ export default function GlobalServerModals() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Executable Path <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(inside archive)</span></label>
-                    <input type="text" required placeholder="server.jar or versions/paper.jar" value={impJar} onChange={(e) => setImpJar(e.target.value)} />
-                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Path to the server jar inside the zip (relative to root path).</p>
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Server Root Path <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
-                    <input type="text" placeholder="Leave blank if server is in zip root" value={impRoot} onChange={(e) => setImpRoot(e.target.value)} />
-                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If your server lives in a sub-folder inside the zip, enter that folder name.</p>
-                  </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Server Root Path <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+                  <input type="text" placeholder="Leave blank if server is in zip root" value={impRoot} onChange={(e) => setImpRoot(e.target.value)} />
+                  <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If your server lives in a sub-folder inside the zip, enter that folder name.</p>
                 </div>
 
                 {importProgress && (

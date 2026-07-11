@@ -222,9 +222,9 @@ const EyeOffIcon = ({ size = 16 }) => (
   const handleRpaConfirm = async () => {
     if (!rpaNew || !rpaConfirm) return toast('All fields are required.', 'error');
     try {
-      await api(`/api/users/${selectedUser.id}/change-password`, {
+      await api(`/api/users/${selectedUser.id}/reset-password`, {
         method: 'POST',
-        body: { newPassword: rpaNew, newPasswordConfirm: rpaConfirm }
+        body: { newPassword: rpaNew, confirmPassword: rpaConfirm }
       });
       toast('Password reset successfully.', 'success');
       setActiveModal(null);

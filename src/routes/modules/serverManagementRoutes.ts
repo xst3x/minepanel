@@ -4,7 +4,7 @@ const { db, dbRun, dbGet, dbAll } = databaseModule;
 import authModule = require('../../core/auth')
 const { authenticateToken } = authModule;
 import permissionsModule = require('../../core/permissions')
-const { checkPermission, getEffectivePermissions } = permissionsModule;
+const { checkPermission, checkGlobalPermission, getEffectivePermissions } = permissionsModule;
 import errorsModule = require('../../core/errors')
 const { E, sendError } = errorsModule;
 import validationModule = require('../../middleware/validation')
@@ -38,12 +38,20 @@ router.get('/', authenticateToken, async (req, res) => {
         if (user && user.role === 'admin') {
             servers = await dbAll('SELECT * FROM servers');
         } else {
-            servers = await dbAll(`
-                SELECT DISTINCT s.* FROM servers s
-                LEFT JOIN user_server_permissions p ON s.id = p.server_id AND p.user_id = ?
-                LEFT JOIN user_server_ranks ur ON s.id = ur.server_id AND ur.user_id = ?
-                WHERE s.owner_id = ? OR p.user_id IS NOT NULL OR ur.user_id IS NOT NULL
-            `, [userId, userId, userId]);
+            const globalPerms = await getEffectivePermissions(userId, null);
+            const hasGlobalServerAccess = globalPerms.includes('*') || globalPerms.includes('root') ||
+                globalPerms.some((p: string) => p.startsWith('server.'));
+            if (hasGlobalServerAccess) {
+                servers = await dbAll('SELECT * FROM servers');
+            }
+            else {
+                servers = await dbAll(`
+                    SELECT DISTINCT s.* FROM servers s
+                    LEFT JOIN user_server_permissions p ON s.id = p.server_id AND p.user_id = ?
+                    LEFT JOIN user_server_ranks ur ON s.id = ur.server_id AND ur.user_id = ?
+                    WHERE s.owner_id = ? OR p.user_id IS NOT NULL OR ur.user_id IS NOT NULL
+                `, [userId, userId, userId]);
+            }
         }
         const result = await Promise.all((servers || []).map(async s => ({
             ...s,
@@ -96,15 +104,10 @@ router.get('/:serverId/my-permissions', authenticateToken, async (req, res) => {
     }
 });
 
-// ─── Create server (admin only) ────────────────────────────────────────────
-router.post('/create', authenticateToken, validate(V.createServer), async (req, res) => {
+// ─── Create server (requires server.create permission) ─────────────────────
+router.post('/create', authenticateToken, checkGlobalPermission('server.create'), validate(V.createServer), async (req, res) => {
     const { name, software, version, ram_mb, port } = req.body;
     const userId = req.user.id;
-
-    const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
-    if (!user || user.role !== 'admin') {
-        return sendError(res, E.FORBIDDEN_ADMIN_ONLY, 403);
-    }
 
     if (!name || !software || !version || !ram_mb || !port) {
         return sendError(res, E.SERVER_FIELDS_REQUIRED, 400);
@@ -176,7 +179,7 @@ router.post('/create', authenticateToken, validate(V.createServer), async (req, 
             } catch (dbErr) {
                 logger.error(`Failed to clean up database record ${serverId} after server creation failure:`, dbErr);
             }
-            return sendError(res, E.INTERNAL_ERROR, 500, `Server deployment failed during installation: ${e.message}`);
+            return sendError(res, E.BAD_REQUEST, 400, `Server deployment failed during installation: ${e.message}`);
         } finally {
             processManager.releaseLock(serverId);
         }
@@ -510,22 +513,41 @@ router.delete('/:serverId', authenticateToken, checkPermission('account.manage')
     }
 });
 
-// ─── Import server from zip ────────────────────────────────────────────────
+// ─── Import server: migrate only data/config, always download a fresh jar ──
+
+// Top-level entries (relative to the chosen root path inside the zip) that are
+// safe to carry over — server content & configuration, never binaries.
+const IMPORT_ALLOWED_TOP_LEVEL = new Set([
+    'plugins', 'mods', 'config',
+    'server.properties', 'eula.txt', 'ops.json', 'whitelist.json',
+    'banned-players.json', 'banned-ips.json', 'permissions.yml',
+    'usercache.json', 'help.yml', 'commands.yml',
+    'bukkit.yml', 'spigot.yml', 'paper.yml', 'paper-global.yml', 'paper-world-defaults.yml',
+]);
+
 router.post('/import', authenticateToken, importUpload.single('archive'), async (req, res) => {
+    // server.create also gates import — same privilege level as creating a new server
     const userId = req.user.id;
-    const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
-    if (!user || user.role !== 'admin') {
+    try {
+        const perms = await getEffectivePermissions(userId, null);
+        const allowed = perms.includes('*') || perms.includes('root') || perms.includes('server.create');
+        if (!allowed) {
+            if (req.file) fsp.unlink(req.file.path).catch(() => {});
+            return sendError(res, E.FORBIDDEN, 403, 'Missing global permission: server.create');
+        }
+    } catch (e) {
         if (req.file) fsp.unlink(req.file.path).catch(() => {});
-        return sendError(res, E.FORBIDDEN_ADMIN_ONLY, 403);
+        logger.error(`[serverRoutes] Import permission check error (User: ${userId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
     }
 
     if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No archive uploaded');
 
-    const { name, software: rawSoftware, version, ram_mb, port, jar_path, root_path } = req.body;
+    const { name, software: rawSoftware, version, ram_mb, port, root_path } = req.body;
     const software = (rawSoftware || '').trim().toLowerCase();
-    if (!name || !software || !version || !ram_mb || !port || !jar_path) {
+    if (!name || !software || !version || !ram_mb || !port) {
         fsp.unlink(req.file.path).catch(() => {});
-        return sendError(res, E.BAD_REQUEST, 400, 'Missing required fields: name, software, version, ram_mb, port, jar_path');
+        return sendError(res, E.BAD_REQUEST, 400, 'Missing required fields: name, software, version, ram_mb, port');
     }
 
     const ramNum = parseInt(ram_mb, 10);
@@ -533,7 +555,6 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
     if (ramNum < 512 || ramNum > 16384) { fsp.unlink(req.file.path).catch(() => {}); return sendError(res, E.SERVER_RAM_INVALID, 400); }
     if (portNum < 1024 || portNum > 65535) { fsp.unlink(req.file.path).catch(() => {}); return sendError(res, E.SERVER_PORT_INVALID, 400); }
 
-    const normJar  = jar_path.replace(/^[/\\]+/, '').replace(/\\/g, '/');
     const normRoot = (root_path || '').replace(/^[/\\]+/, '').replace(/\\/g, '/').replace(/\/+$/, '');
 
     const zipPath = req.file.path;
@@ -558,41 +579,70 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
             const zip = new StreamZip(zipPath);
             const entries = zip.getEntries();
             const prefix = normRoot ? normRoot + '/' : '';
-            const toExtract = entries.filter(e => {
-                if (prefix) {
-                    return e.entryName.startsWith(prefix) && e.entryName !== prefix;
-                }
+            const scoped = entries.filter(e => {
+                if (prefix) return e.entryName.startsWith(prefix) && e.entryName !== prefix;
                 return true;
             });
 
-            if (toExtract.length === 0) {
+            if (scoped.length === 0) {
                 throw new Error(`No files found under path "${normRoot}" inside the zip. Check the Server Root Path.`);
             }
 
-            for (const entry of toExtract) {
-                const relativeName = prefix ? entry.entryName.slice(prefix.length) : entry.entryName;
-                if (!relativeName) continue;
-                const destPath = path.join(serverDir, relativeName.replace(/\//g, path.sep));
+            // Auto-detect world folders: any top-level dir that directly contains
+            // a level.dat (works for both Java and Bedrock worlds), regardless of name —
+            // catches custom-named worlds / multiverse setups without a hardcoded list.
+            const worldDirs = new Set();
+            for (const entry of scoped) {
+                const rel = prefix ? entry.entryName.slice(prefix.length) : entry.entryName;
+                const parts = rel.split('/');
+                if (parts.length === 2 && parts[1].toLowerCase() === 'level.dat') {
+                    worldDirs.add(parts[0].toLowerCase());
+                }
+            }
+
+            const isImportable = (rel) => {
+                if (!rel) return false;
+                const top = rel.split('/')[0].toLowerCase();
+                return IMPORT_ALLOWED_TOP_LEVEL.has(top) || worldDirs.has(top);
+            };
+
+            let copiedFiles = 0;
+            const skippedTopLevel = new Set();
+            for (const entry of scoped) {
+                const rel = prefix ? entry.entryName.slice(prefix.length) : entry.entryName;
+                if (!rel) continue;
+                if (!isImportable(rel)) {
+                    skippedTopLevel.add(rel.split('/')[0]);
+                    continue;
+                }
+                const destPath = path.join(serverDir, rel.replace(/\//g, path.sep));
                 if (entry.isDirectory) {
                     await fsp.mkdir(destPath, { recursive: true });
                 } else {
                     await fsp.mkdir(path.dirname(destPath), { recursive: true });
                     const data = zip.readFile(entry);
-                    if (data) await fsp.writeFile(destPath, data);
+                    if (data) { await fsp.writeFile(destPath, data); copiedFiles++; }
                 }
             }
             (zip as any).close ? (zip as any).close() : undefined;
 
-            const jarAbsPath = path.join(serverDir, normJar.replace(/\//g, path.sep));
-            try {
-                await fsp.access(jarAbsPath);
-            } catch {
-                throw new Error(`Jar not found at "${normJar}" inside the extracted archive. Check the Executable Path.`);
-            }
+            logger.info(`Server import ${serverId}: migrated ${copiedFiles} data/config file(s); skipped top-level entries: [${[...skippedTopLevel].join(', ')}] (server binaries are always freshly downloaded).`);
 
-            const stdJar = path.join(serverDir, 'server.jar');
-            if (path.resolve(jarAbsPath) !== path.resolve(stdJar)) {
-                await retryCopy(jarAbsPath, stdJar);
+            // ─── Always download a fresh, official server binary — same path as /create ───
+            const jarInfo = await resolveJar(software, version);
+            const finalJarInfo = await downloadJar(jarInfo);
+
+            if (software === 'bedrock' || software === 'bedrock-preview') {
+                await bedrockAdapter.installBedrock(finalJarInfo.localPath, serverDir, portNum);
+            } else if (software === 'pocketmine') {
+                await pocketmineAdapter.installPocketMine(finalJarInfo.localPath, serverDir, portNum);
+            } else if (software === 'forge') {
+                await runForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+            } else if (software === 'neoforge') {
+                await runNeoForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+            } else {
+                const targetJar = path.join(serverDir, 'server.jar');
+                fs.copyFileSync(finalJarInfo.localPath, targetJar);
             }
 
             const eulaPath = path.join(serverDir, 'eula.txt');
@@ -615,7 +665,13 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
             }
 
             logger.info(`Server import complete: ${serverId} (${dirName})`);
-            res.json({ message: 'Server imported successfully', id: serverId, uuid, directory_name: dirName });
+            res.json({
+                message: `Server imported successfully. World, plugins/mods and configuration were migrated; a fresh ${software} ${version} server binary was downloaded.`,
+                id: serverId,
+                uuid,
+                directory_name: dirName,
+                skipped: [...skippedTopLevel],
+            });
         } finally {
             processManager.releaseLock(serverId);
             fsp.unlink(zipPath).catch(() => {});
@@ -634,7 +690,7 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
             if (e.message.includes('servers.name')) return sendError(res, E.SERVER_NAME_TAKEN, 409);
             if (e.message.includes('servers.port')) return sendError(res, E.SERVER_PORT_TAKEN, 409);
         }
-        return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
+        return sendError(res, E.BAD_REQUEST, 400, e.message || 'Import failed. Check your archive and root path.');
     }
 });
 

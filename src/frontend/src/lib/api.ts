@@ -32,6 +32,26 @@ const ERROR_MESSAGES = {
   USER_PASSWORD_TOO_SHORT:      'Password must be at least 8 characters.',
 };
 
+// Shared error-message extraction, so any request path (fetch-based api()
+// or a raw XMLHttpRequest like the server-import uploader) surfaces the
+// same real, human-readable reason instead of a generic "unknown error".
+export function extractApiErrorMessage(data, status) {
+  const code = data?.code;
+  return (
+    (code && ERROR_MESSAGES[code]) ||
+    (data?.detail && typeof data.detail === 'string' ? data.detail : null) ||
+    (data?.details && typeof data.details === 'string' ? data.details : null) ||
+    (data?.error && typeof data.error === 'string' && !data.error.toLowerCase().includes('internal') ? data.error : null) ||
+    (data?.message && typeof data.message === 'string' ? data.message : null) ||
+    (status === 403 ? 'You don\'t have permission to do that.' : null) ||
+    (status === 404 ? 'Resource not found.' : null) ||
+    (status === 409 ? 'This conflicts with an existing resource (name or port already in use).' : null) ||
+    (status === 429 ? 'Too many requests. Please slow down.' : null) ||
+    (status >= 500 ? 'Something went wrong on the server. Please try again.' : null) ||
+    'Request failed.'
+  );
+}
+
 export async function api(path, opts = {}) {
   const headers = new Headers(opts.headers || {});
   const token = getToken();
@@ -48,20 +68,10 @@ export async function api(path, opts = {}) {
   const ct = res.headers.get('content-type') || '';
   const data = ct.includes('application/json') ? await res.json().catch(() => null) : await res.text();
   if (!res.ok) {
-    const code = data?.code;
-    const message =
-      (code && ERROR_MESSAGES[code]) ||
-      (data?.detail && typeof data.detail === 'string' ? data.detail : null) ||
-      (data?.error && !data.error.toLowerCase().includes('internal') ? data.error : null) ||
-      (res.status === 403 ? 'You don\'t have permission to do that.' : null) ||
-      (res.status === 404 ? 'Resource not found.' : null) ||
-      (res.status === 429 ? 'Too many requests. Please slow down.' : null) ||
-      (res.status >= 500 ? 'Something went wrong on the server. Please try again.' : null) ||
-      res.statusText ||
-      'Request failed';
+    const message = extractApiErrorMessage(data, res.status);
     const err = new Error(message);
     err.status = res.status;
-    err.code = code;
+    err.code = data?.code;
     err.data = data;
     throw err;
   }

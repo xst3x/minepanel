@@ -26,7 +26,8 @@ function colorizeLogLine(line, isLight) {
 }
 
 export default function ServerConsole() {
-  const { consoleLines, sendConsoleCommand, clearConsoleLines } = useOutletContext();
+  const { consoleLines, sendConsoleCommand, clearConsoleLines, hasPerm } = useOutletContext();
+  const canWrite = hasPerm ? hasPerm('server.console.write') : true;
   const [cmd, setCmd] = useState('');
   const [cmdHistory, setCmdHistory] = useState([]);
   const [historyIdx, setHistoryIdx] = useState(-1);
@@ -80,7 +81,7 @@ export default function ServerConsole() {
     }
   }, [consoleLines]);
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => { if (canWrite) inputRef.current?.focus(); }, [canWrite]);
 
   // Culori bazate pe temă
   const bg       = isLight ? '#ffffff' : '#0d0d0d';
@@ -122,31 +123,41 @@ export default function ServerConsole() {
         dangerouslySetInnerHTML={{ __html: html }}
       />
 
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 16px', borderTop: `1px solid ${border}`,
-        background: bgBar, flexShrink: 0
-      }}>
-        <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 15 }}>{'>'}</span>
-        <input
-          ref={inputRef}
-          id="terminal-input"
-          type="text"
-          placeholder="Type a command and press Enter..."
-          value={cmd}
-          onChange={e => setCmd(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onKeyPress={e => e.key === 'Enter' && handleSend()}
-          style={{
-            flex: 1, background: 'transparent', border: 'none',
-            outline: 'none', color: textColor,
-            fontFamily: 'var(--font-mono)', fontSize: 13
-          }}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <button className="btn primary small" onClick={handleSend}>Send</button>
-      </div>
+      {canWrite ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 16px', borderTop: `1px solid ${border}`,
+          background: bgBar, flexShrink: 0
+        }}>
+          <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 15 }}>{'>'}</span>
+          <input
+            ref={inputRef}
+            id="terminal-input"
+            type="text"
+            placeholder="Type a command and press Enter..."
+            value={cmd}
+            onChange={e => setCmd(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onKeyPress={e => e.key === 'Enter' && handleSend()}
+            style={{
+              flex: 1, background: 'transparent', border: 'none',
+              outline: 'none', color: textColor,
+              fontFamily: 'var(--font-mono)', fontSize: 13
+            }}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <button className="btn primary small" onClick={handleSend}>Send</button>
+        </div>
+      ) : (
+        <div style={{
+          padding: '8px 16px', borderTop: `1px solid ${border}`,
+          background: bgBar, flexShrink: 0,
+          fontSize: 12, color: mutedColor, fontFamily: 'var(--font-mono)'
+        }}>
+          Read-only access — you don't have permission to send commands.
+        </div>
+      )}
     </div>
   );
 }

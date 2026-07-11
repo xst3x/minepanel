@@ -133,6 +133,18 @@ const listBackups = () => {
 };
 exports.listBackups = listBackups;
 // ── Premade Ranks ─────────────────────────────────────────────────────────────
+const ALL_SERVER_PERMS = [
+    'server.start', 'server.stop', 'server.restart', 'server.kill',
+    'server.console.read', 'server.console.write',
+    'server.files.read', 'server.files.write', 'server.files.delete',
+    'server.players.read', 'server.players.kick', 'server.players.ban', 'server.players.op', 'server.players.manage',
+    'server.plugins.read', 'server.plugins.manage',
+    'server.backups.read', 'server.backups.create', 'server.backups.restore', 'server.backups.delete',
+    'server.properties.read', 'server.properties.write',
+    'server.logs.read', 'server.stats.read',
+    'server.ftp.access', 'server.ftp.manage',
+    'server.automation.read', 'server.automation.write'
+];
 const PREMADE_RANKS = [
     {
         name: 'Owner',
@@ -142,29 +154,16 @@ const PREMADE_RANKS = [
     {
         name: 'Admin',
         permissions: [
-            'account.manage',
-            'server.start', 'server.stop', 'server.restart', 'server.kill',
-            'server.console.read', 'server.console.write',
-            'server.files.read', 'server.files.write', 'server.files.delete',
-            'server.players.read', 'server.players.kick', 'server.players.ban', 'server.players.op',
-            'server.plugins.read', 'server.plugins.manage',
-            'server.backups.read', 'server.backups.create', 'server.backups.restore', 'server.backups.delete',
-            'server.properties.read', 'server.properties.write', 'server.logs.read',
-            'server.stats.read'
+            'account.manage', 'server.create',
+            ...ALL_SERVER_PERMS
         ],
         color: '#f59e0b'
     },
     {
         name: 'Manager',
         permissions: [
-            'server.start', 'server.stop', 'server.restart', 'server.kill',
-            'server.console.read', 'server.console.write',
-            'server.files.read', 'server.files.write', 'server.files.delete',
-            'server.players.read', 'server.players.kick', 'server.players.ban', 'server.players.op',
-            'server.plugins.read', 'server.plugins.manage',
-            'server.backups.read', 'server.backups.create', 'server.backups.restore', 'server.backups.delete',
-            'server.properties.read', 'server.properties.write', 'server.logs.read',
-            'server.stats.read'
+            'server.create',
+            ...ALL_SERVER_PERMS
         ],
         color: '#3b82f6'
     },
@@ -172,9 +171,9 @@ const PREMADE_RANKS = [
         name: 'Helper',
         permissions: [
             'server.console.read',
-            'server.files.read',
-            'server.players.read', 'server.players.kick', 'server.players.ban',
-            'server.stats.read'
+            'server.logs.read',
+            'server.stats.read',
+            'server.start'
         ],
         color: '#10b981'
     },
@@ -182,8 +181,8 @@ const PREMADE_RANKS = [
         name: 'Player',
         permissions: [
             'server.console.read',
-            'server.players.read',
-            'server.stats.read'
+            'server.stats.read',
+            'server.start'
         ],
         color: '#8b5cf6'
     }

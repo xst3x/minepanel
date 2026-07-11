@@ -5,7 +5,7 @@ import { api } from '../lib/api.ts';
 import BgCanvas from './BgCanvas.tsx';
 import { ServerModalsProvider, useServerModals } from '../context/ServerModalsContext.tsx';
 import GlobalServerModals from './GlobalServerModals.tsx';
-import { showConfirm } from './Toast.tsx';
+import { showConfirm, toast } from './Toast.tsx';
 import '../styles/components/AppLayout.css';
 
 // Logo SVG Components
@@ -181,6 +181,28 @@ function AppLayoutInner() {
       user.globalPermissions.includes('panel.settings')
     ));
 
+  const hasGlobalPerm = (perm) => {
+    if (user?.role === 'admin') return true;
+    const perms = Array.isArray(user?.globalPermissions) ? user.globalPermissions : [];
+    return perms.includes('*') || perms.includes('root') || perms.includes(perm);
+  };
+
+  const handleCreateClick = () => {
+    if (!hasGlobalPerm('server.create')) {
+      toast("You don't have permission to do this.", 'error');
+      return;
+    }
+    openCreate();
+  };
+
+  const handleImportClick = () => {
+    if (!hasGlobalPerm('server.create')) {
+      toast("You don't have permission to do this.", 'error');
+      return;
+    }
+    openImport();
+  };
+
   const handleLogout = async () => {
     const confirmed = await showConfirm('Are you sure you want to logout?', 'Logout Confirmation');
     if (!confirmed) return;
@@ -308,22 +330,20 @@ function AppLayoutInner() {
               );
             })}
           </div>
-          {isAdmin && (
-            <div className="sidebar-section" style={{ borderTop: 'none', paddingTop: 0 }}>
-              <button className="sidebar-item sidebar-create" onClick={() => { setIsMobileMenuOpen(false); openCreate(); }}>
-                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
-                </svg>
-                Create Server
-              </button>
-              <button className="sidebar-item sidebar-add" onClick={() => { setIsMobileMenuOpen(false); openImport(); }}>
-                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                Import Server
-              </button>
-            </div>
-          )}
+          <div className="sidebar-section" style={{ borderTop: 'none', paddingTop: 0 }}>
+            <button className="sidebar-item sidebar-create" onClick={() => { setIsMobileMenuOpen(false); handleCreateClick(); }}>
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+              </svg>
+              Create Server
+            </button>
+            <button className="sidebar-item sidebar-add" onClick={() => { setIsMobileMenuOpen(false); handleImportClick(); }}>
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Import Server
+            </button>
+          </div>
 
           {/* GLOBAL */}
           <div className="sidebar-section">

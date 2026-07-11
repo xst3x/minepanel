@@ -17,7 +17,7 @@ import logger = require('../core/utils/logger')
 const router = express.Router({ mergeParams: true });
 const gunzip = promisify(zlib.gunzip);
 
-router.get('/', authenticateToken, checkPermission('server.files.read'), async (req: any, res) => {
+router.get('/', authenticateToken, checkPermission('server.logs.read'), async (req: any, res) => {
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
@@ -39,7 +39,7 @@ router.get('/', authenticateToken, checkPermission('server.files.read'), async (
     }
 });
 
-router.get('/read', authenticateToken, checkPermission('server.files.read'), async (req: any, res) => {
+router.get('/read', authenticateToken, checkPermission('server.logs.read'), async (req: any, res) => {
     const { file, page, filter } = req.query;
     const LINES_PER_PAGE = 500;
     if (!file) return sendError(res, E.BAD_REQUEST, 400, 'File required');
@@ -69,7 +69,7 @@ router.get('/read', authenticateToken, checkPermission('server.files.read'), asy
     }
 });
 
-router.get('/tail', authenticateToken, checkPermission('server.files.read'), async (req: any, res) => {
+router.get('/tail', authenticateToken, checkPermission('server.logs.read'), async (req: any, res) => {
     const lines = parseInt(req.query.lines) || 100;
     try {
         const server = await getServer(req.params.serverId);

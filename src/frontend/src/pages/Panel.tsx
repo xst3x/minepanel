@@ -38,7 +38,6 @@ export default function Panel() {
   const [impSoftware, setImpSoftware] = useState('paper');
   const [impVersion, setImpVersion] = useState('');
   const [impRam, setImpRam] = useState(2048);
-  const [impJar, setImpJar] = useState('');
   const [impRoot, setImpRoot] = useState('');
   const [importProgress, setImportProgress] = useState(null); // { label, pct }
   const [impBusy, setImpBusy] = useState(false);
@@ -158,7 +157,6 @@ export default function Panel() {
     if (!impFile) return toast('Please select a .zip archive first.', 'error');
     if (!impName) return toast('Server name is required.', 'error');
     if (!impVersion) return toast('Minecraft version is required.', 'error');
-    if (!impJar) return toast('Executable path is required.', 'error');
 
     setImpBusy(true);
     setImportProgress({ label: 'Uploading…', pct: 0 });
@@ -170,7 +168,6 @@ export default function Panel() {
     fd.append('software', impSoftware);
     fd.append('version', impVersion);
     fd.append('ram_mb', impRam);
-    fd.append('jar_path', impJar);
     fd.append('root_path', impRoot);
 
     const token = localStorage.getItem('mp_token');
@@ -548,6 +545,13 @@ export default function Panel() {
                   />
                 </div>
 
+                <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.75rem 1rem', fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px', color: 'var(--accent)' }}>
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <span>Only your world(s), <code>plugins</code>/<code>mods</code>, <code>config</code> and server config files (server.properties, eula.txt, ops.json, whitelist, bans, permissions.yml, etc.) are imported from the archive. The server executable is never taken from the zip — MinePanel downloads a fresh, official binary for the software and version you select below, exactly like when creating a new server.</span>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Server Name</label>
@@ -636,28 +640,15 @@ export default function Panel() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Executable Path <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(inside archive)</span></label>
-                    <input 
-                      type="text" 
-                      required 
-                      placeholder="server.jar or versions/paper.jar" 
-                      value={impJar}
-                      onChange={(e) => setImpJar(e.target.value)}
-                    />
-                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Path to the server jar <em>inside</em> the zip (relative to root path).</p>
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Server Root Path <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
-                    <input 
-                      type="text" 
-                      placeholder="Leave blank if server is in zip root" 
-                      value={impRoot}
-                      onChange={(e) => setImpRoot(e.target.value)}
-                    />
-                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If your server lives in a sub-folder inside the zip, enter that folder name (e.g. <code>myserver</code>).</p>
-                  </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Server Root Path <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+                  <input 
+                    type="text" 
+                    placeholder="Leave blank if server is in zip root" 
+                    value={impRoot}
+                    onChange={(e) => setImpRoot(e.target.value)}
+                  />
+                  <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If your server lives in a sub-folder inside the zip, enter that folder name (e.g. <code>myserver</code>).</p>
                 </div>
 
                 {importProgress && (
