@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap');
+/* Fonts are self-hosted via @fontsource — imported in main.tsx */
 
 /* ============================================
  * MinePanel — Shared Utility Styles
@@ -29,8 +29,8 @@ bottom: -10%; right: -10%;
 top: 30%; left: 40%; width: 250px; height: 250px; opacity: 0.05;
 }
 
-input, select, textarea {
-width: 100%;
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    width: 100%;
     background-color: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -41,8 +41,8 @@ width: 100%;
     transition: var(--transition);
 }
 
-input, textarea {
-padding: 10px 14px;
+input:not([type="checkbox"]):not([type="radio"]), textarea {
+    padding: 10px 14px;
 }
 
 input[type="color"].color-input {

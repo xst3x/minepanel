@@ -1,0 +1,262 @@
+"use strict";
+const express = require("express");
+const fs = require("fs");
+const fsp = require('fs').promises;
+const path = require("path");
+const databaseModule = require("../db/database");
+const { dbAll } = databaseModule;
+const authModule = require("../core/auth");
+const { authenticateToken } = authModule;
+const permissionsModule = require("../core/permissions");
+const { checkPermission } = permissionsModule;
+const serverHelperModule = require("../core/serverHelper");
+const { getServer, getServerDir, SERVERS_DIR, createBackup } = serverHelperModule;
+const errorsModule = require("../core/errors");
+const { E, sendError } = errorsModule;
+const logger = require("../core/utils/logger");
+const router = express.Router({ mergeParams: true });
+router.get('/', authenticateToken, checkPermission('server.backups.read'), async (req, res) => {
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server)
+            return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const backupsDir = path.join(getServerDir(server), 'backups');
+        if (!fs.existsSync(backupsDir))
+            return res.json([]);
+        const files = fs.readdirSync(backupsDir).filter(f => f.endsWith('.zip')).map(f => {
+            const stats = fs.statSync(path.join(backupsDir, f));
+            return { name: f, size: stats.size, date: stats.mtime };
+        }).sort((a, b) => b.date - a.date);
+        res.json(files);
+    }
+    catch (e) {
+        logger.error(`[backupRoutes] List error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+router.post('/create', authenticateToken, checkPermission('server.backups.create'), async (req, res) => {
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server)
+            return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const serverDir = getServerDir(server);
+        const includes = req.body.includes || 'all';
+        const result = await createBackup(serverDir, 'backup', includes);
+        res.json({ message: 'Backup created', filename: result.filename, size: result.size });
+    }
+    catch (e) {
+        logger.error(`[backupRoutes] Create error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.BACKUP_FAILED, 500);
+    }
+});
+router.get('/:filename/download', authenticateToken, checkPermission('server.backups.read'), async (req, res) => {
+    const { filename } = req.params;
+    if (!filename.endsWith('.zip') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return sendError(res, E.BACKUP_INVALID_FILENAME, 400);
+    }
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server)
+            return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const backupPath = path.join(getServerDir(server), 'backups', filename);
+        if (fs.existsSync(backupPath)) {
+            res.download(backupPath);
+        }
+        else {
+            return sendError(res, E.BACKUP_NOT_FOUND, 404);
+        }
+    }
+    catch (e) {
+        logger.error(`[backupRoutes] Download error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+router.post('/:filename/delete', authenticateToken, checkPermission('server.backups.delete'), async (req, res) => {
+    const { filename } = req.params;
+    if (!filename.endsWith('.zip') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return sendError(res, E.BACKUP_INVALID_FILENAME, 400);
+    }
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server)
+            return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const backupPath = path.join(getServerDir(server), 'backups', filename);
+        if (fs.existsSync(backupPath)) {
+            fs.unlinkSync(backupPath);
+            res.json({ message: 'Backup deleted' });
+        }
+        else {
+            return sendError(res, E.BACKUP_NOT_FOUND, 404);
+        }
+    }
+    catch (e) {
+        logger.error(`[backupRoutes] Delete error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+router.post('/:filename/restore', authenticateToken, checkPermission('server.backups.restore'), async (req, res) => {
+    const { filename } = req.params;
+    if (!filename.endsWith('.zip') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return sendError(res, E.BACKUP_INVALID_FILENAME, 400);
+    }
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server)
+            return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const processManager = require('../core/processManager');
+        if (processManager.getStatus(server.id.toString()) === 'online') {
+            return sendError(res, E.SERVER_MUST_BE_STOPPED, 400);
+        }
+        const serverDir = getServerDir(server);
+        const backupPath = path.join(serverDir, 'backups', filename);
+        if (!fs.existsSync(backupPath))
+            return sendError(res, E.BACKUP_NOT_FOUND, 404);
+        const unzipper = require('unzipper');
+        // Safe extraction: validate every entry path to prevent zip-slip attacks.
+        // A malicious zip could contain entries like "../../etc/passwd" that escape serverDir.
+        const resolvedRoot = path.resolve(serverDir);
+        await new Promise((resolvePromise, rejectPromise) => {
+            let done = false;
+            const handleSuccess = () => { if (!done) {
+                done = true;
+                resolvePromise();
+            } };
+            const handleError = (err) => { if (!done) {
+                done = true;
+                rejectPromise(err);
+            } };
+            fs.createReadStream(backupPath)
+                .pipe(unzipper.Parse())
+                .on('entry', (entry) => {
+                const entryPath = path.resolve(resolvedRoot, entry.path);
+                if (!entryPath.startsWith(resolvedRoot + path.sep) && entryPath !== resolvedRoot) {
+                    logger.warn(`[backupRoutes] Zip-slip attempt blocked: ${entry.path}`);
+                    entry.autodrain();
+                    return;
+                }
+                if (entry.type === 'Directory') {
+                    fsp.mkdir(entryPath, { recursive: true }).catch(err => { logger.warn('[Backup] Restore mkdir error: ' + (err.message || err)); });
+                    entry.autodrain();
+                }
+                else {
+                    fsp.mkdir(path.dirname(entryPath), { recursive: true })
+                        .then(() => {
+                        entry.pipe(fs.createWriteStream(entryPath))
+                            .on('error', handleError);
+                    })
+                        .catch(handleError);
+                }
+            })
+                .on('close', handleSuccess)
+                .on('finish', handleSuccess)
+                .on('error', handleError);
+        });
+        res.json({ message: `Backup ${filename} restored. Restart server to apply.` });
+    }
+    catch (e) {
+        logger.error(`[backupRoutes] Restore error (Server: ${req.params.serverId}, User: ${req.user.id}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+// Scheduled backups
+const runScheduledBackups = () => {
+    dbAll('SELECT * FROM servers WHERE auto_backup = 1').then(async (servers) => {
+        for (const s of servers) {
+            const serverDir = path.join(SERVERS_DIR, s.directory_name || s.id.toString());
+            const backupsDir = path.join(serverDir, 'backups');
+            if (!fs.existsSync(serverDir))
+                continue;
+            if (!fs.existsSync(backupsDir))
+                fs.mkdirSync(backupsDir, { recursive: true });
+            try {
+                const existing = fs.readdirSync(backupsDir).filter(f => f.endsWith('.zip'));
+                if (existing.length > 0) {
+                    const latest = existing.map(f => ({ name: f, time: fs.statSync(path.join(backupsDir, f)).mtime })).sort((a, b) => b.time - a.time)[0];
+                    const intervalMs = (s.backup_interval || 24) * 3600000;
+                    if (latest.time.getTime() > Date.now() - intervalMs)
+                        continue;
+                }
+            }
+            catch (e) {
+                logger.warn('[Backup] Failed to check existing backups: ' + (e.message || e));
+            }
+            try {
+                await createBackup(serverDir, 'auto', s.backup_includes || 'all');
+                logger.info(`[Backup] Auto backup completed for server ${s.id}`);
+            }
+            catch (err) {
+                logger.error(`[Backup] Auto backup failed for server ${s.id}:`, err);
+            }
+        }
+    }).catch(err => {
+        logger.error('[Backup] Failed to fetch servers for scheduled backup:', err);
+    });
+    runRetentionCleanups();
+};
+// Retention cleanups for logs & backups
+const runRetentionCleanups = () => {
+    dbAll('SELECT * FROM servers').then(servers => {
+        servers.forEach(s => {
+            const serverDir = path.join(SERVERS_DIR, s.directory_name || s.id.toString());
+            if (!fs.existsSync(serverDir))
+                return;
+            // Clean logs
+            const logsDir = path.join(serverDir, 'logs');
+            if (fs.existsSync(logsDir)) {
+                try {
+                    const logRetention = s.log_retention_days !== null && s.log_retention_days !== undefined ? s.log_retention_days : 7;
+                    if (logRetention > 0) {
+                        const cutoff = Date.now() - (logRetention * 24 * 3600 * 1000);
+                        const files = fs.readdirSync(logsDir).filter(f => (f.endsWith('.log') || f.endsWith('.log.gz')) && f !== 'latest.log');
+                        files.forEach(f => {
+                            const fp = path.join(logsDir, f);
+                            try {
+                                const stats = fs.statSync(fp);
+                                if (stats.mtimeMs < cutoff) {
+                                    fs.unlinkSync(fp);
+                                    logger.info(`[Retention] Deleted old log ${f} for server ${s.id} (older than ${logRetention} days)`);
+                                }
+                            }
+                            catch (_) { }
+                        });
+                    }
+                }
+                catch (err) {
+                    logger.error(`[Retention] Failed to clean logs for server ${s.id}:`, err);
+                }
+            }
+            // Clean backups
+            const backupsDir = path.join(serverDir, 'backups');
+            if (fs.existsSync(backupsDir)) {
+                try {
+                    const backupRetention = s.backup_retention_days !== null && s.backup_retention_days !== undefined ? s.backup_retention_days : 30;
+                    if (backupRetention > 0) {
+                        const cutoff = Date.now() - (backupRetention * 24 * 3600 * 1000);
+                        const files = fs.readdirSync(backupsDir).filter(f => f.endsWith('.zip'));
+                        files.forEach(f => {
+                            const fp = path.join(backupsDir, f);
+                            try {
+                                const stats = fs.statSync(fp);
+                                if (stats.mtimeMs < cutoff) {
+                                    fs.unlinkSync(fp);
+                                    logger.info(`[Retention] Deleted old backup ${f} for server ${s.id} (older than ${backupRetention} days)`);
+                                }
+                            }
+                            catch (_) { }
+                        });
+                    }
+                }
+                catch (err) {
+                    logger.error(`[Retention] Failed to clean backups for server ${s.id}:`, err);
+                }
+            }
+        });
+    }).catch(err => {
+        logger.error(`[Retention] Failed to fetch servers for cleanup:`, err);
+    });
+};
+if (process.env.NODE_ENV !== 'test') {
+    setInterval(runScheduledBackups, 3600000);
+}
+module.exports = router;
+//# sourceMappingURL=backupRoutes.js.map

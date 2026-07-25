@@ -165,20 +165,6 @@ animation: mp-fadeSlideDown 0.28s 0.05s ease both;
 }
 
 .server-view {
-max-width: none;
-    width: 100%;
-    animation: fadeIn 0.22s ease-out;
-}
-
-.server-tab-body {
-width: 100%;
-}
-
-.server-view {
-padding: 1.25rem 1.25rem;
-}
-
-.server-view {
 display: flex;
     flex-direction: column;
     height: 100%;
@@ -188,6 +174,10 @@ display: flex;
     padding: 0;
     margin: 0;
     animation: fadeIn 0.22s ease-out;
+}
+
+.server-tab-body {
+width: 100%;
 }
 
 .server-view-sticky {

@@ -1,0 +1,1 @@
+{"version":3,"file":"updater.js","sourceRoot":"","sources":["updater.ts"],"names":[],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAEA,oCAGC;AAED,8BAEC;AATD,iDAAmC;AAE5B,KAAK,UAAU,YAAY;IAC9B,MAAM,CAAC,IAAI,CAAC,SAAS,EAAE,gDAAgD,CAAC,CAAC;IACzE,OAAO,KAAK,CAAC;AACjB,CAAC;AAEM,KAAK,UAAU,SAAS;IAC3B,MAAM,CAAC,IAAI,CAAC,SAAS,EAAE,qCAAqC,CAAC,CAAC;AAClE,CAAC"}

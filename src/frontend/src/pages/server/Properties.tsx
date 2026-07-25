@@ -718,6 +718,48 @@ export default function ServerProperties() {
               </div>
             )}
 
+            {/* Custom Color Picker Section */}
+            {activeCat === 'gameplay' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
+                <span className="prop-label" style={{ fontWeight: 600 }}>Custom Color</span>
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Pick a custom color for your server branding or panel theme (stored locally).
+                </p>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: 'var(--radius)',
+                      background: pickedCustomColor || '#6366f1',
+                      border: '2px solid var(--border)',
+                      boxShadow: 'var(--shadow-sm)',
+                      flexShrink: 0
+                    }}
+                  />
+                  <button
+                    className="btn primary"
+                    onClick={() => setShowColorWell(true)}
+                  >
+                    Open Color Picker
+                  </button>
+                  {pickedCustomColor && (
+                    <button
+                      className="btn outline"
+                      onClick={() => setPickedCustomColor('')}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                {pickedCustomColor && (
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                    {pickedCustomColor.toUpperCase()}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Custom World Generator Configuration */}
             {activeCat === 'world' && (() => {
               const GENERATOR_TYPES = [

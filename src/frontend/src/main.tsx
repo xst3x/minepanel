@@ -8,6 +8,18 @@ import './styles/style.css';
 import './styles/global.css';
 import './styles/automation-visual.css';
 
+// Self-hosted fonts (no Google Fonts network request)
+import '@fontsource/sora/300.css';
+import '@fontsource/sora/400.css';
+import '@fontsource/sora/500.css';
+import '@fontsource/sora/600.css';
+import '@fontsource/sora/700.css';
+import '@fontsource/fira-code/400.css';
+import '@fontsource/fira-code/500.css';
+import '@fontsource/fira-code/600.css';
+
+import log from './lib/logger.ts';
+
 // Apply saved accent color on boot
 (function() {
   try {
@@ -27,6 +39,11 @@ import './styles/automation-visual.css';
     }
   } catch(e) {}
 })();
+
+// ── Boot messages ──────────────────────────────────────────────────────────
+log.info('MinePanel frontend initializing...');
+log.info(`Build env: ${import.meta.env.MODE} | React ${React.version}`);
+log.debug('Accent color restored from localStorage');
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

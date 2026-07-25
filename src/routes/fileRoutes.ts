@@ -1,23 +1,23 @@
-import express = require('express')
-import fs = require('fs')
+import express = require('express');
+import fs = require('fs');
 const fsp = require('fs').promises;
-import path = require('path')
-import os = require('os')
-import crypto = require('crypto')
-import multer = require('multer')
-import AdmZip = require('adm-zip')
-import authModule = require('../core/auth')
+import path = require('path');
+import os = require('os');
+import crypto = require('crypto');
+import multer = require('multer');
+import AdmZip = require('adm-zip');
+import authModule = require('../core/auth');
 const { authenticateToken } = authModule;
-import permissionsModule = require('../core/permissions')
+import permissionsModule = require('../core/permissions');
 const { checkPermission } = permissionsModule;
-import serverHelperModule = require('../core/serverHelper')
+import serverHelperModule = require('../core/serverHelper');
 const { getServer, getServerDir } = serverHelperModule;
-import validationModule = require('../middleware/validation')
+import validationModule = require('../middleware/validation');
 const { validate } = validationModule;
-import V = require('../middleware/validators')
-import errorsModule = require('../core/errors')
+import V = require('../middleware/validators');
+import errorsModule = require('../core/errors');
 const { E, sendError } = errorsModule;
-import logger = require('../core/utils/logger')
+import logger = require('../core/utils/logger');
 
 const router = express.Router({ mergeParams: true });
 
@@ -29,14 +29,15 @@ if (process.env.NODE_ENV !== 'test') {
     setInterval(() => {
         const now = Date.now();
         for (const [token, entry] of _dlTokens) {
-            if (entry.expires < now) {                    if (entry.deleteAfter) fsp.unlink(entry.file as string).catch(() => {});
+            if ((entry as any).expires < now) {
+                if ((entry as any).deleteAfter) fsp.unlink((entry as any).file).catch(() => {});
                 _dlTokens.delete(token);
             }
         }
     }, 2 * 60 * 1000);
 }
 
-const getSafePath = (serverDir, targetPath) => {
+const getSafePath = (serverDir: string, targetPath: string) => {
     const cleaned = (targetPath || '').replace(/^[/\\]+/, '');
     const requestedPath = path.resolve(serverDir, cleaned);
     const rel = path.relative(serverDir, requestedPath);
@@ -54,6 +55,7 @@ const BLOCKED_EXTENSIONS = new Set([
     '.app', '.bin', '.run', '.elf',
 ]);
 
+
 // ── Helper: create a zip buffer/file from an array of absolute paths ──────────
 /**
  * Builds a zip archive synchronously using adm-zip.
@@ -61,20 +63,19 @@ const BLOCKED_EXTENSIONS = new Set([
  * @param {string}   serverDir  - server root (used to compute relative names inside zip)
  * @returns {Buffer}            - zip file buffer
  */
-function buildZipBuffer(absPaths, serverDir) {
+function buildZipBuffer(absPaths: string[], serverDir: string): Buffer {
     const zip = new AdmZip();
     for (const absPath of absPaths) {
         try {
             const stat = fs.statSync(absPath);
             if (stat.isDirectory()) {
-                // addLocalFolder(localPath, zipPath)
                 const relName = path.relative(serverDir, absPath).replace(/\\/g, '/');
                 zip.addLocalFolder(absPath, relName);
             } else {
                 const relName = path.relative(serverDir, path.dirname(absPath)).replace(/\\/g, '/');
                 zip.addLocalFile(absPath, relName);
             }
-        } catch (e) {
+        } catch (e: any) {
             logger.warn(`[fileRoutes] buildZipBuffer: skipping ${absPath}: ${e.message}`);
         }
     }
@@ -82,7 +83,7 @@ function buildZipBuffer(absPaths, serverDir) {
 }
 
 // ── Helper: write zip buffer to a temp file and return the path ───────────────
-async function writeTempZip(buffer) {
+async function writeTempZip(buffer: Buffer): Promise<string> {
     const tmpFile = path.join(os.tmpdir(), `minepanel-${crypto.randomBytes(8).toString('hex')}.zip`);
     await fsp.writeFile(tmpFile, buffer);
     return tmpFile;
@@ -91,22 +92,24 @@ async function writeTempZip(buffer) {
 
 const upload = multer({
     storage: multer.diskStorage({
-        destination: async (req, file, cb) => {
+        destination: async (req: any, file: any, cb: any) => {
             try {
                 const server = await getServer(req.params.serverId);
                 if (!server) return cb(new Error('Server not found'), '');
                 const safePath = getSafePath(getServerDir(server), req.body.path || '');
                 cb(null, safePath);
-            } catch (e) { cb(e as any, ''); }
+            } catch (e) { cb(e, ''); }
         },
-        filename: (req, file, cb) => {
+        filename: (req: any, file: any, cb: any) => {
             const safeName = path.basename(file.originalname).replace(/[^\w.\-]/g, '_');
             if (!safeName || safeName === '.' || safeName === '..') {
-                return cb(new Error('Invalid filename'), '');
+                return cb(new Error('Invalid filename'));
             }
             const ext = path.extname(safeName).toLowerCase();
             if (BLOCKED_EXTENSIONS.has(ext)) {
-                return cb(Object.assign(new Error(`File extension '${ext}' is blocked for security reasons`), { code: 'BLOCKED_EXTENSION' }), '');
+                const err: any = new Error(`File extension '${ext}' is blocked for security reasons`);
+                err.code = 'BLOCKED_EXTENSION';
+                return cb(err);
             }
             cb(null, safeName);
         }
@@ -115,19 +118,19 @@ const upload = multer({
 });
 
 // List directory
-router.get('/list', authenticateToken, checkPermission('server.files.read'), async (req: any, res) => {
+router.get('/list', authenticateToken, checkPermission('server.files.read'), async (req: any, res: any) => {
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const safePath = getSafePath(getServerDir(server), req.query.path || '');
         try { await fsp.access(safePath); } catch { return sendError(res, E.DIRECTORY_NOT_FOUND, 404); }
         const itemsRaw = await fsp.readdir(safePath, { withFileTypes: true });
-        const items = await Promise.all(itemsRaw.map(async item => {
+        const items = await Promise.all(itemsRaw.map(async (item: any) => {
             const stats = await fsp.stat(path.join(safePath, item.name));
             return { name: item.name, isDirectory: item.isDirectory(), size: stats.size, modifiedAt: stats.mtime };
         }));
         res.json(items);
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) {
             return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
@@ -137,7 +140,7 @@ router.get('/list', authenticateToken, checkPermission('server.files.read'), asy
 });
 
 // Read file
-router.get('/read', authenticateToken, checkPermission('server.files.read'), async (req: any, res) => {
+router.get('/read', authenticateToken, checkPermission('server.files.read'), async (req: any, res: any) => {
     if (!req.query.path) return sendError(res, E.FILE_PATH_REQUIRED, 400);
     try {
         const server = await getServer(req.params.serverId);
@@ -148,7 +151,7 @@ router.get('/read', authenticateToken, checkPermission('server.files.read'), asy
         if (stats.size > 5 * 1024 * 1024) return sendError(res, E.FILE_TOO_LARGE, 400);
         const content = await fsp.readFile(safePath, 'utf8');
         res.json({ content });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) {
             return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
@@ -158,7 +161,7 @@ router.get('/read', authenticateToken, checkPermission('server.files.read'), asy
 });
 
 // Write file
-router.post('/write', authenticateToken, checkPermission('server.files.write'), validate(V.fileWrite), async (req: any, res) => {
+router.post('/write', authenticateToken, checkPermission('server.files.write'), validate(V.fileWrite), async (req: any, res: any) => {
     const { path: filePath, content } = req.body;
     try {
         const server = await getServer(req.params.serverId);
@@ -166,7 +169,7 @@ router.post('/write', authenticateToken, checkPermission('server.files.write'), 
         const safePath = getSafePath(getServerDir(server), filePath);
         await fsp.writeFile(safePath, content, 'utf8');
         res.json({ message: 'File saved successfully' });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) {
             return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
@@ -176,7 +179,7 @@ router.post('/write', authenticateToken, checkPermission('server.files.write'), 
 });
 
 // Rename
-router.post('/rename', authenticateToken, checkPermission('server.files.write'), validate(V.fileRenameBody), async (req: any, res) => {
+router.post('/rename', authenticateToken, checkPermission('server.files.write'), validate(V.fileRenameBody), async (req: any, res: any) => {
     const { oldPath, newPath } = req.body;
     try {
         const server = await getServer(req.params.serverId);
@@ -184,7 +187,7 @@ router.post('/rename', authenticateToken, checkPermission('server.files.write'),
         const serverDir = getServerDir(server);
         await fsp.rename(getSafePath(serverDir, oldPath), getSafePath(serverDir, newPath));
         res.json({ message: 'Renamed successfully' });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) {
             return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
@@ -194,14 +197,14 @@ router.post('/rename', authenticateToken, checkPermission('server.files.write'),
 });
 
 // Delete
-router.post('/delete', authenticateToken, checkPermission('server.files.delete'), validate(V.fileDelete), async (req: any, res) => {
+router.post('/delete', authenticateToken, checkPermission('server.files.delete'), validate(V.fileDelete), async (req: any, res: any) => {
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         const safePath = getSafePath(getServerDir(server), req.body.path);
         await fsp.rm(safePath, { recursive: true, force: true });
         res.json({ message: 'Deleted successfully' });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) {
             return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
@@ -211,13 +214,13 @@ router.post('/delete', authenticateToken, checkPermission('server.files.delete')
 });
 
 // Create folder
-router.post('/mkdir', authenticateToken, checkPermission('server.files.write'), validate(V.mkdirSimple), async (req: any, res) => {
+router.post('/mkdir', authenticateToken, checkPermission('server.files.write'), validate(V.mkdirSimple), async (req: any, res: any) => {
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
         await fsp.mkdir(getSafePath(getServerDir(server), req.body.path), { recursive: true });
         res.json({ message: 'Folder created' });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) {
             return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
@@ -227,7 +230,7 @@ router.post('/mkdir', authenticateToken, checkPermission('server.files.write'), 
 });
 
 // Create file
-router.post('/create', authenticateToken, checkPermission('server.files.write'), validate(V.fileCreate), async (req: any, res) => {
+router.post('/create', authenticateToken, checkPermission('server.files.write'), validate(V.fileCreate), async (req: any, res: any) => {
     try {
         const server = await getServer(req.params.serverId);
         if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
@@ -236,7 +239,7 @@ router.post('/create', authenticateToken, checkPermission('server.files.write'),
         await fsp.mkdir(path.dirname(safePath), { recursive: true });
         await fsp.writeFile(safePath, '', 'utf8');
         res.json({ message: 'File created' });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) {
             return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
@@ -247,7 +250,7 @@ router.post('/create', authenticateToken, checkPermission('server.files.write'),
 
 
 // ── Download (single file or folder-as-zip) ───────────────────────────────────
-router.get('/download', authenticateToken, checkPermission('server.files.read'), async (req: any, res) => {
+router.get('/download', authenticateToken, checkPermission('server.files.read'), async (req: any, res: any) => {
     if (!req.query.path) return sendError(res, E.FILE_PATH_REQUIRED, 400);
     try {
         const server = await getServer(req.params.serverId);
@@ -275,7 +278,7 @@ router.get('/download', authenticateToken, checkPermission('server.files.read'),
         });
 
         res.json({ downloadUrl: `/api/servers/${req.params.serverId}/files/dl/${token}` });
-    } catch (e) {
+    } catch (e: any) {
         logger.error('[fileRoutes] download error:', e);
         return sendError(res, E.INTERNAL_ERROR, 500, e.message);
     }
@@ -283,7 +286,7 @@ router.get('/download', authenticateToken, checkPermission('server.files.read'),
 
 // ── One-time token download (no auth needed — token IS the credential) ────────
 router.get('/dl/:token', async (req: any, res: any) => {
-    const entry = _dlTokens.get(req.params.token);
+    const entry: any = _dlTokens.get(req.params.token);
     if (!entry || entry.expires < Date.now()) {
         _dlTokens.delete(req.params.token);
         return sendError(res, E.NOT_FOUND, 410);
@@ -297,8 +300,8 @@ router.get('/dl/:token', async (req: any, res: any) => {
         return sendError(res, E.FILE_NOT_FOUND, 404);
     }
 
-    res.download(entry.file, entry.name, err => {
-        if (entry.deleteAfter) fsp.unlink(entry.file as string).catch(() => {});
+    res.download(entry.file, entry.name, (err: any) => {
+        if (entry.deleteAfter) fsp.unlink(entry.file).catch(() => {});
         if (err && !res.headersSent) sendError(res, E.INTERNAL_ERROR, 500);
     });
 });
@@ -319,12 +322,12 @@ router.post('/batch-delete', authenticateToken, checkPermission('server.files.de
                 const safePath = getSafePath(serverDir, p);
                 await fsp.rm(safePath, { recursive: true, force: true });
                 results.push({ path: p, status: 'deleted' });
-            } catch (err) {
+            } catch (err: any) {
                 results.push({ path: p, status: 'error', error: err.message });
             }
         }
         res.json({ message: `Deleted ${results.filter(r => r.status === 'deleted').length} item(s).`, results });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
         logger.error(`[fileRoutes] batch-delete error (Server: ${req.params.serverId}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
@@ -343,7 +346,7 @@ router.post('/batch-download', authenticateToken, checkPermission('server.files.
         const serverDir = getServerDir(server);
 
         // Validate all paths exist before building archive
-        const absPaths = [];
+        const absPaths: string[] = [];
         for (const p of paths) {
             const safePath = getSafePath(serverDir, p);
             if (!fs.existsSync(safePath)) {
@@ -365,7 +368,7 @@ router.post('/batch-download', authenticateToken, checkPermission('server.files.
         });
 
         res.json({ downloadUrl: `/api/servers/${req.params.serverId}/files/dl/${token}` });
-    } catch (e) {
+    } catch (e: any) {
         logger.error('[fileRoutes] batch-download error:', e);
         return sendError(res, E.INTERNAL_ERROR, 500, e.message);
     }
@@ -384,7 +387,7 @@ router.post('/archive', authenticateToken, checkPermission('server.files.write')
         const serverDir = getServerDir(server);
 
         // Validate paths and collect absolute paths
-        const absPaths = [];
+        const absPaths: string[] = [];
         for (const p of paths) {
             const safePath = getSafePath(serverDir, p);
             if (!fs.existsSync(safePath)) {
@@ -407,7 +410,7 @@ router.post('/archive', authenticateToken, checkPermission('server.files.write')
         await fsp.writeFile(archivePath, buffer);
 
         res.json({ message: `Archive ${name} created with ${paths.length} item(s).`, archiveName: name });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
         logger.error(`[fileRoutes] archive error (Server: ${req.params.serverId}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500, e.message);
@@ -416,7 +419,7 @@ router.post('/archive', authenticateToken, checkPermission('server.files.write')
 
 
 // ── Copy items ────────────────────────────────────────────────────────────────
-router.post('/copy', authenticateToken, checkPermission('server.files.write'), async (req: any, res) => {
+router.post('/copy', authenticateToken, checkPermission('server.files.write'), async (req: any, res: any) => {
     const { paths, destination } = req.body;
     if (!paths || !Array.isArray(paths) || paths.length === 0 || !destination) {
         return sendError(res, E.BAD_REQUEST, 400, 'paths array and destination are required');
@@ -437,26 +440,25 @@ router.post('/copy', authenticateToken, checkPermission('server.files.write'), a
                     continue;
                 }
                 const baseName = path.basename(srcSafe);
-                const destPath = path.join(destSafe, baseName);
+                let destPath = path.join(destSafe, baseName);
 
                 // Handle name conflicts
-                let finalDest = destPath;
                 let counter = 1;
-                while (fs.existsSync(finalDest)) {
+                while (fs.existsSync(destPath)) {
                     const ext = path.extname(baseName);
                     const stem = path.basename(baseName, ext);
-                    finalDest = path.join(destSafe, `${stem} (${counter})${ext}`);
+                    destPath = path.join(destSafe, `${stem} (${counter})${ext}`);
                     counter++;
                 }
 
-                await fsp.cp(srcSafe, finalDest, { recursive: true, force: false });
-                results.push({ path: p, status: 'copied', dest: path.relative(serverDir, finalDest) });
-            } catch (err) {
+                await fsp.cp(srcSafe, destPath, { recursive: true, force: false });
+                results.push({ path: p, status: 'copied', dest: path.relative(serverDir, destPath) });
+            } catch (err: any) {
                 results.push({ path: p, status: 'error', error: err.message });
             }
         }
         res.json({ message: `Copied ${results.filter(r => r.status === 'copied').length} item(s).`, results });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
         logger.error(`[fileRoutes] copy error (Server: ${req.params.serverId}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
@@ -464,7 +466,7 @@ router.post('/copy', authenticateToken, checkPermission('server.files.write'), a
 });
 
 // ── Move items ────────────────────────────────────────────────────────────────
-router.post('/move', authenticateToken, checkPermission('server.files.write'), async (req: any, res) => {
+router.post('/move', authenticateToken, checkPermission('server.files.write'), async (req: any, res: any) => {
     const { paths, destination } = req.body;
     if (!paths || !Array.isArray(paths) || paths.length === 0 || !destination) {
         return sendError(res, E.BAD_REQUEST, 400, 'paths array and destination are required');
@@ -485,26 +487,25 @@ router.post('/move', authenticateToken, checkPermission('server.files.write'), a
                     continue;
                 }
                 const baseName = path.basename(srcSafe);
-                const destPath = path.join(destSafe, baseName);
+                let destPath = path.join(destSafe, baseName);
 
                 // Handle name conflicts
-                let finalDest = destPath;
                 let counter = 1;
-                while (fs.existsSync(finalDest)) {
+                while (fs.existsSync(destPath)) {
                     const ext = path.extname(baseName);
                     const stem = path.basename(baseName, ext);
-                    finalDest = path.join(destSafe, `${stem} (${counter})${ext}`);
+                    destPath = path.join(destSafe, `${stem} (${counter})${ext}`);
                     counter++;
                 }
 
-                await fsp.rename(srcSafe, finalDest);
-                results.push({ path: p, status: 'moved', dest: path.relative(serverDir, finalDest) });
-            } catch (err) {
+                await fsp.rename(srcSafe, destPath);
+                results.push({ path: p, status: 'moved', dest: path.relative(serverDir, destPath) });
+            } catch (err: any) {
                 results.push({ path: p, status: 'error', error: err.message });
             }
         }
         res.json({ message: `Moved ${results.filter(r => r.status === 'moved').length} item(s).`, results });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
         logger.error(`[fileRoutes] move error (Server: ${req.params.serverId}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
@@ -512,7 +513,7 @@ router.post('/move', authenticateToken, checkPermission('server.files.write'), a
 });
 
 // ── Extract archive ───────────────────────────────────────────────────────────
-router.post('/extract', authenticateToken, checkPermission('server.files.write'), async (req: any, res) => {
+router.post('/extract', authenticateToken, checkPermission('server.files.write'), async (req: any, res: any) => {
     const { path: archiveRelPath } = req.body;
     if (!archiveRelPath) return sendError(res, E.BAD_REQUEST, 400, 'path is required');
     try {
@@ -531,7 +532,7 @@ router.post('/extract', authenticateToken, checkPermission('server.files.write')
 
         const count = zip.getEntries().length;
         res.json({ message: `Extracted ${count} entr${count === 1 ? 'y' : 'ies'} from ${path.basename(safePath)}.` });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
         logger.error(`[fileRoutes] extract error (Server: ${req.params.serverId}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500, e.message);
@@ -539,7 +540,7 @@ router.post('/extract', authenticateToken, checkPermission('server.files.write')
 });
 
 // ── Archive tree preview (list contents without extracting) ───────────────────
-router.get('/archive-tree', authenticateToken, checkPermission('server.files.read'), async (req: any, res) => {
+router.get('/archive-tree', authenticateToken, checkPermission('server.files.read'), async (req: any, res: any) => {
     if (!req.query.path) return sendError(res, E.BAD_REQUEST, 400, 'path query param is required');
     try {
         const server = await getServer(req.params.serverId);
@@ -552,19 +553,19 @@ router.get('/archive-tree', authenticateToken, checkPermission('server.files.rea
         if (ext !== '.zip') return sendError(res, E.BAD_REQUEST, 400, 'Not a .zip archive');
 
         const zip = new AdmZip(safePath);
-        const entries = zip.getEntries().map(e => ({
+        const entries = zip.getEntries().map((e: any) => ({
             name: e.entryName,
             isDirectory: e.isDirectory,
             size: e.header.size,
             compressedSize: e.header.compressedSize,
-        })).sort((a, b) => {
+        })).sort((a: any, b: any) => {
             if (a.isDirectory && !b.isDirectory) return -1;
             if (!a.isDirectory && b.isDirectory) return 1;
             return a.name.localeCompare(b.name);
         });
 
         res.json({ entries, totalEntries: entries.length, archiveName: path.basename(safePath) });
-    } catch (e) {
+    } catch (e: any) {
         if (e.message && e.message.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
         logger.error(`[fileRoutes] archive-tree error (Server: ${req.params.serverId}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
@@ -572,8 +573,8 @@ router.get('/archive-tree', authenticateToken, checkPermission('server.files.rea
 });
 
 // ── Upload ────────────────────────────────────────────────────────────────────
-router.post('/upload', authenticateToken, checkPermission('server.files.write'), (req: any, res, next) => {
-    upload.single('file')(req, res, (err) => {
+router.post('/upload', authenticateToken, checkPermission('server.files.write'), (req: any, res: any, next: any) => {
+    upload.single('file')(req, res, (err: any) => {
         if (err) {
             if (err.code === 'BLOCKED_EXTENSION' || (err.message && err.message.includes('blocked for security reasons'))) {
                 return sendError(res, E.FILE_INVALID_NAME, 400, err.message);
@@ -591,4 +592,4 @@ router.post('/upload', authenticateToken, checkPermission('server.files.write'),
     });
 });
 
-export = router;
+module.exports = router;

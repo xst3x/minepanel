@@ -35,6 +35,9 @@ const EyeOffIcon = ({ size = 16 }) => (
   const [activeModal, setActiveModal] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
 
+  // Mobile kebab actions menu state
+  const [openActionsMenu, setOpenActionsMenu] = useState(null);
+
   // Form states
   const [createUsername, setCreateUsername] = useState('');
   const [createPassword, setCreatePassword] = useState('');
@@ -299,7 +302,7 @@ const EyeOffIcon = ({ size = 16 }) => (
   };
 
   return (
-    <div className="page" style={{ padding: '2.25rem' }}>
+    <div className="page" id="view-users" style={{ padding: '2.25rem' }}>
       <button className="back-btn" onClick={() => navigate('/panel')} style={{ marginBottom: '1rem' }}>
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
           <line x1="19" y1="12" x2="5" y2="12" />
@@ -307,10 +310,10 @@ const EyeOffIcon = ({ size = 16 }) => (
         </svg>
         Back to Servers
       </button>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <h2 style={{ marginTop: 0, marginBottom: 0 }}>Users Management</h2>
         {isCallerManager && (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="users-header-actions">
             <button className="btn primary" onClick={() => setActiveModal('create')}>+ Create User</button>
             <button className="btn outline" onClick={handleOpenInviteModal}>Invite Token</button>
             <button className="btn danger" onClick={handleClearAllTokens}>Clear All Tokens</button>
@@ -322,7 +325,7 @@ const EyeOffIcon = ({ size = 16 }) => (
         <p className="text-muted">Loading users...</p>
       ) : (
         <div className="card" style={{ padding: 0 }}>
-          <div className="list-header" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 2fr', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', fontWeight: '600', color: 'var(--text-secondary)' }}>
+          <div className="list-header" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', fontWeight: '600', color: 'var(--text-secondary)' }}>
             <div>Username</div>
             <div>Rank / Role</div>
             <div>Status</div>
@@ -349,7 +352,7 @@ const EyeOffIcon = ({ size = 16 }) => (
                 );
 
                 return (
-                  <div key={u.id} className="list-item" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 2fr', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', alignItems: 'center' }}>
+                  <div key={u.id} className="list-item" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', alignItems: 'center' }}>
                     <div style={{ fontWeight: 600, color: 'var(--text)' }}>{u.username}</div>
                     <div>{rankHtml}</div>
                     <div>
@@ -369,30 +372,55 @@ const EyeOffIcon = ({ size = 16 }) => (
                         </label>
                       )}
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} className="user-created-date">
                       {new Date(u.created_at).toLocaleDateString()}
                     </div>
-                    <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end' }}>
-                      {isSelf ? (
-                        <>
-                          <button className="btn outline small" onClick={() => { setCnsCurrent(u.username); setActiveModal('change-name-self'); }}>Change Name</button>
-                          <button className="btn outline small" onClick={() => setActiveModal('change-password-self')}>Change Password</button>
-                          {isCallerManager && (
-                            <>
-                              <button className="btn outline small" onClick={() => { setSelectedUser(u); setActiveModal('reset-password-admin'); }}>Reset Pass</button>
-                              <button className="btn outline small" onClick={() => handleOpenPermsModal(u)}>Permissions</button>
-                            </>
-                          )}
-                        </>
-                      ) : isCallerManager ? (
-                        <>
-                          <button className="btn outline small" onClick={() => { setSelectedUser(u); setActiveModal('change-name-admin'); }}>Change Name</button>
-                          <button className="btn outline small" onClick={() => { setSelectedUser(u); setActiveModal('reset-password-admin'); }}>Reset Pass</button>
-                          <button className="btn outline small" onClick={() => handleOpenPermsModal(u)}>Permissions</button>
-                          <button className="btn danger small" onClick={() => handleDeleteUser(u)}>Delete</button>
-                        </>
-                      ) : null}
-                    </div>
+                    {(() => {
+                      // Build a single ordered action list used by both the desktop
+                      // button row and the mobile kebab dropdown.
+                      const actions = [];
+                      if (isSelf) {
+                        actions.push({ key: 'cn-self', label: 'Change Name', onClick: () => { setCnsCurrent(u.username); setActiveModal('change-name-self'); } });
+                        actions.push({ key: 'cp-self', label: 'Change Password', onClick: () => setActiveModal('change-password-self') });
+                        if (isCallerManager) {
+                          actions.push({ key: 'rp-admin', label: 'Reset Pass', onClick: () => { setSelectedUser(u); setActiveModal('reset-password-admin'); } });
+                          actions.push({ key: 'perms', label: 'Permissions', onClick: () => handleOpenPermsModal(u) });
+                        }
+                      } else if (isCallerManager) {
+                        actions.push({ key: 'cn-admin', label: 'Change Name', onClick: () => { setSelectedUser(u); setActiveModal('change-name-admin'); } });
+                        actions.push({ key: 'rp-admin', label: 'Reset Pass', onClick: () => { setSelectedUser(u); setActiveModal('reset-password-admin'); } });
+                        actions.push({ key: 'perms', label: 'Permissions', onClick: () => handleOpenPermsModal(u) });
+                        actions.push({ key: 'delete', label: 'Delete', danger: true, onClick: () => handleDeleteUser(u) });
+                      }
+
+                      if (actions.length === 0) return null;
+
+                      return (
+                        <div className="user-actions-cell">
+                          {/* Desktop: full button row */}
+                          <div className="user-actions-desktop" style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            {actions.map(a => (
+                              <button key={a.key} className={`btn ${a.danger ? 'danger' : 'outline'} small`} onClick={a.onClick}>
+                                {a.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Mobile: kebab menu */}
+                          <div className="user-actions-mobile">
+                            <button
+                              className="btn outline small fm-row-menu-btn"
+                              onClick={(e) => { e.stopPropagation(); setOpenActionsMenu(u.id); }}
+                              aria-label="Actions"
+                            >
+                              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })
@@ -774,6 +802,48 @@ const EyeOffIcon = ({ size = 16 }) => (
           </div>
         </div>
       )}
+
+      {/* ── Per-user actions bottom sheet ─────────────────────────────────── */}
+      {openActionsMenu && (() => {
+        const targetUser = users.find(u => u.id === openActionsMenu);
+        if (!targetUser) return null;
+        const isSelf = Number(targetUser.id) === Number(currentUserProfile?.id);
+        const actions = [];
+        if (isSelf) {
+          actions.push({ key: 'cn-self', label: 'Change Name', onClick: () => { setCnsCurrent(targetUser.username); setActiveModal('change-name-self'); } });
+          actions.push({ key: 'cp-self', label: 'Change Password', onClick: () => setActiveModal('change-password-self') });
+          if (isCallerManager) {
+            actions.push({ key: 'rp-admin', label: 'Reset Pass', onClick: () => { setSelectedUser(targetUser); setActiveModal('reset-password-admin'); } });
+            actions.push({ key: 'perms', label: 'Permissions', onClick: () => handleOpenPermsModal(targetUser) });
+          }
+        } else if (isCallerManager) {
+          actions.push({ key: 'cn-admin', label: 'Change Name', onClick: () => { setSelectedUser(targetUser); setActiveModal('change-name-admin'); } });
+          actions.push({ key: 'rp-admin', label: 'Reset Pass', onClick: () => { setSelectedUser(targetUser); setActiveModal('reset-password-admin'); } });
+          actions.push({ key: 'perms', label: 'Permissions', onClick: () => handleOpenPermsModal(targetUser) });
+          actions.push({ key: 'delete', label: 'Delete', danger: true, onClick: () => handleDeleteUser(targetUser) });
+        }
+
+        return (
+          <div className="fm-sheet-overlay" onClick={() => setOpenActionsMenu(null)}>
+            <div className="fm-sheet" onClick={e => e.stopPropagation()}>
+              <div className="fm-sheet-handle" />
+              <div className="fm-sheet-title">{targetUser.username}</div>
+              {actions.map(a => (
+                <button
+                  key={a.key}
+                  className={`fm-sheet-item${a.danger ? ' fm-sheet-danger' : ''}`}
+                  onClick={() => { setOpenActionsMenu(null); a.onClick(); }}
+                >
+                  <span>{a.label}</span>
+                </button>
+              ))}
+              <button className="fm-sheet-item fm-sheet-cancel" onClick={() => setOpenActionsMenu(null)}>
+                <span>Cancel</span>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

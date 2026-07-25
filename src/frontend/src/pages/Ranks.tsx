@@ -245,7 +245,7 @@ export default function Ranks() {
               <button className="close-btn" onClick={() => setShowEditor(false)}>&times;</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)', gap: '1.25rem', marginBottom: '1.5rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>Rank Name</label>
                   <input type="text" value={rankName} onChange={e => setRankName(e.target.value)}
@@ -262,12 +262,13 @@ export default function Ranks() {
               </div>
 
               <h4 style={{ marginBottom: '0.75rem' }}>Permissions Matrix</h4>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+              <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: servers.length > 3 ? '600px' : undefined }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    <th style={{ padding: 8 }}>Permission</th>
-                    <th style={{ padding: 8 }}>Global</th>
-                    {servers.map(s => <th key={s.id} style={{ padding: 8 }}>{s.name}</th>)}
+                    <th style={{ padding: 8, whiteSpace: 'nowrap' }}>Permission</th>
+                    <th style={{ padding: 8, whiteSpace: 'nowrap' }}>Global</th>
+                    {servers.map(s => <th key={s.id} style={{ padding: 8, whiteSpace: 'nowrap' }}>{s.name}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -312,6 +313,7 @@ export default function Ranks() {
                   })()}
                 </tbody>
               </table>
+              </div>
             </div>
             <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
               <button className="btn outline" onClick={() => setShowEditor(false)}>Cancel</button>
@@ -415,7 +417,7 @@ function RankCard({ rank: r, globalCount, serverCount, isAllGlobal, reorderMode,
 
       {/* Actions */}
       {!reorderMode && (
-        <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0, flexWrap: 'wrap' }}>
           <button className="btn outline small" onClick={onEdit}
             style={{ borderColor: hovered ? `rgba(${rc},${gc},${bc},0.5)` : undefined,
                      color: hovered ? r.color : undefined, transition: 'all 0.15s' }}>

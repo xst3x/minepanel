@@ -3,7 +3,7 @@
 // Loads environment variables (via dotenv already called in index.js)
 
 const DEFAULT_ALLOWED_ORIGINS = ['*'];
-const DEFAULT_RATE_LIMIT = 100; // requests per minute per IP
+const DEFAULT_RATE_LIMIT = 300; // requests per minute per IP
 
 export = {
   // Array of allowed origin strings for CORS. Empty array disables all origins.

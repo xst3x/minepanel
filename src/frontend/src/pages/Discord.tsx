@@ -164,7 +164,7 @@ export default function Discord() {
   };
 
   return (
-    <div className="page" style={{ padding: '2.25rem' }}>
+    <div className="page discord-page">
       <button className="back-btn" onClick={() => navigate('/panel')} style={{ marginBottom: '1rem' }}>
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
           <line x1="19" y1="12" x2="5" y2="12" />
@@ -172,7 +172,7 @@ export default function Discord() {
         </svg>
         Back to Servers
       </button>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <h2 style={{ marginTop: 0, marginBottom: 0 }}>Discord Integration</h2>
         <button className="btn primary" onClick={handleOpenCreate}>+ Add Bot</button>
       </div>
@@ -188,7 +188,7 @@ export default function Discord() {
           <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem' }}>Click <strong>Add Bot</strong> to connect your first Discord bot.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))', gap: '1.5rem' }}>
           {bots.map(bot => {
             const onlineColor = bot.online ? '#22c55e' : '#ef4444';
             const onlineLabel = bot.online ? 'Online' : 'Offline';
@@ -225,7 +225,7 @@ export default function Discord() {
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.82rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" strokeWidth="1.75">
                       <ellipse cx="12" cy="5" rx="9" ry="3" />
@@ -243,7 +243,7 @@ export default function Discord() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 'auto' }}>
+                <div className="discord-bot-card-actions">
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', flex: 1 }}>
                     <label className="toggle-switch">
                       <input
@@ -280,13 +280,13 @@ export default function Discord() {
             <div className="modal-body" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
               <div className="form-group">
                 <label>Bot Token</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div className="form-row-mobile-stack">
                   <input
                     type="password"
                     value={botToken}
                     onChange={(e) => setBotToken(e.target.value)}
                     placeholder={editingBot ? ' (leave blank to keep current)' : 'Bot Token'}
-                    style={{ flex: 1 }}
+                    style={{ flex: 1, minWidth: '180px' }}
                   />
                   <button className="btn outline" onClick={handleValidateToken} disabled={validating || !botToken}>
                     {validating ? 'Checking...' : 'Validate'}
@@ -325,21 +325,23 @@ export default function Discord() {
 
               <div className="form-group">
                 <label>Link to Minecraft Servers</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', padding: '0.25rem' }}>
+                <div className="discord-server-link-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', padding: '0.25rem' }}>
                   {servers.length === 0 ? (
                     <p className="text-muted" style={{ fontSize: '0.85rem' }}>No Minecraft servers found. Create one first.</p>
                   ) : (
                     servers.map(sv => {
                       const isChecked = selectedServerIds.includes(sv.id);
                       return (
-                        <label key={sv.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: '0.875rem', background: 'var(--bg-input)' }}>
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => handleServerCheckboxChange(sv.id, e.target.checked)}
-                          />
-                          <span style={{ flex: 1, color: 'var(--text)' }}>{sv.name}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sv.software} {sv.version}</span>
+                        <label key={sv.id} className="discord-server-link-item" style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: '0.875rem', background: 'var(--bg-input)', padding: '0.5rem 0.75rem' }}>
+                          <div className="discord-server-link-main">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => handleServerCheckboxChange(sv.id, e.target.checked)}
+                            />
+                            <span className="discord-server-link-name" style={{ color: 'var(--text)' }}>{sv.name}</span>
+                          </div>
+                          <span className="discord-server-link-meta" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sv.software} {sv.version}</span>
                         </label>
                       );
                     })
@@ -348,7 +350,7 @@ export default function Discord() {
               </div>
             </div>
 
-            <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+            <div className="modal-footer form-row-mobile-stack" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
               <button className="btn outline" onClick={() => setShowEditor(false)}>Cancel</button>
               <button className="btn primary" onClick={handleSaveBot} disabled={actionLoading}>
                 {actionLoading ? 'Saving...' : 'Save Bot'}

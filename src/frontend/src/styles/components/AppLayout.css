@@ -347,9 +347,9 @@ display: flex;
 }
 
 .sidebar-server-item svg {
-width: 32px !important;
-    height: 32px !important;
-    stroke-width: 1.75 !important;
+width: 16px !important;
+    height: 16px !important;
+    stroke-width: 2 !important;
 }
 
 .mobile-top-bar {
@@ -437,77 +437,74 @@ display: none;
 }
 
 .sidebar {
-flex-shrink: 0;
+width: 240px;
     min-width: 240px;
-}
-
-.sidebar {
-width: 240px !important;
-    min-width: 240px !important;
-    max-width: 240px !important;
-    flex-shrink: 0 !important;
-    flex-grow: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    height: 100vh !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    max-width: 240px;
+    flex-shrink: 0;
+    flex-grow: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .sidebar-section {
-display: flex !important;
-    flex-direction: column !important;
-    padding: 0.75rem !important;
-    gap: 2px !important;
-    flex-shrink: 0 !important;
-    width: 100% !important;
+display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    gap: 2px;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .sidebar-section-title {
-display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 6px !important;
-    font-size: 10px !important;
-    font-weight: 700 !important;
-    color: var(--text-muted) !important;
-    letter-spacing: 0.12em !important;
-    padding: 8px 6px 4px !important;
-    text-transform: uppercase !important;
-    white-space: nowrap !important;
-    width: 100% !important;
-    flex-shrink: 0 !important;
+display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.12em;
+    padding: 8px 6px 4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    width: 100%;
+    flex-shrink: 0;
 }
 
 .sidebar-item {
-display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    flex-shrink: 0 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    box-sizing: border-box !important;
+display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
 }
 
 .sidebar-server-name {
-flex: 1 !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
+flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .sidebar > div[style*="flex: 1"] {
-flex: 1 1 auto !important;
-    min-height: 8px !important;
+flex: 1 1 auto;
+    min-height: 8px;
 }
 
 .sidebar-footer {
-flex-shrink: 0 !important;
-    margin-top: auto !important;
+flex-shrink: 0;
+    margin-top: auto;
 }
 
 .mobile-dropdown-backdrop {
@@ -598,3 +595,41 @@ display: flex;
 background: var(--bg-elevated);
     color: var(--text-primary);
 }
+
+/* ── Mobile sidebar server list scroll fix ─────────────────────── */
+@media (max-width: 768px) {
+    /* Make sidebar fill full height on mobile; only the server list scrolls internally */
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* Server list: grows into available space but caps at 45vh to leave
+       room for GLOBAL nav below; falls back to natural height if fewer servers.
+       Create/Import buttons live inside this list, so they scroll with the servers. */
+    .sidebar-section-servers {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: 45vh;
+        overflow-y: auto !important;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Slightly larger touch targets for sidebar items on mobile */
+    .sidebar-item {
+        padding: 11px 14px;
+        font-size: 14px;
+    }
+
+    /* Ensure all sidebar buttons (server-switcher, etc.) are row-aligned */
+    .sidebar-item {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+    }
+}
+

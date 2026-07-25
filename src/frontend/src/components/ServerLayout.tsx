@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { api, getToken } from '../lib/api.ts';
 import { toast, showConfirm } from './Toast.tsx';
+import log from '../lib/logger.ts';
 import '../styles/components/ServerLayout.css';
 
 const TAB_ICONS = {
@@ -131,10 +132,12 @@ export default function ServerLayout() {
     
     const socket = new WebSocket(wsUrl);
     wsRef.current = socket;
+    log.wsConnect(wsUrl);
 
     socket.onopen = () => {
       socket.send(JSON.stringify({ type: 'auth', token }));
       reconnectAttemptsRef.current = 0;
+      log.wsReady();
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
@@ -153,6 +156,7 @@ export default function ServerLayout() {
       } else if (msg.type === 'clear_console') {
         setConsoleLines([]);
       } else if (msg.type === 'status') {
+        log.event(`server_status → ${msg.data}`, { serverId: id });
         setStatus(msg.data);
         // Notify the sidebar immediately so it can refresh server status
         window.dispatchEvent(new CustomEvent('mp:server-status-changed'));
@@ -170,14 +174,17 @@ export default function ServerLayout() {
       }
     };
 
-    socket.onclose = () => {
+    socket.onclose = (e) => {
+      log.wsClose(e.code);
       setStatus('offline');
       reconnectAttemptsRef.current++;
       const delay = Math.min(5000, 1000 * reconnectAttemptsRef.current);
+      log.warn(`WebSocket closed — reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
       reconnectTimeoutRef.current = setTimeout(connectWS, delay);
     };
 
-    socket.onerror = () => {
+    socket.onerror = (e) => {
+      log.error('WebSocket error', e);
       socket.close();
     };
   };

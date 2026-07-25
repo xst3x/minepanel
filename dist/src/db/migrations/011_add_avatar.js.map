@@ -1,0 +1,1 @@
+{"version":3,"file":"011_add_avatar.js","sourceRoot":"","sources":["../../../../src/db/migrations/011_add_avatar.ts"],"names":[],"mappings":";AACA,iBAAS;IACL,OAAO,EAAE,EAAE;IACX,WAAW,EAAE,+BAA+B;IAC5C,EAAE,EAAE,KAAK,EAAE,EAAE,EAAE,EAAE;QACb,MAAM,EAAE,CAAC,2DAA2D,CAAC,CAAC;IAC1E,CAAC;CACJ,CAAC"}

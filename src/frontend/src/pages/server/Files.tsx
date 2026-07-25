@@ -48,6 +48,10 @@ export default function ServerFiles() {
   const [savingFile, setSavingFile] = useState(false);
 
   const fileInputRef = useRef(null);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const actionsMenuRef = useRef(null);
+  const [openRowMenu, setOpenRowMenu] = useState(null);
+  const rowMenuRef = useRef(null);
 
   // Load files list
   const loadFiles = async (path = currentPath) => {
@@ -372,6 +376,21 @@ export default function ServerFiles() {
     } catch (e) { dismiss(e.message); }
   };
 
+  // ── Close actions menu on outside click ──────────────────────────────────
+  useEffect(() => {
+    if (!showActionsMenu) return;
+    const onClick = (e) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target)) {
+        setShowActionsMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [showActionsMenu]);
+
+  // ── Close per-row action menu on outside click ───────────────────────────
+  // (handled by the bottom-sheet overlay's own onClick instead)
+
   // ── Multi-select keyboard shortcuts ──────────────────────────────────────
   useEffect(() => {
     if (!selectMode) return;
@@ -423,24 +442,22 @@ export default function ServerFiles() {
       {/* ── Batch action bar ─────────────────────────────────────────────── */}
       {selCount > 0 && (
         <div className="fm-batch-bar">
-          <span className="fm-batch-count">{selCount} selected</span>
-          <button className="btn outline small" onClick={deselectAll}>Clear</button>
-          <div className="fm-batch-spacer" />
           <button className="btn outline small" onClick={handleBatchDownload}>Download</button>
           <button className="btn outline small" onClick={handleClipboardCopy}>Copy</button>
           <button className="btn outline small" onClick={handleClipboardCut}>Cut</button>
           <button className="btn outline small" onClick={() => setShowArchiveModal(true)} disabled={archiveModalLoading}>Archive</button>
           <button className="btn danger small" onClick={handleBatchDelete}>Delete</button>
+          <button className="btn outline small" onClick={deselectAll}>Clear</button>
         </div>
       )}
 
       <div className="card" style={{ padding: 0 }}>
-        <div className="list-header" style={{ display: 'grid', gridTemplateColumns: 'auto 2fr 1fr 1fr auto', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', fontWeight: '600', color: 'var(--text-secondary)' }}>
-          <div style={{ width: '24px' }}></div>
-          <div>Name</div>
-          <div>Size</div>
-          <div>Modified</div>
-          <div style={{ textAlign: 'right' }}>Actions</div>
+        <div className="fm-list-header">
+          <div style={{ width: '20px', flexShrink: 0 }} />
+          <div className="fm-col name">Name</div>
+          <div className="fm-col size">Size</div>
+          <div className="fm-col date">Modified</div>
+          <div style={{ flex: '0 0 auto', textAlign: 'right' }}>Actions</div>
         </div>
 
         <div className="list-body" id="fm-list">
@@ -450,12 +467,11 @@ export default function ServerFiles() {
             <>
               {currentPath !== '/' && (
                 <div className="fm-item" onClick={handleGoUp}>
-                  {selectMode && <div className="fm-chk" />}
                   <div className="fm-icon">{FOLDER_SVG}</div>
                   <div className="fm-col name fm-item-name" style={{ fontWeight: '500' }}>..</div>
-                  <div>--</div>
-                  <div>--</div>
-                  <div></div>
+                  <div className="fm-col size">--</div>
+                  <div className="fm-col date">--</div>
+                  <div className="fm-col actions" />
                 </div>
               )}
 
@@ -492,38 +508,33 @@ export default function ServerFiles() {
                     <div className="fm-col name fm-item-name">{item.name}</div>
                     <div className="fm-col size">{sz}</div>
                     <div className="fm-col date">{new Date(item.modifiedAt).toLocaleString()}</div>
-                    <div className="fm-col actions fm-item-actions" onClick={e => e.stopPropagation()}>
+                    <div className="fm-col actions fm-item-actions fm-row-menu-wrap" onClick={e => e.stopPropagation()}>
+                      {/* Desktop: all action buttons inline */}
+                      <div className="fm-inline-actions">
+                        <button className="btn outline small fm-action-btn" onClick={() => handleSingleDownload(item)}>Download</button>
+                        {hasPerm('server.files.edit') && (
+                          <>
+                            <button className="btn outline small fm-action-btn" onClick={() => handleSingleCopy(item.name)}>Copy</button>
+                            <button className="btn outline small fm-action-btn" onClick={() => handleSingleCut(item.name)}>Cut</button>
+                            {isZip ? (
+                              <button className="btn outline small fm-action-btn" onClick={() => openPreview(item)}>Extract</button>
+                            ) : (
+                              <button className="btn outline small fm-action-btn" onClick={() => handleSingleArchive(item.name)}>Archive</button>
+                            )}
+                            <button className="btn danger small fm-action-btn" onClick={() => handleSingleDelete(item.name)}>Delete</button>
+                          </>
+                        )}
+                      </div>
+                      {/* Mobile: 3-dot → bottom sheet */}
                       <button
-                        className="btn outline small fm-action-btn"
-                        onClick={() => handleSingleDownload(item)}
-                      >Download</button>
-                      {hasPerm('server.files.edit') && (
-                        <>
-                          <button
-                            className="btn outline small fm-action-btn"
-                            onClick={() => handleSingleCopy(item.name)}
-                          >Copy</button>
-                          <button
-                            className="btn outline small fm-action-btn"
-                            onClick={() => handleSingleCut(item.name)}
-                          >Cut</button>
-                          {isZip ? (
-                            <button
-                              className="btn outline small fm-action-btn"
-                              onClick={() => openPreview(item)}
-                            >Extract</button>
-                          ) : (
-                            <button
-                              className="btn outline small fm-action-btn"
-                              onClick={() => handleSingleArchive(item.name)}
-                            >Archive</button>
-                          )}
-                          <button
-                            className="btn danger small fm-action-btn"
-                            onClick={() => handleSingleDelete(item.name)}
-                          >Delete</button>
-                        </>
-                      )}
+                        className="btn outline small fm-row-menu-btn fm-mobile-menu-btn"
+                        onClick={() => setOpenRowMenu(item.name)}
+                        aria-label="Row actions"
+                      >
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                          <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 );
@@ -532,6 +543,50 @@ export default function ServerFiles() {
           )}
         </div>
       </div>
+
+      {/* ── Per-row actions bottom sheet ──────────────────────────────────── */}
+      {openRowMenu && (() => {
+        const menuItem = items.find(i => i.name === openRowMenu);
+        if (!menuItem) return null;
+        const ext = menuItem.name.split('.').pop()?.toLowerCase();
+        const isZipItem = !menuItem.isDirectory && ext === 'zip';
+        return (
+          <div className="fm-sheet-overlay" onClick={() => setOpenRowMenu(null)}>
+            <div className="fm-sheet" onClick={e => e.stopPropagation()}>
+              <div className="fm-sheet-handle" />
+              <div className="fm-sheet-title">{menuItem.name}</div>
+              <button className="fm-sheet-item" onClick={() => { setOpenRowMenu(null); handleSingleDownload(menuItem); }}>
+                <span>Download</span>
+              </button>
+              {hasPerm('server.files.edit') && (
+                <>
+                  <button className="fm-sheet-item" onClick={() => { setOpenRowMenu(null); handleSingleCopy(menuItem.name); }}>
+                    <span>Copy</span>
+                  </button>
+                  <button className="fm-sheet-item" onClick={() => { setOpenRowMenu(null); handleSingleCut(menuItem.name); }}>
+                    <span>Cut</span>
+                  </button>
+                  {isZipItem ? (
+                    <button className="fm-sheet-item" onClick={() => { setOpenRowMenu(null); openPreview(menuItem); }}>
+                      <span>Extract</span>
+                    </button>
+                  ) : (
+                    <button className="fm-sheet-item" onClick={() => { setOpenRowMenu(null); handleSingleArchive(menuItem.name); }}>
+                      <span>Archive</span>
+                    </button>
+                  )}
+                  <button className="fm-sheet-item fm-sheet-danger" onClick={() => { setOpenRowMenu(null); handleSingleDelete(menuItem.name); }}>
+                    <span>Delete</span>
+                  </button>
+                </>
+              )}
+              <button className="fm-sheet-item fm-sheet-cancel" onClick={() => setOpenRowMenu(null)}>
+                <span>Cancel</span>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Archive naming modal ────────────────────────────────────────── */}
       {showArchiveModal && (

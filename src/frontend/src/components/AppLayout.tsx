@@ -225,7 +225,7 @@ function AppLayoutInner() {
             <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
-        <div className="mobile-logo">
+        <div className="mobile-logo" style={{ opacity: isMobileMenuOpen ? 0 : 1, pointerEvents: isMobileMenuOpen ? 'none' : 'auto', transition: 'opacity 0.2s ease' }}>
           <FaviconIcon style={{ width: '24px', height: '24px' }} />
           <span>MinePanel</span>
         </div>
@@ -260,15 +260,14 @@ function AppLayoutInner() {
         )}
       </header>
 
-      {/* ── Mobile overlay behind drawer ── */}
-      {isMobileMenuOpen && (
-        <div className="mobile-overlay"
-          onClick={() => setIsMobileMenuOpen(false)}
-          onTouchEnd={e => { e.preventDefault(); setIsMobileMenuOpen(false); }} />
-      )}
-
       {/* ── Main layout: sidebar + content ── */}
       <div id="main-view">
+        {/* ── Mobile overlay behind drawer ── */}
+        {isMobileMenuOpen && (
+          <div className="mobile-overlay active"
+            onClick={() => setIsMobileMenuOpen(false)}
+            onTouchEnd={e => { e.preventDefault(); setIsMobileMenuOpen(false); }} />
+        )}
 
         <aside className={`sidebar${isMobileMenuOpen ? ' drawer-open' : ''}`} id="sidebar">
           <button className="sidebar-close-btn" aria-label="Close menu"
@@ -329,8 +328,6 @@ function AppLayoutInner() {
                 </Link>
               );
             })}
-          </div>
-          <div className="sidebar-section" style={{ borderTop: 'none', paddingTop: 0 }}>
             <button className="sidebar-item sidebar-create" onClick={() => { setIsMobileMenuOpen(false); handleCreateClick(); }}>
               <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>

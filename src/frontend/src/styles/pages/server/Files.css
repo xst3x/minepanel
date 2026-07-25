@@ -2,7 +2,6 @@
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    overflow: hidden;
     box-shadow: var(--shadow-sm);
 }
 
@@ -12,9 +11,16 @@
     align-items: center;
     padding: 1.1rem 1.5rem;
     border-bottom: 1px solid var(--border);
-    background: var(--bg-input);
+    background: var(--bg-base);
+    background-image: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    opacity: 1;
     flex-wrap: wrap;
     gap: 0.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 30;
 }
 
 .fm-breadcrumb {
@@ -33,29 +39,90 @@
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+    width: 100%;
+}
+
+.fm-actions > button {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+/* ── Actions hamburger menu ──────────────────────────────────────── */
+
+.fm-menu-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.fm-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.6rem !important;
+}
+
+.fm-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 40;
+    min-width: 160px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    animation: fmMenuIn 0.14s ease-out;
+}
+
+.fm-dropdown-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0.55rem 0.7rem;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.fm-dropdown-item:hover {
+    background: var(--bg-elevated);
+}
+
+@keyframes fmMenuIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Batch action bar ────────────────────────────────────────────── */
 
 .fm-batch-bar {
+    position: sticky;
+    top: 0;
+    z-index: 31;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1.5rem;
-    background: var(--accent-subtle);
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.55rem 1rem;
+    background: var(--bg-surface);
     border-bottom: 1px solid var(--border);
-    font-size: 0.85rem;
-    animation: fmBatchIn 0.2s ease-out;
+    border-top: 2px solid var(--accent);
+    animation: fmBatchIn 0.15s ease-out;
 }
 
-.fm-batch-count {
-    font-weight: 700;
-    color: var(--accent);
+.fm-batch-bar .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
     white-space: nowrap;
-}
-
-.fm-batch-spacer {
-    flex: 1;
 }
 
 @keyframes fmBatchIn {
@@ -67,7 +134,9 @@
 
 .fm-list-header {
     display: flex;
-    padding: 0.7rem 1.5rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 1rem;
     border-bottom: 1px solid var(--border);
     color: var(--text-muted);
     font-size: 0.75rem;
@@ -81,29 +150,170 @@
 
 .fm-col {
     flex: 1;
+    min-width: 0;
 }
 
 .fm-col.name {
-    flex: 3.5;
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 0.65rem;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.fm-col.size {
+    flex: 0 0 70px;
+    text-align: right;
+    white-space: nowrap;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.fm-col.date {
+    flex: 0 0 150px;
+    text-align: right;
+    white-space: nowrap;
+    color: var(--text-muted);
+    font-size: 0.8rem;
 }
 
 .fm-col.actions {
-    text-align: right;
+    flex: 0 0 auto;
     display: flex;
-    gap: 0.2rem;
+    gap: 0.3rem;
     align-items: center;
     justify-content: flex-end;
+}
+
+/* ── Per-row kebab menu (compact, keeps rows thin) ───────────────── */
+.fm-row-menu-wrap {
+    position: relative;
+}
+
+.fm-row-menu-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3rem 0.4rem !important;
+    min-width: auto !important;
+    opacity: 1 !important;
+}
+
+.fm-row-dropdown {
+    top: calc(100% + 4px);
+    right: 0;
+    left: auto;
+    min-width: 140px;
+}
+
+.fm-dropdown-danger {
+    color: var(--danger, #e5484d);
+}
+
+.fm-dropdown-danger:hover {
+    background: color-mix(in srgb, var(--danger, #e5484d) 12%, transparent);
+}
+
+/* ── Per-row actions bottom sheet ─────────────────────────────────── */
+.fm-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 500;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    animation: fmSheetFadeIn 0.18s ease-out;
+}
+
+.fm-sheet {
+    width: 100%;
+    max-width: 560px;
+    background: var(--bg-surface);
+    opacity: 1;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 20px 20px 0 0;
+    box-shadow: var(--shadow-lg);
+    padding: 0.75rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: fmSheetSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fm-sheet-handle {
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    margin: 0.25rem auto 0.75rem;
+    flex-shrink: 0;
+}
+
+.fm-sheet-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    padding: 0 0.25rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.4rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.fm-col.actions .btn {
-    padding: 0.2rem 0.45rem;
-    font-size: 0.75rem;
-    min-width: auto;
-    line-height: 1;
+.fm-sheet-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 0.95rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.fm-sheet-item:active {
+    background: var(--bg-elevated);
+}
+
+@media (min-width: 481px) {
+    .fm-sheet-item:hover {
+        background: var(--bg-elevated);
+    }
+}
+
+.fm-sheet-danger {
+    color: var(--danger, #e5484d);
+}
+
+.fm-sheet-cancel {
+    margin-top: 0.4rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+@keyframes fmSheetFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes fmSheetSlideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
 }
 
 /* ── List body ──────────────────────────────────────────────────── */
@@ -114,13 +324,15 @@
 
 .fm-item {
     display: flex;
-    padding: 0.75rem 1.5rem;
-    border-bottom: 1px solid var(--border);
     align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--border);
     cursor: pointer;
     transition: background 0.12s ease;
     font-size: 0.85rem;
-    gap: 0.5rem;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .fm-item:hover {
@@ -252,11 +464,10 @@
 }
 
 .fm-col.name {
-    min-width: 0 !important;
-    flex: 1 !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ── Responsive adjustments ─────────────────────────────────────── */
@@ -274,23 +485,22 @@
         justify-content: center;
     }
     .fm-item {
-        flex-wrap: wrap;
-        padding: 0.6rem 0.75rem;
-        gap: 0.35rem;
+        padding: 0.6rem 0.85rem;
+        gap: 0.5rem;
     }
-    .fm-col.actions {
-        flex: 1 0 100%;
-        justify-content: flex-start;
-        margin-top: 0.25rem;
-        padding-top: 0.25rem;
-        border-top: 1px solid var(--border);
+    .fm-col.size,
+    .fm-col.date {
+        display: none;
+    }
+    .list-header {
+        display: none !important;
     }
 }
 
 /* ── Per-file action buttons with text labels ────────────────────────────── */
 .fm-item-actions {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0.3rem;
     justify-content: flex-end;
     align-items: center;
@@ -302,4 +512,29 @@
     min-width: 58px;
     white-space: nowrap;
     letter-spacing: 0.01em;
+}
+
+/* Desktop: show inline buttons, hide 3-dot */
+.fm-inline-actions {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+}
+
+.fm-mobile-menu-btn {
+    display: none !important;
+}
+
+/* Mobile: hide inline buttons, show 3-dot */
+@media (max-width: 720px) {
+    .fm-inline-actions {
+        display: none !important;
+    }
+    .fm-mobile-menu-btn {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+    }
 }

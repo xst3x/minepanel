@@ -1,0 +1,1 @@
+{"version":3,"file":"012_add_totp_verified.js","sourceRoot":"","sources":["../../../../src/db/migrations/012_add_totp_verified.ts"],"names":[],"mappings":";AAGA,iBAAS;IACL,OAAO,EAAE,EAAE;IACX,WAAW,EAAE,kCAAkC;IAC/C,EAAE,EAAE,KAAK,EAAE,EAAE,EAAE,EAAE;QACb,MAAM,EAAE,CAAC,uEAAuE,CAAC,CAAC;QAClF,oFAAoF;QACpF,MAAM,EAAE,CAAC,2DAA2D,CAAC,CAAC;IAC1E,CAAC;CACJ,CAAC"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"004_add_threshold_rules.js","sourceRoot":"","sources":["../../../../src/db/migrations/004_add_threshold_rules.ts"],"names":[],"mappings":";AACA,iBAAS;IACL,OAAO,EAAE,CAAC;IACV,WAAW,EAAE,6EAA6E;IAC1F,KAAK,CAAC,EAAE,CAAC,KAAK;QACV,MAAM,KAAK,CAAC,kEAAkE,CAAC,CAAC;IACpF,CAAC;IACD,KAAK,CAAC,IAAI,CAAC,KAAK;QACZ,kEAAkE;IACtE,CAAC;CACJ,CAAC"}

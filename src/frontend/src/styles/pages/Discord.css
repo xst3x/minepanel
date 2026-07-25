@@ -1,1 +1,116 @@
-/* No page-specific styles needed */
+.form-row-mobile-stack {
+    display: flex;
+    gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .form-row-mobile-stack {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+    }
+    .form-row-mobile-stack button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+}
+
+/* ── Discord bot: "Link to Minecraft Servers" checkbox list ──────── */
+.discord-server-link-list {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.discord-server-link-item {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.discord-server-link-main {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.discord-server-link-item input[type="checkbox"] {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent);
+}
+
+.discord-server-link-name {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.discord-server-link-meta {
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin-left: 0.75rem;
+}
+
+/* ── Mobile: stack name and meta on their own lines, no horizontal scroll ── */
+@media (max-width: 768px) {
+    .discord-server-link-item {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 2px !important;
+    }
+    .discord-server-link-main {
+        width: 100%;
+    }
+    .discord-server-link-name {
+        flex: 1 1 auto;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    .discord-server-link-meta {
+        margin-left: calc(18px + 0.75rem); /* aligns under the name, past the checkbox */
+        white-space: nowrap !important;
+    }
+}
+
+/* ── Discord page responsive padding ── */
+.discord-page {
+    padding: 2.25rem;
+}
+
+@media (max-width: 768px) {
+    .discord-page {
+        padding: 1.25rem 1rem;
+    }
+}
+
+/* ── Discord bot card actions mobile alignment ── */
+.discord-bot-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: auto;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+    .discord-bot-card-actions {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem !important;
+        align-items: center;
+    }
+    .discord-bot-card-actions > label {
+        grid-column: span 2;
+        margin-bottom: 0.25rem;
+    }
+}
+

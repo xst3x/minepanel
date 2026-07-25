@@ -115,12 +115,19 @@ max-width: min(600px, calc(100vw - 2rem)) !important;
     box-sizing: border-box !important;
 }
 
-/* Wider modal for modpack browser (Create) and Import Server — spec items 1 & 2 */
+/* Ensure modals always fit inside the viewport */
+.modal-body {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Wider modal for modpack browser (Create) and Import Server */
 .modal.large {
     max-width: min(1200px, calc(100vw - 2rem)) !important;
-    width: 85vw !important;
-    height: 88vh !important;
-    max-height: 88vh !important;
+    width: min(85vw, calc(100vw - 2rem)) !important;
+    height: min(88vh, calc(100vh - 2rem)) !important;
+    max-height: min(88vh, calc(100vh - 2rem)) !important;
 }
 
 @media (max-width: 900px) {
@@ -128,5 +135,23 @@ max-width: min(600px, calc(100vw - 2rem)) !important;
         width: calc(100vw - 2rem) !important;
         height: calc(100vh - 2rem) !important;
         max-height: calc(100vh - 2rem) !important;
+    }
+}
+
+/* On very small screens, modals slide up rather than center */
+@media (max-width: 480px) {
+    .modal-overlay {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+    .modal {
+        max-height: 90vh !important;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+        max-width: 100% !important;
+    }
+    .modal.large {
+        height: 90vh !important;
+        max-height: 90vh !important;
+        width: 100% !important;
     }
 }

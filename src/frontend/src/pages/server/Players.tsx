@@ -74,15 +74,19 @@ function PlayersTab({ serverId, status, hasPerm }) {
     finally { setDetailLoading(false); }
   };
 
-  // Poll vitals every 500ms while modal is open
+  // Poll vitals every 3000ms while modal is open
   const startVitalsPoll = useCallback((uuid, name) => {
     stopVitalsPoll();
     vitalsIntervalRef.current = setInterval(async () => {
       try {
         const d = await api(`/api/servers/${serverId}/players/${encodeURIComponent(uuid)}`);
         setSelected(s => s ? { ...s, data: d } : null);
-      } catch { /* ignore poll errors */ }
-    }, 500);
+      } catch (err) {
+        if (err?.status === 429 || err?.status === 401 || err?.status === 403) {
+          stopVitalsPoll();
+        }
+      }
+    }, 3000);
   }, [serverId]);
 
   const stopVitalsPoll = () => {
@@ -126,7 +130,6 @@ function PlayersTab({ serverId, status, hasPerm }) {
     <div className="card">
       <div className="list-header">
         <div className="col col-wide">Player</div>
-        <div className="col">UUID</div>
         <div className="col actions">Actions</div>
       </div>
       <div className="list-body">
@@ -137,7 +140,6 @@ function PlayersTab({ serverId, status, hasPerm }) {
         ) : players.map(p => (
           <div key={p.uuid} className="list-item">
             <div className="col col-wide text-mono" data-label="Player">{p.username || p.uuid}</div>
-            <div className="col text-muted text-mono" style={{ fontSize: '0.8rem' }} data-label="UUID">{p.uuid}</div>
             <div className="col actions" data-label="Actions">
               <button className="btn outline small" onClick={() => openModal(p)}>Manage</button>
             </div>
@@ -257,37 +259,11 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
   const hasStats = d?.stats?.stats != null;
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: 'rgba(0,0,0,0.75)',
-      backdropFilter: 'blur(4px)',
-      zIndex: 1000,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '1rem',
-    }}>
-      <div style={{
-        width: 900, maxWidth: '100%',
-        maxHeight: 'calc(100vh - 2rem)',
-        overflowY: 'auto',
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)',
-        boxShadow: 'var(--shadow-lg)',
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 0,
-      }}>
+    <div className="player-modal-overlay">
+      <div className="player-modal-container">
 
         {/* ══ MODAL HEADER ═══════════════════════════════════════════════════ */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '1.25rem',
-          padding: '1.5rem 2rem',
-          borderBottom: '1px solid var(--border)',
-          background: 'var(--bg-input)',
-          borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
-          flexShrink: 0,
-        }}>
+        <div className="player-modal-header">
           {/* Avatar */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <img
@@ -306,7 +282,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
           </div>
 
           {/* Name + UUID */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="player-modal-identity" style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '1.4rem', fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--text-primary)', lineHeight: 1.2 }}>
               {player.name}
             </div>
@@ -323,7 +299,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
           {/* Quick stat pills */}
           {hasStats && (
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', flexShrink: 0 }}>
+            <div className="player-modal-pills">
               {playTimeHours != null && (
                 <QuickPill label="Playtime" val={`${playTimeHours}h`} />
               )}
@@ -337,7 +313,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
           )}
 
           {/* Actions */}
-          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, marginLeft: 'auto' }}>
+          <div className="player-modal-actions">
             <button className="btn outline small" onClick={onRefresh}>Refresh</button>
             <button className="btn outline small" onClick={onClose} style={{ borderColor: 'var(--red)', color: 'var(--red)' }}>Close</button>
           </div>
@@ -373,11 +349,11 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
         </div>
 
         {/* ══ SECTION BODY ═══════════════════════════════════════════════════ */}
-        <div style={{ padding: '1.75rem 2rem', overflowY: 'auto', flex: 1 }}>
+        <div className="player-modal-body">
 
           {/* ── STATS ─────────────────────────────────────────────────────── */}
           {activeSection === 'stats' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {!hasStats ? (
                 <div style={{
                   padding: '2rem', textAlign: 'center',
@@ -466,8 +442,8 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
                 </div>
 
                 {/* Kill [left] | Hearts [center] | Heal [right] */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                <div className="vitals-row">
+                  <div className="vitals-action-left">
                     <button
                       className="btn danger small"
                       onClick={async () => {
@@ -483,7 +459,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
                     })}
                   </div>
 
-                  <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+                  <div className="vitals-action-right">
                     <button
                       className="btn success small"
                       onClick={() => {
@@ -511,8 +487,8 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
                 </div>
 
                 {/* Starve [left] | Drumsticks [center] | Feed [right] */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                <div className="vitals-row">
+                  <div className="vitals-action-left">
                     <button
                       className="btn danger small"
                       onClick={async () => {
@@ -531,7 +507,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
                     })}
                   </div>
 
-                  <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+                  <div className="vitals-action-right">
                     <button
                       className="btn success small"
                       onClick={() => {
@@ -736,11 +712,7 @@ function RpgStatSection({ title, color, children }) {
       </div>
 
       {/* Stat grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))',
-        gap: '0.65rem',
-      }}>
+      <div className="rpg-stat-grid">
         {kids}
       </div>
     </div>
@@ -941,7 +913,6 @@ function WhitelistTab({ serverId }) {
     <div className="card">
       <div className="list-header">
         <div className="col col-wide">Player Name</div>
-        <div className="col">UUID</div>
         <div className="col actions">Actions</div>
       </div>
       <div className="list-body">
@@ -950,7 +921,6 @@ function WhitelistTab({ serverId }) {
           : list.map(item => (
             <div key={item.uuid || item.name} className="list-item">
               <div className="col col-wide text-mono" data-label="Player">{item.name || 'Unknown'}</div>
-              <div className="col text-muted text-mono" style={{ fontSize: '0.8rem' }} data-label="UUID">{item.uuid || '--'}</div>
               <div className="col actions" data-label="Actions">
                 <button className="btn danger small" onClick={() => remove(item.name || item.uuid)}>Remove</button>
               </div>

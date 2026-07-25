@@ -1,0 +1,1 @@
+{"version":3,"file":"003_add_throttle_config.js","sourceRoot":"","sources":["../../../../src/db/migrations/003_add_throttle_config.ts"],"names":[],"mappings":";AACA,iBAAS;IACL,OAAO,EAAE,CAAC;IACV,WAAW,EAAE,qEAAqE;IAClF,KAAK,CAAC,EAAE,CAAC,KAAK;QACV,MAAM,KAAK,CAAC,kEAAkE,CAAC,CAAC;IACpF,CAAC;IACD,2EAA2E;IAC3E,KAAK,CAAC,IAAI,CAAC,KAAK;QACZ,4EAA4E;QAC5E,2FAA2F;IAC/F,CAAC;CACJ,CAAC"}

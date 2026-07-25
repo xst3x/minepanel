@@ -3,7 +3,7 @@
 // Central configuration module for MinePanel
 // Loads environment variables (via dotenv already called in index.js)
 const DEFAULT_ALLOWED_ORIGINS = ['*'];
-const DEFAULT_RATE_LIMIT = 100; // requests per minute per IP
+const DEFAULT_RATE_LIMIT = 300; // requests per minute per IP
 module.exports = {
     // Array of allowed origin strings for CORS. Empty array disables all origins.
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : DEFAULT_ALLOWED_ORIGINS,

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap');
+/* Fonts are self-hosted via @fontsource — imported in main.tsx */
 
 /* Cyber-Emerald & Deep Slate Glassmorphism Theme */
 /* Semantic Colors */
@@ -135,22 +135,84 @@ overflow-x: auto;
 
 
 
+/* ── Responsive Safety Defaults ──────────────────────────────────────────── */
+
 /* All flex containers default to wrapping */
+div[style*="display: flex"],
+.flex-row {
+    flex-wrap: wrap;
+}
+
+div[style*="display: flex"][style*="nowrap"],
+.flex-nowrap {
+    flex-wrap: nowrap !important;
+}
+
+/* All flex items respect their parent container */
+[class*="sidebar"],
+[class*="content"],
+[class*="header"],
+[class*="card"],
+[class*="item"],
+[class*="grid"],
+[class*="toolbar"],
+[class*="actions"],
+.col,
+.fm-col {
+    min-width: 0;
+    max-width: 100%;
+}
 
 /* No element wider than its parent */
+.card,
+.stat-box,
+.prop-item,
+.perm-item,
+.plugin-card,
+.server-card,
+.rank-card,
+.list-item,
+.fm-item,
+.ov-stat-card,
+.ov-backup-row,
+.ov-player-row,
+.ov-activity-item {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
 
 /* Buttons never shrink below readable size, always wrap */
+.btn {
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+}
 
+.btn-group,
+div[class*="actions"],
+[class*="toolbar"] {
+    flex-wrap: wrap !important;
+}
 
 /* Inputs never overflow their container */
 input, select, textarea {
 max-width: 100%;
     min-width: 0;
+    box-sizing: border-box;
 }
 
-
-
 /* Status badges clip text instead of overflowing */
+.status-badge,
+.rank-badge,
+.badge {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
 
 /* ── End global overflow & text safety ──────────────────────────────────────── */
 
@@ -199,7 +261,7 @@ display: flex;
 
 
 /* Forms & Inputs */
-input:focus, select:focus {
+input:not([type="checkbox"]):not([type="radio"]):focus, select:focus {
 border-color: var(--accent); 
     box-shadow: 0 0 0 3px var(--accent-glow);
     background: var(--bg-surface);
@@ -690,35 +752,8 @@ from { opacity: 1; transform: translateY(0) scale(1); }
 
 /* Permission Matrix Custom Styles */
 
-/* --- Mobile Responsive Table-to-Card conversions and Stacked matrix styling --- */
+/* ── Intermediate responsive (992px) — grid collapses ──────────────────── */
 @media (max-width: 992px) {
-#main-view.active {
-        flex-direction: column;
-    }
-    .sidebar {
-        width: 100%;
-        height: auto;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-    }
-    .sidebar-brand {
-        height: 52px;
-    }
-    .sidebar-section {
-        padding: 0.75rem;
-        flex-direction: row;
-        overflow-x: auto;
-        border-bottom: none;
-    }
-    .sidebar-section-title {
-        display: none;
-    }
-    .sidebar-footer {
-        display: none;
-    }
-    .content-area {
-        padding: 1.25rem;
-    }
     .overview-grid {
         grid-template-columns: 1fr;
     }
@@ -767,7 +802,7 @@ html, body {
         align-items: center !important;
         justify-content: space-between !important;
         padding: 0 1rem !important;
-        z-index: 1000 !important;
+        z-index: 8000 !important;
         box-shadow: var(--shadow-sm) !important;
     }
 
@@ -866,7 +901,7 @@ html, body {
         bottom: 0 !important;
         background: rgba(0, 0, 0, 0.6) !important;
         backdrop-filter: blur(4px) !important;
-        z-index: 9998 !important;
+        z-index: 5000 !important;
         display: none !important;
     }
     .mobile-overlay.active {
@@ -880,7 +915,7 @@ html, body {
         bottom: 0 !important;
         width: 280px !important;
         height: 100vh !important;
-        z-index: 9999 !important;
+        z-index: 10000 !important;
         transform: translateX(-100%) !important;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         border-right: 1px solid var(--border) !important;
@@ -928,7 +963,10 @@ html, body {
     }
 
     .sidebar-section-title {
-        display: block !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
     }
 
     .sidebar-footer {
@@ -1023,7 +1061,7 @@ html, body {
         display: none !important;
     }
 
-    .list-item, .fm-item {
+    .list-item {
         display: block !important;
         border: 1px solid var(--border) !important;
         border-radius: var(--radius-lg) !important;
@@ -1033,7 +1071,7 @@ html, body {
         box-shadow: var(--shadow-sm) !important;
     }
 
-    .col, .fm-col {
+    .col {
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
@@ -1045,13 +1083,56 @@ html, body {
         text-overflow: clip !important;
         white-space: normal !important;
         min-height: 36px !important;
+        word-break: break-all !important;
     }
     
-    .col:last-child, .fm-col:last-child, .col.actions, .fm-col.actions {
+    .col:last-child, .col.actions {
         border-bottom: none !important;
         justify-content: flex-end !important;
         padding-top: 0.75rem !important;
         margin-top: 0.25rem !important;
+    }
+
+    /* Files list keeps its own compact 2-line layout (see Files.css) —
+       excluded from the generic .list-item/.col block-stacking above. */
+    .fm-item {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        padding: 0.6rem 0.85rem !important;
+        margin-bottom: 0.5rem !important;
+        background: var(--bg-surface) !important;
+        gap: 0 0.5rem !important;
+    }
+    .fm-icon { order: 1 !important; }
+    .fm-col.name {
+        order: 2 !important;
+        flex: 1 1 auto !important;
+        width: auto !important;
+        border-bottom: none !important;
+        padding: 0 !important;
+        min-height: 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    .fm-col.actions {
+        order: 3 !important;
+        flex: 0 0 auto !important;
+        width: auto !important;
+        border-bottom: none !important;
+        padding: 0 !important;
+        min-height: 0 !important;
+        margin-top: 0 !important;
+        justify-content: flex-end !important;
+    }
+    .fm-col.size {
+        display: none !important;
+    }
+    .fm-col.date {
+        display: none !important;
     }
 
     .col[data-label]::before, .fm-col[data-label]::before {
@@ -1062,11 +1143,10 @@ html, body {
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
         margin-right: 1rem !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
     }
 
-    .fm-icon {
-        display: none !important;
-    }
     .fm-col.name {
         font-weight: 600 !important;
         font-size: 0.95rem !important;
@@ -1215,18 +1295,42 @@ html, body {
    ══════════════════════════════════════════════════════════════════ */
 
 /* Page header always wraps and never clips */
+.page-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    max-width: 100%;
+    min-width: 0;
+}
 
 /* Header button groups wrap */
+.page-header > div {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
 
 /* Server header actions always wrap */
+.sh-actions {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
 
 /* List item action buttons always wrap */
+.list-item .col.actions,
+.col.actions {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
 
 /* General: any inline flex button group should wrap */
-
+div[style*="display: flex"].btn-group,
+[class*="actions"] {
+    flex-wrap: wrap;
+}
 
 /* Prevent any button from shrinking below its content */
-
+.btn, button {
+    flex-shrink: 0;
+}
 
 /* Content area never overflows horizontally */
 .content-area {
@@ -1723,73 +1827,6 @@ background: hsla(220, 15%, 88%, 0.5) !important;
 /* ── End Users Table Column Alignment Fix ────────────────────────────────── */
 
 
-/* ── Users Table Column Alignment Fix ──────────────────────────────────────── */
-
-/* Username — wide column */
-
-/* Rank */
-
-/* Status */
-
-/* Created */
-
-/* Actions — grows to fill remaining space, right-aligned */
-
-/* Responsive fallback */
-@media (max-width: 900px) {
-#view-users .list-header .col-wide,
-    #view-users .list-item .col-wide { flex: 0 0 140px; }
-    #view-users .list-header .col:nth-child(2),
-    #view-users .list-item .col:nth-child(2) { flex: 0 0 90px; }
-    #view-users .list-header .col:nth-child(3),
-    #view-users .list-item .col:nth-child(3) { flex: 0 0 70px !important; }
-    #view-users .list-header .col:nth-child(4),
-    #view-users .list-item .col:nth-child(4) { flex: 0 0 90px; }
-}
-
-
-
-@media (max-width: 650px) {
-#view-users .list-header { display: none !important; }
-    #view-users .list-item {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius-lg) !important;
-        padding: 1rem !important;
-        margin-bottom: 0.6rem !important;
-        background: var(--bg-surface) !important;
-        gap: 0.4rem !important;
-    }
-    #view-users .list-item .col-wide,
-    #view-users .list-item .col:nth-child(2),
-    #view-users .list-item .col:nth-child(3),
-    #view-users .list-item .col:nth-child(4) {
-        flex: none !important;
-        width: 100% !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
-        white-space: normal !important;
-    }
-    #view-users .list-item .col.actions {
-        justify-content: flex-start !important;
-        flex-wrap: wrap !important;
-        border-top: 1px solid var(--border) !important;
-        padding-top: 0.6rem !important;
-        margin-top: 0.25rem !important;
-        width: 100% !important;
-    }
-    #view-users .list-item .col.actions .btn {
-        flex: 1 1 auto !important;
-        min-width: 90px !important;
-        justify-content: center !important;
-    }
-}
-
-
-/* ── End Users Table Column Alignment Fix ────────────────────────────────── */
-
-
 /* ══════════════════════════════════════════════════════════════════
    ANIMATIONS — MinePanel UI Enhancement Layer
    ══════════════════════════════════════════════════════════════════ */
@@ -1995,7 +2032,7 @@ color: #ffffff !important;
         left: 0;
         right: 0;
         height: 56px;
-        z-index: 200;
+        z-index: 8000 !important;
         background: var(--bg-surface);
         border-bottom: 1px solid var(--border);
         align-items: center;
@@ -2091,7 +2128,7 @@ color: #ffffff !important;
         left: 0;
         height: 100vh;
         width: 280px !important;
-        z-index: 300;
+        z-index: 10000 !important;
         transform: translateX(-100%);
         transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: none;
@@ -2127,7 +2164,7 @@ color: #ffffff !important;
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.55);
-        z-index: 250;
+        z-index: 5000 !important;
         backdrop-filter: blur(2px);
         -webkit-backdrop-filter: blur(2px);
     }
@@ -2344,6 +2381,120 @@ color: #ffffff !important;
 
 
 /* ══════════════════════════════════════════════════════════════════
+   REUSABLE RESPONSIVE UTILITY CLASSES
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Text safety ──────────────────────────────────────────────────── */
+.text-wrap {
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+}
+
+.text-ellipsis {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    min-width: 0;
+}
+
+.text-mono-wrap {
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+    overflow-wrap: break-word !important;
+}
+
+.uuid-text,
+.path-text,
+.token-text,
+.long-word {
+    word-break: break-all !important;
+    overflow-wrap: break-word !important;
+}
+
+/* ── Container safety ─────────────────────────────────────────────── */
+.container-safe {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+.flex-safe {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.flex-wrap-safe {
+    flex-wrap: wrap !important;
+    gap: 0.5rem;
+}
+
+/* ── Grids ─────────────────────────────────────────────────────────── */
+.responsive-grid-2 {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)) !important;
+    gap: 1rem;
+}
+
+.responsive-grid-3 {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)) !important;
+    gap: 1rem;
+}
+
+.responsive-grid-4 {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr)) !important;
+    gap: 1rem;
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────── */
+.card {
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+.btn-group-wrap {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem;
+}
+
+/* ── Hide on mobile / show on mobile ─────────────────────────────────── */
+@media (max-width: 768px) {
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+@media (min-width: 769px) {
+    .show-mobile {
+        display: none !important;
+    }
+}
+
+/* ── Print-safe word breaks for any element ─────────────────────────── */
+.break-all {
+    word-break: break-all !important;
+    overflow-wrap: break-word !important;
+}
+
+.break-word {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   END UTILITY CLASSES
+   ══════════════════════════════════════════════════════════════════ */
+
+
+/* ══════════════════════════════════════════════════════════════════
    LAYOUT FIX — Sticky server header + tab bar, sidebar fix
    ══════════════════════════════════════════════════════════════════ */
 
@@ -2509,7 +2660,7 @@ flex: 1 1 auto !important;
         width: 280px !important;
         min-width: 280px !important;
         max-width: 280px !important;
-        z-index: 300 !important;
+        z-index: 10000 !important;
         transform: translateX(-100%) !important;
         transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s ease !important;
         flex-shrink: 0 !important;
@@ -2517,6 +2668,15 @@ flex: 1 1 auto !important;
     .sidebar.drawer-open {
         transform: translateX(0) !important;
         box-shadow: var(--shadow-lg) !important;
+    }
+    /* Server list in drawer: scrollable, capped so GLOBAL nav below stays reachable.
+       Create/Import buttons are inside this list and scroll with the servers. */
+    .sidebar-section-servers {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: 50vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
     }
     .content-area {
         width: 100% !important;
@@ -2644,7 +2804,7 @@ display: flex !important;
 .sidebar {
         position: fixed !important;
         transform: translateX(-100%) !important;
-        z-index: 300 !important;
+        z-index: 10000 !important;
         width: 280px !important;
         min-width: 280px !important;
         max-width: 280px !important;

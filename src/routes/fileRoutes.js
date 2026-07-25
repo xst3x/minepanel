@@ -1,4 +1,5 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
 const fs = require("fs");
 const fsp = require('fs').promises;
@@ -65,7 +66,6 @@ function buildZipBuffer(absPaths, serverDir) {
         try {
             const stat = fs.statSync(absPath);
             if (stat.isDirectory()) {
-                // addLocalFolder(localPath, zipPath)
                 const relName = path.relative(serverDir, absPath).replace(/\\/g, '/');
                 zip.addLocalFolder(absPath, relName);
             }
@@ -103,11 +103,13 @@ const upload = multer({
         filename: (req, file, cb) => {
             const safeName = path.basename(file.originalname).replace(/[^\w.\-]/g, '_');
             if (!safeName || safeName === '.' || safeName === '..') {
-                return cb(new Error('Invalid filename'), '');
+                return cb(new Error('Invalid filename'));
             }
             const ext = path.extname(safeName).toLowerCase();
             if (BLOCKED_EXTENSIONS.has(ext)) {
-                return cb(Object.assign(new Error(`File extension '${ext}' is blocked for security reasons`), { code: 'BLOCKED_EXTENSION' }), '');
+                const err = new Error(`File extension '${ext}' is blocked for security reasons`);
+                err.code = 'BLOCKED_EXTENSION';
+                return cb(err);
             }
             cb(null, safeName);
         }
@@ -320,7 +322,7 @@ router.get('/dl/:token', async (req, res) => {
     catch {
         return sendError(res, E.FILE_NOT_FOUND, 404);
     }
-    res.download(entry.file, entry.name, err => {
+    res.download(entry.file, entry.name, (err) => {
         if (entry.deleteAfter)
             fsp.unlink(entry.file).catch(() => { });
         if (err && !res.headersSent)
@@ -457,18 +459,17 @@ router.post('/copy', authenticateToken, checkPermission('server.files.write'), a
                     continue;
                 }
                 const baseName = path.basename(srcSafe);
-                const destPath = path.join(destSafe, baseName);
+                let destPath = path.join(destSafe, baseName);
                 // Handle name conflicts
-                let finalDest = destPath;
                 let counter = 1;
-                while (fs.existsSync(finalDest)) {
+                while (fs.existsSync(destPath)) {
                     const ext = path.extname(baseName);
                     const stem = path.basename(baseName, ext);
-                    finalDest = path.join(destSafe, `${stem} (${counter})${ext}`);
+                    destPath = path.join(destSafe, `${stem} (${counter})${ext}`);
                     counter++;
                 }
-                await fsp.cp(srcSafe, finalDest, { recursive: true, force: false });
-                results.push({ path: p, status: 'copied', dest: path.relative(serverDir, finalDest) });
+                await fsp.cp(srcSafe, destPath, { recursive: true, force: false });
+                results.push({ path: p, status: 'copied', dest: path.relative(serverDir, destPath) });
             }
             catch (err) {
                 results.push({ path: p, status: 'error', error: err.message });
@@ -505,18 +506,17 @@ router.post('/move', authenticateToken, checkPermission('server.files.write'), a
                     continue;
                 }
                 const baseName = path.basename(srcSafe);
-                const destPath = path.join(destSafe, baseName);
+                let destPath = path.join(destSafe, baseName);
                 // Handle name conflicts
-                let finalDest = destPath;
                 let counter = 1;
-                while (fs.existsSync(finalDest)) {
+                while (fs.existsSync(destPath)) {
                     const ext = path.extname(baseName);
                     const stem = path.basename(baseName, ext);
-                    finalDest = path.join(destSafe, `${stem} (${counter})${ext}`);
+                    destPath = path.join(destSafe, `${stem} (${counter})${ext}`);
                     counter++;
                 }
-                await fsp.rename(srcSafe, finalDest);
-                results.push({ path: p, status: 'moved', dest: path.relative(serverDir, finalDest) });
+                await fsp.rename(srcSafe, destPath);
+                results.push({ path: p, status: 'moved', dest: path.relative(serverDir, destPath) });
             }
             catch (err) {
                 results.push({ path: p, status: 'error', error: err.message });
@@ -576,7 +576,7 @@ router.get('/archive-tree', authenticateToken, checkPermission('server.files.rea
         if (ext !== '.zip')
             return sendError(res, E.BAD_REQUEST, 400, 'Not a .zip archive');
         const zip = new AdmZip(safePath);
-        const entries = zip.getEntries().map(e => ({
+        const entries = zip.getEntries().map((e) => ({
             name: e.entryName,
             isDirectory: e.isDirectory,
             size: e.header.size,
