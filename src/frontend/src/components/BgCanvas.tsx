@@ -12,8 +12,9 @@ export default function BgCanvas() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    let animId;
-    let resizeTimeout;
+    let animId: number;
+    let resizeTimeout: ReturnType<typeof setTimeout>;
+    let lastWidth = window.innerWidth;
 
     function getAccentHsl() {
       const raw = getComputedStyle(document.documentElement)
@@ -50,11 +51,20 @@ export default function BgCanvas() {
       makeShapes();
     }
     function onResize() {
+      const newWidth = window.innerWidth;
+
+      // Mobile keyboard open/close changes ONLY the height — ignore it.
+      // Only react when the WIDTH changes (real resize or screen rotation).
+      if (newWidth === lastWidth) {
+        return;
+      }
+      lastWidth = newWidth;
+
       // Debounce so we don't regenerate shapes on every single resize tick
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(resize, 120);
       // Still update the canvas buffer size immediately to avoid stretching/blur
-      canvas.width = window.innerWidth;
+      canvas.width = newWidth;
       canvas.height = window.innerHeight;
     }
 
