@@ -122,6 +122,7 @@ class RealProcessManager extends EventEmitter {
     private _lastStatsParse: Map<string, number> = new Map();
     private _tpsPollAt: Map<string, number> = new Map();
     private _tpsErrorDump: Map<string, number> = new Map();
+    private _readyServers: Set<string> = new Set();
     private _tpsTimer: NodeJS.Timeout | null = null;
     private _systemCpu = new SystemCpuSampler().start();
 
@@ -319,6 +320,7 @@ class RealProcessManager extends EventEmitter {
         this._lastStatsParse.delete(serverId);
         this._tpsPollAt.delete(serverId);
         this._tpsErrorDump.delete(serverId);
+        this._readyServers.delete(serverId);
         this._cachedTps.delete(serverId);
         this._cachedPlayers.delete(serverId);
         saveRunningServers(this.processes);
@@ -333,6 +335,12 @@ class RealProcessManager extends EventEmitter {
             let output = raw;
             if (this._bedrockServers.has(serverId)) output = parseBedrockOutput(raw);
             else if (this._pocketmineServers.has(serverId)) output = parsePocketMineOutput(raw);
+            // Gate TPS polling until the world has actually finished loading —
+            // querying /tps before that throws a console NPE on Paper/Spigot
+            // ("Cannot invoke CommandSourceStack.getLevel()... is null").
+            if (!this._readyServers.has(serverId) && /Done \([\d.]+s\)! For help/i.test(raw)) {
+                this._readyServers.add(serverId);
+            }
             // No-plugin TPS polling: swallow /tps responses and command echo so the
             // dashboard console and history stay clean.
             if (this._handleTpsPollOutput(serverId, output)) return;
@@ -363,6 +371,7 @@ class RealProcessManager extends EventEmitter {
             this._startedAt.delete(serverId);
             this._tpsPollAt.delete(serverId);
             this._tpsErrorDump.delete(serverId);
+            this._readyServers.delete(serverId);
             this._cachedTps.delete(serverId);
             this._cachedPlayers.delete(serverId);
             this._lastStatsParse.delete(serverId);
@@ -397,6 +406,7 @@ class RealProcessManager extends EventEmitter {
             this._startedAt.delete(serverId);
             this._tpsPollAt.delete(serverId);
             this._tpsErrorDump.delete(serverId);
+            this._readyServers.delete(serverId);
             this._cachedTps.delete(serverId);
             this._cachedPlayers.delete(serverId);
             this._lastStatsParse.delete(serverId);
@@ -490,6 +500,7 @@ class RealProcessManager extends EventEmitter {
         this._startedAt.delete(serverId);
         this._tpsPollAt.delete(serverId);
         this._tpsErrorDump.delete(serverId);
+        this._readyServers.delete(serverId);
         this._cachedTps.delete(serverId);
         this._cachedPlayers.delete(serverId);
         this._lastStatsParse.delete(serverId);
@@ -649,12 +660,15 @@ class RealProcessManager extends EventEmitter {
     }
 
     private _pollAllTps() {
-        let polledAny = false;
         for (const serverId of this.processes.keys()) {
             if (this._bedrockServers.has(serverId) || this._pocketmineServers.has(serverId)) continue;
-            if (this._pollTps(serverId)) polledAny = true;
+            if (!this._readyServers.has(serverId)) continue; // world not fully loaded yet — /tps would NPE
+            this._pollTps(serverId);
         }
-        if (!polledAny && this._tpsTimer) {
+        // Only tear down the timer once nothing is running at all — a starting
+        // server that isn't "ready" yet still needs the timer alive so its
+        // first poll can fire once it finishes loading.
+        if (this.processes.size === 0 && this._tpsTimer) {
             clearInterval(this._tpsTimer);
             this._tpsTimer = null;
         }
