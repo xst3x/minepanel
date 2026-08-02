@@ -4,11 +4,11 @@
 /* Semantic Colors */
 /* Backward compatibility variables */
 /* Glassmorphism blur effects */
-:root {
---bg-base: hsl(0, 0%, 5%);           /* Very dark solid background behind glass */
+:root {    --bg-base: hsl(0, 0%, 5%);           /* Very dark solid background behind glass */
     --bg-surface: hsla(0, 0%, 11%, 0.65); /* Glass translucent surface */
     --bg-elevated: hsla(0, 0%, 15%, 0.8); /* Inset hover translucent background */
     --bg-input: hsla(0, 0%, 5%, 0.5);     /* Translucent input fields base */
+    --bg-card-solid: hsl(0, 0%, 12%);     /* Opaque card background — no polygon bleed-through */
     
     --accent: hsl(149, 100%, 47%);       /* Dynamic accent base - changed dynamically by JS */
     --accent-hover: hsl(149, 100%, 55%);
@@ -60,6 +60,7 @@ html[data-theme="light"] {
     --bg-surface: rgba(255, 255, 255, 0.72);
     --bg-elevated: rgba(255, 255, 255, 0.88);
     --bg-input: rgba(0, 0, 0, 0.04);
+    --bg-card-solid: #ffffff;
     
     --accent: hsl(149, 80%, 32%);
     --accent-hover: hsl(149, 82%, 27%);
@@ -572,8 +573,7 @@ background: hsl(220, 15%, 10%);
 
 html[data-theme="light"] #terminal-output {
 color: hsl(0, 0%, 90%);
-    background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    background-size: 100% 3px, 3px 100%;
+    /* CRT scanlines + RGB-split removed — plain background */
 }
 
 

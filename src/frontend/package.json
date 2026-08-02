@@ -24,6 +24,7 @@
     "@codemirror/view": "^6.43.0",
     "@fontsource/fira-code": "^5.3.0",
     "@fontsource/sora": "^5.3.0",
+    "chart.js": "^4.5.1",
     "codemirror": "^5.65.21",
     "lucide-react": "^0.383.0",
     "marked": "^9.1.6",

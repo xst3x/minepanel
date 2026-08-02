@@ -7,6 +7,7 @@
 const child_process_1 = require("child_process");
 const EventEmitter = require("events");
 const pidusage = require("pidusage");
+const os = require("os");
 const bedrockAdapter = require("../adapters/bedrock");
 const { parseBedrockOutput } = bedrockAdapter;
 const pocketmineAdapter = require("../adapters/pocketmine");
@@ -15,6 +16,51 @@ const processPersistence = require("./process-persistence");
 const { saveRunningServers, loadRunningServers } = processPersistence;
 const processOutputParser = require("./process-output-parser");
 const { parseServerStderr } = processOutputParser;
+const consoleStatsParser = require("./utils/consoleStatsParser");
+const { parseTpsFromHistoryText, parsePlayersFromHistoryText, parseTpsFromLine, isTpsConsoleNoise, isTpsUnknownCommand, isTpsCommandException, isStacktraceLine, isTpsErrorTrailer } = consoleStatsParser;
+/**
+ * System-wide CPU sampler — diffs os.cpus() tick counters every second to
+ * report the host's total CPU usage across all cores (the same technique the
+ * `systeminformation` module uses internally, kept dependency-free here).
+ */
+class SystemCpuSampler {
+    constructor() {
+        this._last = null;
+        this._value = 0;
+        this._timer = null;
+    }
+    start(intervalMs = 1000) {
+        if (this._timer)
+            return this;
+        this._sample();
+        this._timer = setInterval(() => this._sample(), intervalMs);
+        if (typeof this._timer.unref === 'function')
+            this._timer.unref();
+        return this;
+    }
+    get value() {
+        return this._value;
+    }
+    _sample() {
+        try {
+            const cpus = os.cpus();
+            let idle = 0;
+            let total = 0;
+            for (const core of cpus) {
+                idle += core.times.idle;
+                total += core.times.idle + core.times.user + core.times.nice + core.times.sys + core.times.irq;
+            }
+            if (this._last && total > this._last.total) {
+                const dIdle = idle - this._last.idle;
+                const dTotal = total - this._last.total;
+                const pct = 100 * (1 - dIdle / dTotal);
+                this._value = Math.min(100, Math.max(0, pct));
+            }
+            this._last = { idle, total };
+        }
+        catch (_) { }
+    }
+}
 class RealProcessManager extends EventEmitter {
     constructor() {
         super();
@@ -26,6 +72,14 @@ class RealProcessManager extends EventEmitter {
         this._crashRestartTimers = new Map();
         this._bedrockServers = new Set();
         this._pocketmineServers = new Set();
+        this._startedAt = new Map();
+        this._cachedTps = new Map();
+        this._cachedPlayers = new Map();
+        this._lastStatsParse = new Map();
+        this._tpsPollAt = new Map();
+        this._tpsErrorDump = new Map();
+        this._tpsTimer = null;
+        this._systemCpu = new SystemCpuSampler().start();
     }
     // ─── Recovery ────────────────────────────────────────────────────────
     recoverRunningServers() {
@@ -61,6 +115,7 @@ class RealProcessManager extends EventEmitter {
                     }
                 };
                 this.processes.set(serverId, placeholder);
+                this._startedAt.set(serverId, Date.now());
                 const checkTimer = setInterval(() => {
                     try {
                         process.kill(pid, 0);
@@ -185,7 +240,14 @@ class RealProcessManager extends EventEmitter {
         const child = (0, child_process_1.spawn)(javaPath, args, spawnOptions);
         child.startInfo = { serverDir, javaArgs, jarFile, maxMemoryMb, customArgs, javaPath, spawnEnv, mode };
         this.processes.set(serverId, child);
+        this._startedAt.set(serverId, Date.now());
+        this._lastStatsParse.delete(serverId);
+        this._tpsPollAt.delete(serverId);
+        this._tpsErrorDump.delete(serverId);
+        this._cachedTps.delete(serverId);
+        this._cachedPlayers.delete(serverId);
         saveRunningServers(this.processes);
+        this._ensureTpsPolling();
         child.stdin?.on('error', (err) => {
             console.error(`[ProcessManager] Server ${serverId} stdin error:`, err.message);
         });
@@ -196,6 +258,10 @@ class RealProcessManager extends EventEmitter {
                 output = parseBedrockOutput(raw);
             else if (this._pocketmineServers.has(serverId))
                 output = parsePocketMineOutput(raw);
+            // No-plugin TPS polling: swallow /tps responses and command echo so the
+            // dashboard console and history stay clean.
+            if (this._handleTpsPollOutput(serverId, output))
+                return;
             this.appendHistory(serverId, output);
             this.emit('console', serverId, output);
         });
@@ -218,6 +284,12 @@ class RealProcessManager extends EventEmitter {
             this.processes.delete(serverId);
             this._bedrockServers.delete(serverId);
             this._pocketmineServers.delete(serverId);
+            this._startedAt.delete(serverId);
+            this._tpsPollAt.delete(serverId);
+            this._tpsErrorDump.delete(serverId);
+            this._cachedTps.delete(serverId);
+            this._cachedPlayers.delete(serverId);
+            this._lastStatsParse.delete(serverId);
             saveRunningServers(this.processes);
             this.emit('status', serverId, 'offline');
             const wasIntentional = this._stopIntents.has(serverId);
@@ -245,6 +317,12 @@ class RealProcessManager extends EventEmitter {
             this.appendHistory(serverId, msg);
             this.emit('console', serverId, msg);
             this.processes.delete(serverId);
+            this._startedAt.delete(serverId);
+            this._tpsPollAt.delete(serverId);
+            this._tpsErrorDump.delete(serverId);
+            this._cachedTps.delete(serverId);
+            this._cachedPlayers.delete(serverId);
+            this._lastStatsParse.delete(serverId);
             saveRunningServers(this.processes);
             this.emit('status', serverId, 'offline');
         });
@@ -325,6 +403,12 @@ class RealProcessManager extends EventEmitter {
             console.error(`[ProcessManager] Kill failed for PID ${pid}:`, e.message);
         }
         this.processes.delete(serverId);
+        this._startedAt.delete(serverId);
+        this._tpsPollAt.delete(serverId);
+        this._tpsErrorDump.delete(serverId);
+        this._cachedTps.delete(serverId);
+        this._cachedPlayers.delete(serverId);
+        this._lastStatsParse.delete(serverId);
         saveRunningServers(this.processes);
         this.emit('status', serverId, 'offline');
     }
@@ -368,23 +452,140 @@ class RealProcessManager extends EventEmitter {
     // ─── Stats & Status ──────────────────────────────────────────────────
     async getStats(serverId) {
         const child = this.processes.get(serverId);
+        const startedAt = this._startedAt.get(serverId) || null;
         if (!child)
-            return { cpu: 0, ram: 0 };
+            return { cpu: 0, ram: 0, tps: null, players: 0, startedAt, uptime: 0 };
         try {
             const stats = await pidusage(child.pid);
-            const numCores = require('os').cpus().length;
-            const cpuNormalized = Math.min(100, stats.cpu / numCores);
+            // Refresh player parsing from console history at most every 5s. TPS
+            // now comes from the background /tps poll (no plugin required) and is
+            // only overwritten by a *successful* history parse, so a null history
+            // scan can never clobber a fresh polled value.
+            const now = Date.now();
+            const lastParse = this._lastStatsParse.get(serverId) || 0;
+            if (now - lastParse > 5000) {
+                const historyText = (this.histories.get(serverId) || []).join('');
+                const tpsFromHistory = parseTpsFromHistoryText(historyText);
+                if (tpsFromHistory != null)
+                    this._cachedTps.set(serverId, tpsFromHistory);
+                const players = parsePlayersFromHistoryText(historyText);
+                this._cachedPlayers.set(serverId, players === null ? 0 : players);
+                this._lastStatsParse.set(serverId, now);
+            }
             return {
-                cpu: Math.round(cpuNormalized * 10) / 10,
-                ram: stats.memory
+                cpu: Math.round(this._systemCpu.value * 10) / 10,
+                ram: stats.memory,
+                tps: this._cachedTps.get(serverId) ?? null,
+                players: this._cachedPlayers.get(serverId) ?? 0,
+                startedAt,
+                uptime: startedAt ? Math.floor((now - startedAt) / 1000) : 0
             };
         }
         catch (e) {
-            return { cpu: 0, ram: 0 };
+            return { cpu: 0, ram: 0, tps: null, players: 0, startedAt, uptime: 0 };
         }
     }
     getStatus(serverId) {
         return this.processes.has(serverId) ? 'online' : 'offline';
+    }
+    // ─── No-plugin TPS polling ──────────────────────────────────────────────
+    /**
+     * Filters /tps output while a background poll is in flight:
+     * - the TPS response line is parsed and cached (never shown in the console);
+     * - the command echo ("... issued server command: /tps") is dropped;
+     * - "Unknown command" replies (vanilla servers without a /tps command)
+     *   are dropped so they don't clutter logs;
+     * - when a /tps poll throws ("Command exception: /tps", seen on some Paper
+     *   setups), the whole error dump — exception line, stacktrace and the
+     *   "An unexpected error occurred..." trailer — is swallowed too.
+     */
+    _handleTpsPollOutput(serverId, output) {
+        // 1. A /tps poll failed and its stacktrace dump is in progress.
+        if (this._tpsErrorDump.has(serverId)) {
+            const count = this._tpsErrorDump.get(serverId);
+            if (count > 60) {
+                // Safety cap — never swallow indefinitely.
+                this._tpsErrorDump.delete(serverId);
+            }
+            else if (isTpsErrorTrailer(output)) {
+                // Paper prints this right after a failed command — end of the dump.
+                this._tpsErrorDump.delete(serverId);
+                return true;
+            }
+            else if (/^\[[^\]]*\]:/.test(String(output).trimStart())) {
+                // A normal timestamped log line → the dump is over, process it normally.
+                this._tpsErrorDump.delete(serverId);
+            }
+            else if (isStacktraceLine(output)) {
+                this._tpsErrorDump.set(serverId, count + 1);
+                return true;
+            }
+            else {
+                // Unexpected content mid-dump — stop swallowing to be safe.
+                this._tpsErrorDump.delete(serverId);
+            }
+        }
+        // 2. Suppression window opened by a /tps poll.
+        const pollAt = this._tpsPollAt.get(serverId);
+        if (pollAt == null)
+            return false;
+        if (Date.now() - pollAt >= RealProcessManager.TPS_POLL_WINDOW_MS) {
+            this._tpsPollAt.delete(serverId);
+            return false;
+        }
+        const tps = parseTpsFromLine(output);
+        if (tps != null) {
+            this._cachedTps.set(serverId, tps);
+            this._tpsPollAt.delete(serverId);
+            return true;
+        }
+        if (isTpsUnknownCommand(output)) {
+            // Vanilla server with no /tps command: the poll is complete, so close
+            // the suppression window immediately instead of letting it linger.
+            this._tpsPollAt.delete(serverId);
+            return true;
+        }
+        if (isTpsCommandException(output)) {
+            // The /tps command itself failed — swallow the exception line and start
+            // swallowing its stacktrace dump.
+            this._tpsPollAt.delete(serverId);
+            this._tpsErrorDump.set(serverId, 1);
+            return true;
+        }
+        return isTpsConsoleNoise(output);
+    }
+    _ensureTpsPolling() {
+        if (this._tpsTimer)
+            return;
+        this._tpsTimer = setInterval(() => this._pollAllTps(), RealProcessManager.TPS_POLL_INTERVAL_MS);
+        if (typeof this._tpsTimer.unref === 'function')
+            this._tpsTimer.unref();
+    }
+    _pollAllTps() {
+        let polledAny = false;
+        for (const serverId of this.processes.keys()) {
+            if (this._bedrockServers.has(serverId) || this._pocketmineServers.has(serverId))
+                continue;
+            if (this._pollTps(serverId))
+                polledAny = true;
+        }
+        if (!polledAny && this._tpsTimer) {
+            clearInterval(this._tpsTimer);
+            this._tpsTimer = null;
+        }
+    }
+    _pollTps(serverId) {
+        try {
+            const child = this.processes.get(serverId);
+            if (!child || child.recovered || !child.stdin || !child.stdin.writable)
+                return false;
+            this._tpsPollAt.set(serverId, Date.now());
+            child.stdin.write('tps\n');
+            return true;
+        }
+        catch (_) {
+            return false;
+        }
     }
     // ─── History ─────────────────────────────────────────────────────────
     clearHistory(serverId) {
@@ -410,5 +611,7 @@ class RealProcessManager extends EventEmitter {
         return this.histories.get(serverId) || [];
     }
 }
+RealProcessManager.TPS_POLL_INTERVAL_MS = 5000;
+RealProcessManager.TPS_POLL_WINDOW_MS = 8000;
 module.exports = RealProcessManager;
 //# sourceMappingURL=process-real-manager.js.map

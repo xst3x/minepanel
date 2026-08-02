@@ -3,6 +3,7 @@ import { NavLink, Outlet, useParams, useNavigate, useLocation } from 'react-rout
 import { api, getToken } from '../lib/api.ts';
 import { toast, showConfirm } from './Toast.tsx';
 import log from '../lib/logger.ts';
+import { splitConsoleChunk } from '../lib/minecraftLog.ts';
 import '../styles/components/ServerLayout.css';
 
 const TAB_ICONS = {
@@ -47,7 +48,11 @@ export default function ServerLayout() {
     maxRam: 2048,
     players: 0,
     maxPlayers: 20,
-    temp: '--°C'
+    temp: '--°C',
+    tps: null,
+    startedAt: null,
+    uptime: 0,
+    timezone: null
   });
   const [consoleLines, setConsoleLines] = useState([]);
 
@@ -97,7 +102,7 @@ export default function ServerLayout() {
       if (action === 'kill') {
         if (!await showConfirm('Force-kill the server process? This may cause data loss.', 'Force Kill')) return;
       }
-      setConsoleLines(lines => [...lines, `> [Panel] Sending ${action} command...\n`]);
+      setConsoleLines(lines => [...lines, `> [Panel] Sending ${action} command...`]);
 
       // Optimistic status update — don't wait for WS event
       if (action === 'start') {
@@ -148,11 +153,13 @@ export default function ServerLayout() {
       const msg = JSON.parse(e.data);
       if (msg.type === 'console') {
         setConsoleLines(prev => {
-          const next = [...prev, msg.data];
-          return next.slice(-2000); // Keep last 2000 lines max
+          // Strip \r/\n noise and drop fully-empty lines (fixes random blank lines)
+          const lines = splitConsoleChunk(msg.data);
+          if (lines.length === 0) return prev;
+          return [...prev, ...lines].slice(-2000); // Keep last 2000 lines max
         });
       } else if (msg.type === 'history') {
-        setConsoleLines(msg.data || []);
+        setConsoleLines((msg.data || []).flatMap(splitConsoleChunk).slice(-2000));
       } else if (msg.type === 'clear_console') {
         setConsoleLines([]);
       } else if (msg.type === 'status') {
@@ -163,14 +170,21 @@ export default function ServerLayout() {
         // Clear any transient override now that we have the real status from WS
         window.dispatchEvent(new CustomEvent('mp:server-status-override', { detail: { id, status: msg.data } }));
       } else if (msg.type === 'stats') {
-        const ramMb = Math.round(msg.data.ram / 1024 / 1024);
+        const ramMb = Math.round((msg.data.ram || 0) / 1024 / 1024);
         setMetrics(m => ({
           ...m,
-          cpu: Math.min(100, msg.data.cpu),
-          ram: ramMb
+          cpu: Math.min(100, msg.data.cpu || 0),
+          ram: ramMb,
+          tps: msg.data.tps ?? m.tps,
+          players: msg.data.players ?? m.players,
+          startedAt: msg.data.startedAt ?? m.startedAt,
+          uptime: msg.data.uptime ?? m.uptime,
+          timezone: msg.data.timezone || m.timezone
         }));
       } else if (msg.type === 'automation_log') {
         window.dispatchEvent(new CustomEvent(`mp:automation-log:${id}`, { detail: msg.data }));
+      } else if (msg.type === 'chat_error') {
+        window.dispatchEvent(new CustomEvent(`mp:chat-error:${id}`, { detail: msg.data }));
       }
     };
 
@@ -192,7 +206,15 @@ export default function ServerLayout() {
   const sendConsoleCommand = (cmd) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'command', data: cmd }));
-      setConsoleLines(prev => [...prev, `> ${cmd}\n`]);
+      setConsoleLines(prev => [...prev, `> ${cmd}`].slice(-2000));
+    }
+  };
+
+  // Sends a raw chat message; the backend prepends `/say` and enforces
+  // the server.console.chat.send permission.
+  const sendChatMessage = (message) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'chat', data: message }));
     }
   };
 
@@ -333,6 +355,7 @@ export default function ServerLayout() {
           metrics,
           consoleLines,
           sendConsoleCommand,
+          sendChatMessage,
           clearConsoleLines,
           permissions,
           isAdmin,

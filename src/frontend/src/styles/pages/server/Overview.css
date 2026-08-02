@@ -77,20 +77,12 @@ width: 38px; height: 38px;
     flex-shrink: 0;
 }
 
-.ov-stat-cpu {
-background: hsla(149,100%,47%,0.1); color: var(--accent);
-}
-
-.ov-stat-ram {
-background: hsla(230,60%,55%,0.1);  color: hsl(230,60%,65%);
-}
-
-.ov-stat-players {
-background: hsla(28,95%,55%,0.1);   color: var(--orange);
-}
-
+.ov-stat-cpu,
+.ov-stat-ram,
+.ov-stat-players,
 .ov-stat-temp {
-background: hsla(355,90%,60%,0.1);  color: var(--red);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
 }
 
 .ov-stat-info {
@@ -114,13 +106,13 @@ position: absolute; bottom: 0; left: 0; right: 0;
 }
 
 .ov-stat-bar {
-height: 100%; background: var(--accent);
+height: 100%; background: var(--text-secondary);
     border-radius: 0 2px 2px 0;
     transition: width 0.6s ease;
 }
 
 .ov-bar-temp {
-background: var(--red);
+background: var(--text-secondary);
 }
 
 .ov-main-grid {
@@ -330,4 +322,137 @@ box-sizing: border-box !important;
 
 .ov-stat-cards {
 grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr)) !important;
+}
+
+/* ── Performance chart (CPU/RAM/TPS/Players) ───────────────────────────────── */
+.ov-chart-header {
+display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+}
+
+.ov-chart-title {
+font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
+}
+
+.ov-chart-sub {
+font-size: 0.7rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.ov-range-select {
+width: 190px;
+    max-width: 100%;
+}
+
+.ov-chart-wrap {
+position: relative;
+    height: 300px;
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    overflow: hidden;
+}
+
+.ov-chart-canvas {
+width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+.ov-chart-overlay {
+position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 1rem;
+    background: transparent;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.ov-spinner {
+width: 22px;
+    height: 22px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: mp-spin 0.8s linear infinite;
+}
+
+@keyframes mp-spin {
+to { transform: rotate(360deg); }
+}
+
+/* ── Toggleable legend ─────────────────────────────────────────────────────── */
+.ov-chart-legend {
+display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.8rem;
+}
+
+.ov-legend-btn {
+display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.ov-legend-btn:hover {
+border-color: var(--border-hover);
+    background: var(--bg-elevated);
+    transform: translateY(-1px);
+}
+
+.ov-legend-btn.off {
+opacity: 0.38;
+    text-decoration: line-through;
+}
+
+.ov-legend-dot {
+width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px currentColor;
+}
+
+.ov-legend-label {
+letter-spacing: 0.03em;
+}
+
+.ov-legend-val {
+font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-primary);
+    opacity: 0.85;
+}
+
+@media (max-width: 768px) {
+.ov-chart-wrap { height: 230px; }
+    .ov-range-select { width: 100%; }
 }

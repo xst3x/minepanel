@@ -14,26 +14,6 @@ const DEFAULT_RETENTION_DAYS = 7;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function parseTpsFromHistory(serverId) {
-    try {
-        const history = processManager.getHistory(serverId.toString()).join('');
-        const match = history.match(/TPS from last 1m,\s*5m,\s*15m:\s*([\d.]+)/i);
-        if (match) return parseFloat(match[1]);
-    } catch (_) {}
-    return null;
-}
-
-function parsePlayersFromHistory(serverId) {
-    try {
-        const history = processManager.getHistory(serverId.toString()).join('');
-        const regex = /There are (\d+) of a max(?: of)? \d+ players online/gi;
-        let match, last = null;
-        while ((match = regex.exec(history)) !== null) last = parseInt(match[1], 10);
-        if (last !== null) return last;
-    } catch (_) {}
-    return null;
-}
-
 // ── Collection cycle ──────────────────────────────────────────────────────────
 
 async function collectStats() {
@@ -60,14 +40,12 @@ async function collectStats() {
                 continue;
             }
 
-            const { cpu, ram } = await processManager.getStats(sid);
-            const tps     = parseTpsFromHistory(sid);
-            const players = parsePlayersFromHistory(sid) ?? 0;
+            const { cpu, ram, tps, players } = await processManager.getStats(sid);
 
             await dbRun(
                 `INSERT INTO server_stats (server_id, ram_bytes, cpu_percent, tps, players, disk_bytes)
                  VALUES (?, ?, ?, ?, ?, ?)`,
-                [server.id, ram, cpu, tps, players, diskBytes]
+                [server.id, ram, cpu, tps ?? null, players ?? 0, diskBytes]
             ).catch(err => {
                 logger.warn(`[StatsCollector] Insert failed for server ${server.id}: ${err.message}`);
             });

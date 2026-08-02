@@ -627,8 +627,14 @@ export default function ServerFiles() {
         <div className="modal-overlay active" onClick={closePreview}>
           <div className={`modal ${archiveTree ? '' : 'large'}`} style={archiveTree ? { maxWidth: 520 } : {}} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 id="preview-filename">
-                {archiveTree ? `📦 ${archiveTree.archiveName}` : (previewUrl ? `🖼 ${previewPath?.split('/').pop()}` : previewPath?.split('/').pop())}
+              <h3 id="preview-filename" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {archiveTree ? (
+                  <><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg>{archiveTree.archiveName}</>
+                ) : previewUrl ? (
+                  <><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>{previewPath?.split('/').pop()}</>
+                ) : (
+                  previewPath?.split('/').pop()
+                )}
               </h3>
               <div className="modal-header-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 {archiveTree && (
@@ -643,7 +649,11 @@ export default function ServerFiles() {
                   <div className="archive-tree-header">{archiveTree.totalEntries} entr{archiveTree.totalEntries === 1 ? 'y' : 'ies'}</div>
                   {archiveTree.entries.map((entry, i) => (
                     <div key={i} className={`archive-tree-item${entry.isDirectory ? ' dir' : ''}`}>
-                      <span className="archive-tree-icon">{entry.isDirectory ? '📁' : '📄'}</span>
+                      <span className="archive-tree-icon">
+                        {entry.isDirectory
+                          ? <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                          : <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>}
+                      </span>
                       <span className="archive-tree-name">{entry.name}</span>
                       {!entry.isDirectory && (
                         <span className="archive-tree-size">

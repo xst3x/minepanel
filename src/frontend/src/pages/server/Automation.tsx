@@ -334,8 +334,10 @@ export default function Automation() {
               flexDirection: 'column',
               gap: '0.25rem'
             }}>
-              <span style={{ fontWeight: 700 }}>
-                {validationResult.valid ? '✓ Code Verification Passed!' : '✗ Code Verification Failed:'}
+              <span style={{ fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                {validationResult.valid
+                  ? <><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>Code Verification Passed!</>
+                  : <><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Code Verification Failed:</>}
               </span>
               {!validationResult.valid && validationResult.errors && (
                 <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>

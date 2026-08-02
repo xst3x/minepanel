@@ -156,7 +156,7 @@ class Stats:
 
 
 def main():
-    path = r"C:\Users\stefa\Desktop\MinePanel"
+    path = r"C:\Users\stefa\Desktop\minepanel files\MinePanel"
 
     stats = Stats(path)
     stats.scan()

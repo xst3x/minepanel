@@ -8,6 +8,8 @@ const AVAILABLE_PERMISSIONS = [
     { key: 'server.kill', label: 'Force Kill Server', group: 'Server Control' },
     { key: 'server.console.read', label: 'View Console', group: 'Console' },
     { key: 'server.console.write', label: 'Send Commands', group: 'Console' },
+    { key: 'server.console.chat.view', label: 'View Server Chat', group: 'Console' },
+    { key: 'server.console.chat.send', label: 'Send Chat Messages', group: 'Console' },
     { key: 'server.files.read', label: 'View Files', group: 'File Management' },
     { key: 'server.files.write', label: 'Edit Files', group: 'File Management' },
     { key: 'server.files.delete', label: 'Delete Files', group: 'File Management' },

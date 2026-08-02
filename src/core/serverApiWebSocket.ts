@@ -16,7 +16,7 @@
 // Event types (server client):
 // console – Console output lines
 // status – Server status changes
-// stats – Performance metrics (every 2s)
+// stats – Performance metrics (every 0.5s)
 // playerJoin – Player joined notification
 // playerLeave – Player left notification
 // serverStarted – Server started event
@@ -212,7 +212,7 @@ function handleConnection(ws: any, req: any) {
  client.listeners.set('playerLeave', playerLeaveListener)
  processManager.on('playerLeave', playerLeaveListener)
 
- // Stats interval (every 2 seconds)
+ // Stats interval (every 500ms)
  const allowedStats = ['stats', 'tps_update', 'ram_update', 'cpu_update']
  const hasAnyStatScope = allowedStats.some(e => client.subscribed.has(e))
  if (hasAnyStatScope && hasScope(client.keyScopes, 'server.performance.read')) {
@@ -240,9 +240,8 @@ function handleConnection(ws: any, req: any) {
  }
  if (client.subscribed.has('cpu_update')) {
  send('cpu_update', { cpu: stats.cpu || 0 })
- }
- } catch { /* ignore */ }
- }, 2000)
+ }        } catch { /* ignore */ }
+    }, 500)
  }
  }
 

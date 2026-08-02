@@ -10,7 +10,8 @@ if (!process.send) {
     process.exit(1);
 }
 
-// Periodically gather and send stats for all online servers
+// Periodically gather and send stats for all online servers.
+// 500ms cadence — the dashboard chart appends live points on this tick.
 const statsInterval = setInterval(async () => {
     for (const [serverId, child] of processManager.processes.entries()) {
         try {
@@ -24,7 +25,7 @@ const statsInterval = setInterval(async () => {
             // Ignore stats errors
         }
     }
-}, 2000);
+}, 500);
 
 // Setup IPC handlers
 process.on('message', async (message: any) => {

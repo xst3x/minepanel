@@ -22,7 +22,11 @@ export default function ModpackIcon({ url, alt = '', className = 'plugin-icon', 
         }}
         aria-hidden="true"
       >
-        📦
+        <svg viewBox="0 0 24 24" width={size > 40 ? 22 : 16} height={size > 40 ? 22 : 16} stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.55 }}>
+          <path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/>
+          <path d="M3 8l9 5 9-5"/>
+          <path d="M12 13v8"/>
+        </svg>
       </div>
     );
   }

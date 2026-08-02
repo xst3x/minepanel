@@ -197,7 +197,7 @@ export default function Ranks() {
 
       {reorderMode && (
         <div style={{ marginBottom: '1rem', padding: '0.6rem 1rem', borderRadius: 'var(--radius)', background: 'var(--accent-subtle)', border: '1px solid var(--accent)', fontSize: '0.85rem', color: 'var(--accent)' }}>
-          🔀 Drag and drop the rank cards to reorder them, then click <strong>Save Order</strong>.
+          Drag and drop the rank cards to reorder them, then click <strong>Save Order</strong>.
         </div>
       )}
 

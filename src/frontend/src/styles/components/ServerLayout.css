@@ -21,7 +21,9 @@ color: var(--accent);
 }
 
 .server-header-card {
-background: var(--bg-surface);
+background: var(--bg-card-solid, var(--bg-surface));
+    position: relative;
+    z-index: 1;
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 20px 24px;

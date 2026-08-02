@@ -32,6 +32,8 @@ const ALL_SCOPES = {
     'server.read': 'Read server information',
     'server.console.read': 'View console output',
     'server.console.write': 'Send console commands',
+    'server.console.chat.view': 'View server chat',
+    'server.console.chat.send': 'Send chat messages',
     'server.players.read': 'View online players',
     'server.performance.read': 'View performance metrics',
     'server.files.read': 'Read files',

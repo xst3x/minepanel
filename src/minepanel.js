@@ -93,6 +93,8 @@ else {
     const jwt = require('jsonwebtoken');
     const logger = require('./core/utils/logger');
     const executionManager = require('./core/executionManager');
+    // Host timezone — used for the Overview "Server Timezone" card and stats payloads.
+    const HOST_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     const app = express();
     // --- HTTPS / HTTP server setup ---
     let server;
@@ -294,6 +296,7 @@ else {
         }
         let authenticated = false;
         let canWrite = false;
+        let canChatSend = false;
         let authTimeout = setTimeout(() => { if (!authenticated)
             ws.close(4002, 'Authentication timeout'); }, 5000);
         let statsInterval = null;
@@ -311,6 +314,7 @@ else {
                             try {
                                 const canRead = await hasPermission(user.id, serverId, 'server.console.read');
                                 canWrite = await hasPermission(user.id, serverId, 'server.console.write');
+                                canChatSend = await hasPermission(user.id, serverId, 'server.console.chat.send');
                                 if (!canRead) {
                                     ws.close(4003, 'Forbidden');
                                     return;
@@ -341,10 +345,11 @@ else {
                                     if (ws.readyState !== 1)
                                         return;
                                     try {
-                                        ws.send(JSON.stringify({ type: 'stats', data: await executionManager.getStats(serverId) }));
+                                        const stats = await executionManager.getStats(serverId);
+                                        ws.send(JSON.stringify({ type: 'stats', data: { ...stats, timezone: HOST_TIMEZONE } }));
                                     }
                                     catch (_) { }
-                                }, 2000);
+                                }, 500);
                             }
                             catch (e) {
                                 ws.close(5000, 'Internal Server Error');
@@ -362,6 +367,19 @@ else {
                         return;
                     }
                     processManager.sendCommand(serverId, parsed.data);
+                }
+                if (parsed.type === 'chat') {
+                    // Chat is always executed as `/say <raw>` — the raw text can never
+                    // inject arbitrary commands. Permission is enforced server-side.
+                    if (!canChatSend) {
+                        ws.send(JSON.stringify({ type: 'chat_error', data: 'Access denied: Missing server.console.chat.send permission.' }));
+                        return;
+                    }
+                    // Replace embedded newlines so a crafted payload can never smuggle
+                    // a second console command through `/say`.
+                    const text = typeof parsed.data === 'string' ? parsed.data.replace(/[\r\n]+/g, ' ').trim().slice(0, 256) : '';
+                    if (text)
+                        processManager.sendCommand(serverId, `/say ${text}`);
                 }
             }
             catch (e) { }
