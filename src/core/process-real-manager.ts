@@ -18,6 +18,52 @@ import processOutputParser = require('./process-output-parser')
 const { parseServerStderr } = processOutputParser;
 import consoleStatsParser = require('./utils/consoleStatsParser')
 const { parseTpsFromHistoryText, parsePlayersFromHistoryText, parseTpsFromLine, isTpsConsoleNoise, isTpsUnknownCommand, isTpsCommandException, isStacktraceLine, isTpsErrorTrailer } = consoleStatsParser;
+import fs = require('fs')
+import { execFileSync } from 'child_process'
+
+// ── Privilege drop for Minecraft server processes ──────────────────────────
+// If MinePanel itself runs as root (common on quick VPS setups), spawned
+// Java/Bedrock/PocketMine processes inherit that by default — a plugin/mod
+// RCE would then mean full root on the box. When MC_RUN_AS_USER is set and
+// the panel is root, we resolve that user's uid/gid once, chown the server
+// directory to it, and drop privileges via spawn({ uid, gid }) — the same
+// mechanism sudo/su use under the hood.
+const RUN_AS_USER = (process.env.MC_RUN_AS_USER || '').trim();
+let _runAsIds: { uid: number; gid: number } | null | undefined = undefined;
+
+function resolveRunAsIds(): { uid: number; gid: number } | null {
+    if (_runAsIds !== undefined) return _runAsIds;
+    _runAsIds = null;
+    if (process.platform === 'win32') return _runAsIds; // no POSIX uid/gid concept
+    if (typeof process.getuid !== 'function' || process.getuid() !== 0) return _runAsIds; // panel isn't root — nothing to drop
+    if (!RUN_AS_USER) {
+        console.warn('[ProcessManager] MinePanel is running as root and MC_RUN_AS_USER is not set — server processes will run as ROOT. Set MC_RUN_AS_USER in .env (see docs/configuration.md).');
+        return _runAsIds;
+    }
+    try {
+        const uid = parseInt(execFileSync('id', ['-u', RUN_AS_USER]).toString().trim(), 10);
+        const gid = parseInt(execFileSync('id', ['-g', RUN_AS_USER]).toString().trim(), 10);
+        if (!Number.isNaN(uid) && !Number.isNaN(gid) && uid !== 0) {
+            _runAsIds = { uid, gid };
+            console.log(`[ProcessManager] Server processes will be de-escalated to user "${RUN_AS_USER}" (uid=${uid}, gid=${gid}).`);
+        } else {
+            console.error(`[ProcessManager] MC_RUN_AS_USER="${RUN_AS_USER}" resolved to uid ${uid} — refusing to use it (must be a non-root user).`);
+        }
+    } catch (e) {
+        console.error(`[ProcessManager] MC_RUN_AS_USER="${RUN_AS_USER}" was not found on this system. Create it first, e.g.: useradd -r -M -s /usr/sbin/nologin ${RUN_AS_USER}`);
+    }
+    return _runAsIds;
+}
+
+function ensureOwnership(dir: string, uid: number, gid: number) {
+    try {
+        const st = fs.statSync(dir);
+        if ((st as any).uid === uid && (st as any).gid === gid) return; // already correct — skip the recursive chown
+        execFileSync('chown', ['-R', `${uid}:${gid}`, dir]);
+    } catch (e: any) {
+        console.error(`[ProcessManager] Failed to chown "${dir}" to ${uid}:${gid} — server may fail to write files:`, e.message);
+    }
+}
 
 /**
  * System-wide CPU sampler — diffs os.cpus() tick counters every second to
@@ -252,6 +298,17 @@ class RealProcessManager extends EventEmitter {
         };
         if (spawnEnv) {
             spawnOptions.env = spawnEnv;
+        }
+
+        // De-escalate: never let a Minecraft server process run as root.
+        const runAs = resolveRunAsIds();
+        if (runAs) {
+            ensureOwnership(serverDir, runAs.uid, runAs.gid);
+            spawnOptions.uid = runAs.uid;
+            spawnOptions.gid = runAs.gid;
+            // Root's env (HOME=/root etc.) isn't readable by the dropped-to user —
+            // give the child a HOME it can actually write to.
+            spawnOptions.env = { ...(spawnOptions.env || process.env), HOME: serverDir, USER: RUN_AS_USER, LOGNAME: RUN_AS_USER };
         }
 
         const child: any = spawn(javaPath, args, spawnOptions);
