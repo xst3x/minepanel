@@ -14,6 +14,7 @@ Read once at startup. Changes require a process restart.
 | `HTTPS` | `false` | Enable Node.js native TLS |
 | `HTTPS_KEY` | `certs/key.pem` | TLS private key path |
 | `HTTPS_CERT` | `certs/cert.pem` | TLS certificate path |
+| `MC_RUN_AS_USER` | — (empty) | Linux only. Unprivileged user Minecraft server processes are de-escalated to when MinePanel itself runs as root. See [Running Server Processes Unprivileged](#running-server-processes-unprivileged). |
 
 ## Runtime Settings (UI)
 
@@ -63,6 +64,57 @@ server {
     }
 }
 ```
+
+## Running Server Processes Unprivileged
+
+If MinePanel itself runs as `root` (common on quick VPS installs — e.g. the
+`systemd` unit below with no `User=` set), every Minecraft server it spawns
+inherits that and also runs as root. You'll see this warning in the server
+console:
+
+```
+YOU ARE RUNNING THIS SERVER AS AN ADMINISTRATIVE OR ROOT USER. THIS IS NOT ADVISED.
+```
+
+This means a plugin/mod exploit (RCE) on any single server would give an
+attacker full root on the host. Fix it by creating a dedicated, unprivileged
+user and pointing `MC_RUN_AS_USER` at it:
+
+```bash
+# 1. Create a system user with no login shell and no home directory
+sudo useradd -r -M -s /usr/sbin/nologin mcserver
+
+# 2. Point MinePanel at it
+echo "MC_RUN_AS_USER=mcserver" | sudo tee -a /opt/minepanel/.env
+
+# 3. Restart MinePanel (must still start as root so it CAN drop privileges)
+sudo systemctl restart minepanel
+```
+
+On the next start of each server, MinePanel automatically:
+1. `chown -R`'s that server's directory to `mcserver` (skipped on later
+   starts once ownership is already correct, so it stays fast even for large
+   worlds).
+2. Spawns the Java/Bedrock/PocketMine process with `uid`/`gid` set to
+   `mcserver` — the same mechanism `sudo -u` uses under the hood.
+
+Verify it worked:
+
+```bash
+ps -eo user,pid,cmd | grep java   # should show "mcserver", not "root"
+```
+
+**Notes:**
+- Windows and non-root installs (Docker, a normal `User=minepanel` systemd
+  unit, etc.) are unaffected — `MC_RUN_AS_USER` is a no-op there, since
+  there's no root privilege to drop in the first place.
+- If you upload files as root via the panel's File Manager while a server is
+  stopped, those specific files stay root-owned until the next full
+  `chown -R` (i.e. until server ownership needs re-syncing). This normally
+  isn't an issue since the panel process itself performs file writes.
+- Leaving `MC_RUN_AS_USER` unset while MinePanel runs as root logs a warning
+  on every server start (`[ProcessManager] ... server processes will run as
+  ROOT`) but does not block startup, to avoid breaking existing installs.
 
 ## Running as a Service
 
