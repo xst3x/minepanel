@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm, showPrompt } from '../../components/Toast.jsx';
@@ -19,7 +20,7 @@ export default function Players() {
 
   return (
     <div>
-      <div className="sub-nav" id="players-sub-nav" style={{ marginBottom: '1rem' }}>
+      <div className="sub-nav sub-nav-inner" id="players-sub-nav">
         {tabs.map(t => (
           <button
             key={t.id}
@@ -221,6 +222,12 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
   const sleepBed            = getStat('minecraft:custom', 'minecraft:sleep_in_bed');
   const leavesGame          = getStat('minecraft:custom', 'minecraft:leave_game');
   const tradedCount         = getStat('minecraft:custom', 'minecraft:traded_with_villager');
+  const fishCaught          = getStat('minecraft:custom', 'minecraft:fish_caught');
+  const chestsOpened        = getStat('minecraft:custom', 'minecraft:open_chest');
+  const itemsEnchanted      = getStat('minecraft:custom', 'minecraft:enchant_item');
+  const animalsBred         = getStat('minecraft:custom', 'minecraft:animals_bred');
+  const raidsWon            = getStat('minecraft:custom', 'minecraft:raid_win');
+  const cakeSlicesEaten     = getStat('minecraft:custom', 'minecraft:eat_cake_slice');
   const craftedItems        = d?.stats?.stats?.['minecraft:crafted']
     ? Object.values(d.stats.stats['minecraft:crafted']).reduce((a, b) => a + b, 0)
     : null;
@@ -258,7 +265,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
   const hasStats = d?.stats?.stats != null;
 
-  return (
+  return createPortal(
     <div className="player-modal-overlay">
       <div className="player-modal-container">
 
@@ -376,6 +383,12 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
                     {sleepBed     != null && <RpgStatBox label="Slept in Bed" val={sleepBed.toLocaleString()} />}
                     {tradedCount  != null && <RpgStatBox label="Villager Trades" val={tradedCount.toLocaleString()} />}
                     {advDone      != null && <RpgStatBox label="Advancements" val={advTotal ? `${advDone} / ${advTotal}` : advDone} accent />}
+                    {fishCaught     != null && <RpgStatBox label="Fish Caught" val={fishCaught.toLocaleString()} />}
+                    {chestsOpened   != null && <RpgStatBox label="Chests Opened" val={chestsOpened.toLocaleString()} />}
+                    {itemsEnchanted != null && <RpgStatBox label="Items Enchanted" val={itemsEnchanted.toLocaleString()} />}
+                    {animalsBred    != null && <RpgStatBox label="Animals Bred" val={animalsBred.toLocaleString()} />}
+                    {raidsWon       != null && <RpgStatBox label="Raids Won" val={raidsWon.toLocaleString()} accent />}
+                    {cakeSlicesEaten != null && <RpgStatBox label="Cake Slices Eaten" val={cakeSlicesEaten.toLocaleString()} />}
                   </RpgStatSection>
 
                   {/* Combat */}
@@ -665,7 +678,8 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
         </div>{/* end body */}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

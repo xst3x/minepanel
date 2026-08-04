@@ -18,6 +18,56 @@ const processOutputParser = require("./process-output-parser");
 const { parseServerStderr } = processOutputParser;
 const consoleStatsParser = require("./utils/consoleStatsParser");
 const { parseTpsFromHistoryText, parsePlayersFromHistoryText, parseTpsFromLine, isTpsConsoleNoise, isTpsUnknownCommand, isTpsCommandException, isStacktraceLine, isTpsErrorTrailer } = consoleStatsParser;
+const fs = require("fs");
+const child_process_2 = require("child_process");
+// ── Privilege drop for Minecraft server processes ──────────────────────────
+// If MinePanel itself runs as root (common on quick VPS setups), spawned
+// Java/Bedrock/PocketMine processes inherit that by default — a plugin/mod
+// RCE would then mean full root on the box. When MC_RUN_AS_USER is set and
+// the panel is root, we resolve that user's uid/gid once, chown the server
+// directory to it, and drop privileges via spawn({ uid, gid }) — the same
+// mechanism sudo/su use under the hood.
+const RUN_AS_USER = (process.env.MC_RUN_AS_USER || '').trim();
+let _runAsIds = undefined;
+function resolveRunAsIds() {
+    if (_runAsIds !== undefined)
+        return _runAsIds;
+    _runAsIds = null;
+    if (process.platform === 'win32')
+        return _runAsIds; // no POSIX uid/gid concept
+    if (typeof process.getuid !== 'function' || process.getuid() !== 0)
+        return _runAsIds; // panel isn't root — nothing to drop
+    if (!RUN_AS_USER) {
+        console.warn('[ProcessManager] MinePanel is running as root and MC_RUN_AS_USER is not set — server processes will run as ROOT. Set MC_RUN_AS_USER in .env (see docs/configuration.md).');
+        return _runAsIds;
+    }
+    try {
+        const uid = parseInt((0, child_process_2.execFileSync)('id', ['-u', RUN_AS_USER]).toString().trim(), 10);
+        const gid = parseInt((0, child_process_2.execFileSync)('id', ['-g', RUN_AS_USER]).toString().trim(), 10);
+        if (!Number.isNaN(uid) && !Number.isNaN(gid) && uid !== 0) {
+            _runAsIds = { uid, gid };
+            console.log(`[ProcessManager] Server processes will be de-escalated to user "${RUN_AS_USER}" (uid=${uid}, gid=${gid}).`);
+        }
+        else {
+            console.error(`[ProcessManager] MC_RUN_AS_USER="${RUN_AS_USER}" resolved to uid ${uid} — refusing to use it (must be a non-root user).`);
+        }
+    }
+    catch (e) {
+        console.error(`[ProcessManager] MC_RUN_AS_USER="${RUN_AS_USER}" was not found on this system. Create it first, e.g.: useradd -r -M -s /usr/sbin/nologin ${RUN_AS_USER}`);
+    }
+    return _runAsIds;
+}
+function ensureOwnership(dir, uid, gid) {
+    try {
+        const st = fs.statSync(dir);
+        if (st.uid === uid && st.gid === gid)
+            return; // already correct — skip the recursive chown
+        (0, child_process_2.execFileSync)('chown', ['-R', `${uid}:${gid}`, dir]);
+    }
+    catch (e) {
+        console.error(`[ProcessManager] Failed to chown "${dir}" to ${uid}:${gid} — server may fail to write files:`, e.message);
+    }
+}
 /**
  * System-wide CPU sampler — diffs os.cpus() tick counters every second to
  * report the host's total CPU usage across all cores (the same technique the
@@ -78,6 +128,7 @@ class RealProcessManager extends EventEmitter {
         this._lastStatsParse = new Map();
         this._tpsPollAt = new Map();
         this._tpsErrorDump = new Map();
+        this._readyServers = new Set();
         this._tpsTimer = null;
         this._systemCpu = new SystemCpuSampler().start();
     }
@@ -237,6 +288,16 @@ class RealProcessManager extends EventEmitter {
         if (spawnEnv) {
             spawnOptions.env = spawnEnv;
         }
+        // De-escalate: never let a Minecraft server process run as root.
+        const runAs = resolveRunAsIds();
+        if (runAs) {
+            ensureOwnership(serverDir, runAs.uid, runAs.gid);
+            spawnOptions.uid = runAs.uid;
+            spawnOptions.gid = runAs.gid;
+            // Root's env (HOME=/root etc.) isn't readable by the dropped-to user —
+            // give the child a HOME it can actually write to.
+            spawnOptions.env = { ...(spawnOptions.env || process.env), HOME: serverDir, USER: RUN_AS_USER, LOGNAME: RUN_AS_USER };
+        }
         const child = (0, child_process_1.spawn)(javaPath, args, spawnOptions);
         child.startInfo = { serverDir, javaArgs, jarFile, maxMemoryMb, customArgs, javaPath, spawnEnv, mode };
         this.processes.set(serverId, child);
@@ -244,6 +305,7 @@ class RealProcessManager extends EventEmitter {
         this._lastStatsParse.delete(serverId);
         this._tpsPollAt.delete(serverId);
         this._tpsErrorDump.delete(serverId);
+        this._readyServers.delete(serverId);
         this._cachedTps.delete(serverId);
         this._cachedPlayers.delete(serverId);
         saveRunningServers(this.processes);
@@ -258,6 +320,12 @@ class RealProcessManager extends EventEmitter {
                 output = parseBedrockOutput(raw);
             else if (this._pocketmineServers.has(serverId))
                 output = parsePocketMineOutput(raw);
+            // Gate TPS polling until the world has actually finished loading —
+            // querying /tps before that throws a console NPE on Paper/Spigot
+            // ("Cannot invoke CommandSourceStack.getLevel()... is null").
+            if (!this._readyServers.has(serverId) && /Done \([\d.]+s\)! For help/i.test(raw)) {
+                this._readyServers.add(serverId);
+            }
             // No-plugin TPS polling: swallow /tps responses and command echo so the
             // dashboard console and history stay clean.
             if (this._handleTpsPollOutput(serverId, output))
@@ -287,6 +355,7 @@ class RealProcessManager extends EventEmitter {
             this._startedAt.delete(serverId);
             this._tpsPollAt.delete(serverId);
             this._tpsErrorDump.delete(serverId);
+            this._readyServers.delete(serverId);
             this._cachedTps.delete(serverId);
             this._cachedPlayers.delete(serverId);
             this._lastStatsParse.delete(serverId);
@@ -320,6 +389,7 @@ class RealProcessManager extends EventEmitter {
             this._startedAt.delete(serverId);
             this._tpsPollAt.delete(serverId);
             this._tpsErrorDump.delete(serverId);
+            this._readyServers.delete(serverId);
             this._cachedTps.delete(serverId);
             this._cachedPlayers.delete(serverId);
             this._lastStatsParse.delete(serverId);
@@ -406,6 +476,7 @@ class RealProcessManager extends EventEmitter {
         this._startedAt.delete(serverId);
         this._tpsPollAt.delete(serverId);
         this._tpsErrorDump.delete(serverId);
+        this._readyServers.delete(serverId);
         this._cachedTps.delete(serverId);
         this._cachedPlayers.delete(serverId);
         this._lastStatsParse.delete(serverId);
@@ -562,14 +633,17 @@ class RealProcessManager extends EventEmitter {
             this._tpsTimer.unref();
     }
     _pollAllTps() {
-        let polledAny = false;
         for (const serverId of this.processes.keys()) {
             if (this._bedrockServers.has(serverId) || this._pocketmineServers.has(serverId))
                 continue;
-            if (this._pollTps(serverId))
-                polledAny = true;
+            if (!this._readyServers.has(serverId))
+                continue; // world not fully loaded yet — /tps would NPE
+            this._pollTps(serverId);
         }
-        if (!polledAny && this._tpsTimer) {
+        // Only tear down the timer once nothing is running at all — a starting
+        // server that isn't "ready" yet still needs the timer alive so its
+        // first poll can fire once it finishes loading.
+        if (this.processes.size === 0 && this._tpsTimer) {
             clearInterval(this._tpsTimer);
             this._tpsTimer = null;
         }

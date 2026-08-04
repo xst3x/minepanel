@@ -160,7 +160,9 @@ router.get('/list', authenticateToken, checkPermission('server.players.read'), a
         const usercache = loadUsercache(serverDir);
         let players = [];
         if (fs.existsSync(playerdataDir)) {
-            const files = fs.readdirSync(playerdataDir).filter(f => f.endsWith('.dat'));
+            const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            const files = fs.readdirSync(playerdataDir)
+                .filter(f => f.endsWith('.dat') && uuidRe.test(f.replace('.dat', '')));
             players = files.map(f => {
                 const uuid = f.replace('.dat', '');
                 const username = resolveUsername(usercache, uuid) || uuid;
