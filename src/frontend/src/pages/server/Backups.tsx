@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import '../../styles/pages/server/Backups.css';
 import { api } from '../../lib/api.ts';
+import { toast, showConfirm, toastProgress } from '../../components/Toast.tsx';
 
 export default function ServerBackups() {
   const { serverId, hasPerm } = useOutletContext();
@@ -37,7 +38,7 @@ export default function ServerBackups() {
       const list = await api(`/api/servers/${serverId}/backups`);
       setBackups(list || []);
     } catch (err) {
-      alert('Failed to load backups: ' + err.message);
+      toast('Failed to load backups: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -54,9 +55,9 @@ export default function ServerBackups() {
           includes: config.backup_includes || 'all'
         }
       });
-      alert('Backup configuration saved successfully.');
+      toast('Backup configuration saved successfully.', 'success');
     } catch (err) {
-      alert('Failed to save configuration: ' + err.message);
+      toast('Failed to save configuration: ' + err.message, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -64,16 +65,16 @@ export default function ServerBackups() {
 
   const handleRunBackup = async () => {
     setActionLoading(true);
+    const dismiss = toastProgress('Creating backup… this may take a moment.');
     try {
-      alert('Creating backup (this may take a moment)...');
       const res = await api(`/api/servers/${serverId}/backups/create`, {
         method: 'POST',
         body: { includes: config.backup_includes }
       });
-      alert(res.message || 'Backup completed successfully.');
+      dismiss(null, res.message || 'Backup completed successfully.');
       loadData();
     } catch (err) {
-      alert('Backup failed: ' + err.message);
+      dismiss('Backup failed: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -94,34 +95,45 @@ export default function ServerBackups() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
+      toast(`Downloading ${filename}…`, 'success');
     } catch (err) {
-      alert('Download failed: ' + err.message);
+      toast('Download failed: ' + err.message, 'error');
     }
   };
 
   const handleRestore = async (filename) => {
-    if (!confirm(`Restore ${filename}? This will overwrite current files.`)) return;
+    const ok = await showConfirm(
+      `Restore "${filename}"? This will OVERWRITE all current server files with the backup contents.`,
+      'Restore Backup',
+      { danger: true, confirmLabel: 'Restore' }
+    );
+    if (!ok) return;
     setActionLoading(true);
+    const dismiss = toastProgress('Restoring backup… please wait.');
     try {
-      alert('Restoring backup... Please wait.');
       const res = await api(`/api/servers/${serverId}/backups/${filename}/restore`, { method: 'POST' });
-      alert(res.message || 'Backup restored successfully.');
+      dismiss(null, res.message || 'Backup restored successfully.');
     } catch (err) {
-      alert('Failed to restore backup: ' + err.message);
+      dismiss('Failed to restore backup: ' + err.message);
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDelete = async (filename) => {
-    if (!confirm(`Delete ${filename}? This cannot be undone.`)) return;
+    const ok = await showConfirm(
+      `Delete "${filename}"? This cannot be undone.`,
+      'Delete Backup',
+      { danger: true, confirmLabel: 'Delete' }
+    );
+    if (!ok) return;
     setActionLoading(true);
     try {
       await api(`/api/servers/${serverId}/backups/${filename}/delete`, { method: 'POST' });
-      alert('Backup deleted.');
+      toast('Backup deleted.', 'success');
       loadData();
     } catch (err) {
-      alert('Failed to delete backup: ' + err.message);
+      toast('Failed to delete backup: ' + err.message, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -173,14 +185,15 @@ export default function ServerBackups() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                 <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Enable Auto-Backups</span>
-                <label className="toggle-switch">
+                <span className="toggle-switch">
                   <input
                     type="checkbox"
                     checked={config.auto_backup}
                     onChange={(e) => setConfig(prev => ({ ...prev, auto_backup: e.target.checked }))}
+                    aria-label="Enable auto-backups"
                   />
                   <span className="toggle-slider"></span>
-                </label>
+                </span>
               </label>
               <button className="btn primary" onClick={handleSaveConfig} disabled={actionLoading}>
                 Save Config

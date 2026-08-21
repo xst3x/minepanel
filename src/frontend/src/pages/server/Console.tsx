@@ -169,6 +169,8 @@ export default function ServerConsole() {
           ref={outputRef}
           id="terminal-output"
           className="console-output"
+          role="log"
+          aria-label="Server console output"
           onScroll={handleConsoleScroll}
         >
           {parsed.map((line, i) => (
@@ -220,6 +222,7 @@ export default function ServerConsole() {
               ref={inputRef}
               id="terminal-input"
               type="text"
+              aria-label="Server console command"
               placeholder="Type a command and press Enter..."
               value={cmd}
               onChange={e => setCmd(e.target.value)}
@@ -241,6 +244,7 @@ export default function ServerConsole() {
             ref={chatInputRef}
             id="chat-input"
             type="text"
+            aria-label="Chat message"
             placeholder={
               !serverOnline
                 ? 'Server is offline.'

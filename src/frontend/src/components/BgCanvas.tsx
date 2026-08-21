@@ -43,12 +43,17 @@ export default function BgCanvas() {
 
     const shapes = [];
 
+    // HIG Accessibility — Reduce Motion: users who opt out of motion get a
+    // static composition instead of the drifting/rotating animation loop.
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
     function resize() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       // Regenerate shapes so density/coverage adapts to the new viewport size —
       // otherwise newly revealed areas stay empty until shapes drift into them.
       makeShapes();
+      if (reducedMotion) drawStatic();
     }
     function onResize() {
       const newWidth = window.innerWidth;
@@ -118,6 +123,29 @@ export default function BgCanvas() {
     resize();
     window.addEventListener('resize', onResize);
 
+    function drawStatic() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const [H, S, L] = getAccentHsl();
+      for (const s of shapes) {
+        const sides = s.type === 'tri' ? 3 : s.type === 'hex' ? 6 : 4;
+        poly(s.x, s.y, s.size, sides, s.rot, s.h, s.s, s.l, s.a);
+      }
+      for (let i = 0; i < shapes.length; i++) {
+        for (let j = i + 1; j < shapes.length; j++) {
+          const a = shapes[i], b = shapes[j];
+          const d = Math.hypot(a.x - b.x, a.y - b.y);
+          if (d < 140) {
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.strokeStyle = `hsla(${H},${S}%,${L + 20}%,${(1 - d / 140) * 0.07})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const [H, S, L] = getAccentHsl();
@@ -151,22 +179,31 @@ export default function BgCanvas() {
       animId = requestAnimationFrame(draw);
     }
 
-    draw();
+    if (reducedMotion) {
+      drawStatic();
+    } else {
+      draw();
+    }
 
     // Re-generate shapes when accent colour / theme changes
-    const observer = new MutationObserver(makeShapes);
+    const observer = new MutationObserver(() => {
+      makeShapes();
+      if (reducedMotion) drawStatic();
+    });
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme', 'style'],
     });
-    document.addEventListener('accentChanged', makeShapes);
+    document.addEventListener('accentChanged', () => {
+      makeShapes();
+      if (reducedMotion) drawStatic();
+    });
 
     return () => {
       cancelAnimationFrame(animId);
       clearTimeout(resizeTimeout);
       window.removeEventListener('resize', onResize);
       observer.disconnect();
-      document.removeEventListener('accentChanged', makeShapes);
     };
   }, []);
 

@@ -19,6 +19,7 @@ export default function Automation() {
   const [serverEnabled, setServerEnabled] = useState(false);
   const [activeRule, setActiveRule] = useState(null); // rule being edited
   const [scriptContent, setScriptContent] = useState('');
+  const [savedScriptRef, setSavedScriptRef] = useState('');
   const [validationResult, setValidationResult] = useState(null); // { valid, errors }
   const [terminalLogs, setTerminalLogs] = useState([]);
 
@@ -108,7 +109,7 @@ export default function Automation() {
   const handleDeleteRule = async (ruleId, e) => {
     e.stopPropagation();
     if (!canWrite) return;
-    const confirmed = await showConfirm('Are you sure you want to delete this automation?', 'Delete Automation');
+    const confirmed = await showConfirm(`Delete automation "${rules.find(r => r.id === ruleId)?.name || 'this script'}"? This cannot be undone.`, 'Delete Automation', { danger: true, confirmLabel: 'Delete' });
     if (!confirmed) return;
 
     try {
@@ -124,8 +125,22 @@ export default function Automation() {
   const handleOpenEditor = (rule) => {
     setActiveRule(rule);
     setScriptContent(rule.script);
+    setSavedScriptRef(rule.script);
     setValidationResult(null);
     setView('editor');
+  };
+
+  // HIG Modality — confirm before leaving the editor with unsaved edits
+  const handleBackToDashboard = async () => {
+    if (scriptContent !== savedScriptRef) {
+      const ok = await showConfirm(
+        `Discard unsaved changes to "${activeRule?.name}.py"?`,
+        'Unsaved Changes',
+        { danger: true, confirmLabel: 'Discard' }
+      );
+      if (!ok) return;
+    }
+    setView('dashboard');
   };
 
   // Verify python script
@@ -182,6 +197,7 @@ export default function Automation() {
       });
       setRules(prev => prev.map(r => r.id === activeRule.id ? res.rule : r));
       toast('Automation script saved.', 'success');
+      setSavedScriptRef(scriptContent);
       setView('dashboard');
     } catch (e) {
       toast(e.message || 'Failed to save automation.', 'error');
@@ -244,7 +260,11 @@ export default function Automation() {
                 <div
                   key={r.id}
                   className="list-item"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Edit automation ${r.name}.py`}
                   onClick={() => handleOpenEditor(r)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOpenEditor(r); } }}
                   style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-color)', alignItems: 'center', cursor: 'pointer', transition: 'background 0.2s' }}
                 >
                   <div style={{ fontWeight: '500', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -296,11 +316,16 @@ export default function Automation() {
       {/* Editor Toolbar */}
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1.25rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button className="btn outline small" onClick={() => setView('dashboard')}>
+          <button className="btn outline small" onClick={handleBackToDashboard}>
             ← Dashboard
           </button>
           <span style={{ fontWeight: 600, color: 'var(--text)' }}>
             Editing: {activeRule?.name}.py
+            {scriptContent !== savedScriptRef && (
+              <span style={{ marginLeft: '0.5rem', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0.12rem 0.45rem', borderRadius: 999, background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent-glow)', verticalAlign: 'middle' }}>
+                UNSAVED
+              </span>
+            )}
           </span>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -378,10 +403,10 @@ export default function Automation() {
             background: '#111111',
             flexShrink: 0
           }}>
-            <span style={{ fontSize: 11, color: '#666666', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+            <span style={{ fontSize: 11, color: '#8a8a8a', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
               Python Output Terminal (Real-time logs)
             </span>
-            <button className="btn outline small" style={{ padding: '2px 8px', fontSize: 10 }} onClick={() => setTerminalLogs([])}>
+            <button className="btn outline small" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => setTerminalLogs([])}>
               Clear
             </button>
           </div>

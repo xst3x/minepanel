@@ -130,11 +130,19 @@ export default function Login() {
     }
   };
 
-  const eyeBtn = (show, toggle) => (
-    <button type="button" onClick={toggle} tabIndex={-1} style={{
-      position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-      background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0
-    }}>
+  const eyeBtn = (show, toggle, label) => (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={show ? `Hide ${label}` : `Show ${label}`}
+      aria-pressed={show}
+      title={show ? `Hide ${label}` : `Show ${label}`}
+      style={{
+        position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+        background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4,
+        borderRadius: 'var(--radius-sm)', display: 'inline-flex'
+      }}
+    >
       {show ? (
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
@@ -176,7 +184,8 @@ export default function Login() {
               <form onSubmit={submit}>
                 <div className="input-group">
                   <label htmlFor="username">Username</label>
-                  <input id="username" type="text" required autoComplete="off"
+                  <input id="username" type="text" required autoComplete="username"
+                    autoFocus
                     value={username} onChange={e => setUsername(e.target.value)}
                     placeholder="Enter your username" />
                 </div>
@@ -185,10 +194,11 @@ export default function Login() {
                   <label htmlFor="password">Password</label>
                   <div style={{ position: 'relative' }}>
                     <input id="password" type={showPassword ? 'text' : 'password'} required
+                      autoComplete="current-password"
                       value={password} onChange={e => setPassword(e.target.value)}
                       placeholder="Enter your password"
                       style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
-                    {eyeBtn(showPassword, () => setShowPassword(v => !v))}
+                    {eyeBtn(showPassword, () => setShowPassword(v => !v), 'password')}
                   </div>
                 </div>
 
@@ -201,7 +211,7 @@ export default function Login() {
                   </div>
                 )}
 
-                {err && <div className="form-error" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{err}</div>}
+                {err && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{err}</div>}
 
                 <button type="submit" disabled={busy} className="btn primary full-width" style={{ marginBottom: '0.75rem' }}>
                   {busy ? 'Signing in…' : 'Login'}
@@ -240,24 +250,26 @@ export default function Login() {
                   <label htmlFor="reg-password">Password</label>
                   <div style={{ position: 'relative' }}>
                     <input id="reg-password" type={showRegPass ? 'text' : 'password'} required
+                      autoComplete="new-password"
                       value={regPassword} onChange={e => setRegPassword(e.target.value)}
                       placeholder="Choose a password"
                       style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
-                    {eyeBtn(showRegPass, () => setShowRegPass(v => !v))}
+                    {eyeBtn(showRegPass, () => setShowRegPass(v => !v), 'password')}
                   </div>
                 </div>
                 <div className="input-group">
                   <label htmlFor="reg-confirm">Confirm Password</label>
                   <div style={{ position: 'relative' }}>
                     <input id="reg-confirm" type={showRegConfirm ? 'text' : 'password'} required
+                      autoComplete="new-password"
                       value={regConfirm} onChange={e => setRegConfirm(e.target.value)}
                       placeholder="Confirm your password"
                       style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
-                    {eyeBtn(showRegConfirm, () => setShowRegConfirm(v => !v))}
+                    {eyeBtn(showRegConfirm, () => setShowRegConfirm(v => !v), 'password confirmation')}
                   </div>
                 </div>
 
-                {regErr && <div className="form-error" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{regErr}</div>}
+                {regErr && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{regErr}</div>}
 
                 <button type="submit" disabled={regBusy} className="btn primary full-width" style={{ marginBottom: '0.75rem' }}>
                   {regBusy ? 'Creating account…' : 'Create Account'}
@@ -282,7 +294,7 @@ export default function Login() {
                     placeholder="Enter your username" autoFocus />
                 </div>
 
-                {fpErr && <div className="form-error" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{fpErr}</div>}
+                {fpErr && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{fpErr}</div>}
 
                 <button type="submit" disabled={fpBusy} className="btn primary full-width" style={{ marginBottom: '0.75rem' }}>
                   {fpBusy ? 'Checking…' : 'Continue'}
@@ -301,24 +313,25 @@ export default function Login() {
               <p className="subtitle">Enter your authenticator code to reset your password</p>
               <form onSubmit={handleForgotReset}>
                 <div className="input-group">
-                  <label>2FA Code</label>
-                  <input type="text" inputMode="numeric" required autoComplete="one-time-code"
+                  <label htmlFor="fp-code">2FA Code</label>
+                  <input id="fp-code" type="text" inputMode="numeric" required autoComplete="one-time-code"
                     value={fpCode} onChange={e => setFpCode(e.target.value)}
                     placeholder="6-digit code or XXXXX-XXXXX backup code" autoFocus />
                 </div>
 
                 <div className="input-group">
-                  <label>New Password</label>
+                  <label htmlFor="fp-newpass">New Password</label>
                   <div style={{ position: 'relative' }}>
-                    <input type={fpShowPass ? 'text' : 'password'} required
+                    <input id="fp-newpass" type={fpShowPass ? 'text' : 'password'} required
+                      autoComplete="new-password"
                       value={fpNewPass} onChange={e => setFpNewPass(e.target.value)}
                       placeholder="Choose a new password"
                       style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
-                    {eyeBtn(fpShowPass, () => setFpShowPass(v => !v))}
+                    {eyeBtn(fpShowPass, () => setFpShowPass(v => !v), 'new password')}
                   </div>
                 </div>
 
-                {fpErr && <div className="form-error" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{fpErr}</div>}
+                {fpErr && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{fpErr}</div>}
 
                 <button type="submit" disabled={fpBusy} className="btn primary full-width" style={{ marginBottom: '0.75rem' }}>
                   {fpBusy ? 'Resetting…' : 'Reset Password'}

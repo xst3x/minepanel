@@ -77,7 +77,7 @@ export default function Discord() {
   };
 
   const handleDeleteBot = async (bot) => {
-    if (!await showConfirm(`Delete bot "${bot.username || 'Bot'}"? This will remove all its Discord channels and roles.`)) return;
+    if (!await showConfirm(`Delete bot "${bot.username || 'Bot'}"? This will remove all its Discord channels and roles.`, 'Delete Bot', { danger: true, confirmLabel: 'Delete Bot' })) return;
     try {
       await api(`/api/discord/bots/${bot.id}`, { method: 'DELETE' });
       toast('Bot deleted.', 'success');
@@ -88,7 +88,7 @@ export default function Discord() {
   };
 
   const handleValidateToken = async () => {
-    if (!botToken) return alert('Paste a bot token first');
+    if (!botToken) { toast('Paste a bot token first.', 'error'); return; }
     setValidating(true);
     setValidatedBot(null);
     try {
@@ -110,9 +110,9 @@ export default function Discord() {
   };
 
   const handleSaveBot = async () => {
-    if (!guildId) return alert('Guild ID is required');
-    if (!/^\d{17,20}$/.test(guildId)) return alert('Guild ID must be a numeric ID (17-20 digits)');
-    if (!editingBot && !botToken) return alert('Bot token is required for new bots');
+    if (!guildId) { toast('Guild ID is required.', 'error'); return; }
+    if (!/^\d{17,20}$/.test(guildId)) { toast('Guild ID must be a numeric ID (17–20 digits).', 'error'); return; }
+    if (!editingBot && !botToken) { toast('Bot token is required for new bots.', 'error'); return; }
 
     setActionLoading(true);
     try {
@@ -235,7 +235,7 @@ export default function Discord() {
                     {serverCount} server{serverCount !== 1 ? 's' : ''}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="1.75">
+                    <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" strokeWidth="1.75">
                       <circle cx="12" cy="12" r="10" />
                       <polyline points="12 6 12 12 16 14" />
                     </svg>

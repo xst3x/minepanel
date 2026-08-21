@@ -146,9 +146,9 @@ export default function Content() {
 
   const uninstall = async (filename) => {
     const isDatapack = activeTab === 'datapacks';
-    const confirmMsg = isDatapack ? `Remove datapack ${filename}?` : `Remove ${filename}?`;
+    const confirmMsg = isDatapack ? `Remove datapack ${filename}?` : `Remove ${filename}? The file will be deleted from the server.`;
     const confirmTitle = isDatapack ? 'Remove Datapack' : 'Remove Plugin';
-    if (!(await showConfirm(confirmMsg, confirmTitle))) return;
+    if (!(await showConfirm(confirmMsg, confirmTitle, { danger: true, confirmLabel: 'Remove' }))) return;
     try {
       if (isDatapack) {
         await api(`/api/servers/${serverId}/plugins/datapacks/uninstall`, { method:'POST', body:{ folderName: filename } });
@@ -299,7 +299,7 @@ export default function Content() {
   };
 
   const uninstallProject = async (filename, title) => {
-    if (!(await showConfirm(`Uninstall ${title}?`, 'Remove'))) return;
+    if (!(await showConfirm(`Uninstall ${title}? The file will be deleted from the server.`, 'Remove', { danger: true, confirmLabel: 'Uninstall' }))) return;
     try {
       if (activeTab === 'datapacks') {
         await api(`/api/servers/${serverId}/plugins/datapacks/uninstall`, { method:'POST', body:{ folderName: filename } });
@@ -458,6 +458,7 @@ export default function Content() {
               {VENDORS.map(v => (
                 <button
                   key={v.id}
+                  aria-pressed={vendor === v.id}
                   onClick={() => vendor !== v.id && switchVendor(v.id)}
                   style={{
                     padding:'0.4rem 1rem',

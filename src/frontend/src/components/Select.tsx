@@ -5,6 +5,8 @@ export default function Select({ value, onChange, children, style, className, di
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
   const dropdownRef = useRef(null);
+  const displayRef = useRef(null);
+  const [activeIdx, setActiveIdx] = useState(-1);
   const [coords, setCoords] = useState({ left: 0, top: 0, width: 0, dropUp: false, topOffset: 0 });
 
   const updateCoords = () => {
@@ -29,6 +31,9 @@ export default function Select({ value, onChange, children, style, className, di
   useEffect(() => {
     if (isOpen) {
       updateCoords();
+      // Start keyboard navigation at the selected option
+      const selIdx = options.findIndex(opt => String(opt.value) === String(value));
+      setActiveIdx(selIdx >= 0 ? selIdx : 0);
       window.addEventListener('resize', updateCoords);
       window.addEventListener('scroll', updateCoords, true);
     }
@@ -106,24 +111,98 @@ export default function Select({ value, onChange, children, style, className, di
 
   const selectedOption = options.find(opt => String(opt.value) === String(value));
   const displayLabel = selectedOption ? selectedOption.label : value;
+  const selectId = useRef(`mp-select-${Math.random().toString(36).slice(2, 9)}`).current;
+
+  // Keep the keyboard-active option visible while navigating
+  useEffect(() => {
+    if (!isOpen || activeIdx < 0 || !dropdownRef.current) return;
+    const el = dropdownRef.current.children[activeIdx];
+    el?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeIdx, isOpen]);
 
   const handleSelect = (opt) => {
     if (opt.disabled || disabled) return;
     setIsOpen(false);
+    // Return focus to the combobox so keyboard users keep their place
+    displayRef.current?.focus();
     if (onChange) {
       onChange({ target: { value: opt.value } });
     }
   };
 
+  // Keyboard support (WAI-ARIA combobox / listbox pattern)
+  const handleKeyDown = (e) => {
+    if (disabled) return;
+    if (!isOpen) {
+      if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+        e.preventDefault();
+        setIsOpen(true);
+      }
+      return;
+    }
+    switch (e.key) {
+      case 'ArrowDown': {
+        e.preventDefault();
+        setActiveIdx(i => {
+          let next = i;
+          do { next = (next + 1) % options.length; } while (options[next]?.disabled && next !== i);
+          return next;
+        });
+        break;
+      }
+      case 'ArrowUp': {
+        e.preventDefault();
+        setActiveIdx(i => {
+          let next = i;
+          do { next = (next - 1 + options.length) % options.length; } while (options[next]?.disabled && next !== i);
+          return next;
+        });
+        break;
+      }
+      case 'Home':
+        e.preventDefault();
+        setActiveIdx(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        setActiveIdx(options.length - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (options[activeIdx]) handleSelect(options[activeIdx]);
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setIsOpen(false);
+        displayRef.current?.focus();
+        break;
+      case 'Tab':
+        setIsOpen(false);
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`custom-select-container ${className || ''}`}
       style={{ position: 'relative', width: '100%', ...style, opacity: disabled ? 0.5 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
     >
-      <div 
+      <div
+        ref={displayRef}
+        id={selectId}
         className="custom-select-display"
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-controls={`${selectId}-listbox`}
+        aria-disabled={disabled || undefined}
+        tabIndex={disabled ? -1 : 0}
         onClick={() => !disabled && setIsOpen(!isOpen)}
+        onKeyDown={handleKeyDown}
         style={{
           width: '100%',
           padding: '0 38px 0 14px',
@@ -140,7 +219,9 @@ export default function Select({ value, onChange, children, style, className, di
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          userSelect: 'none'
+          userSelect: 'none',
+          outline: 'none',
+          cursor: disabled ? 'not-allowed' : 'pointer'
         }}
       >
         {displayLabel}
@@ -154,13 +235,16 @@ export default function Select({ value, onChange, children, style, className, di
       </div>
 
       {isOpen && !disabled && createPortal(
-        <div 
+        <div
           ref={dropdownRef}
+          id={`${selectId}-listbox`}
+          role="listbox"
+          aria-labelledby={selectId}
           className="custom-select-dropdown"
           style={{
             position: 'fixed',
-            ...(coords.dropUp 
-              ? { bottom: window.innerHeight - coords.topOffset + 6 } 
+            ...(coords.dropUp
+              ? { bottom: window.innerHeight - coords.topOffset + 6 }
               : { top: coords.top + 6 }),
             left: coords.left,
             width: coords.width,
@@ -183,9 +267,13 @@ export default function Select({ value, onChange, children, style, className, di
           )}
           {options.map((opt, i) => {
             const isSelected = String(opt.value) === String(value);
+            const isActive = i === activeIdx;
             return (
               <div
                 key={i}
+                role="option"
+                aria-selected={isSelected}
+                aria-disabled={opt.disabled || undefined}
                 className="custom-select-option"
                 onClick={() => handleSelect(opt)}
                 style={{
@@ -195,20 +283,11 @@ export default function Select({ value, onChange, children, style, className, di
                   opacity: opt.disabled ? 0.5 : 1,
                   fontSize: '13.5px',
                   color: isSelected ? 'var(--accent)' : 'var(--text-primary)',
-                  background: isSelected ? 'var(--accent-subtle)' : 'transparent',
+                  background: isSelected ? 'var(--accent-subtle)' : (isActive ? 'var(--bg-elevated)' : 'transparent'),
                   transition: 'background 0.1s, color 0.1s',
                   userSelect: 'none'
                 }}
-                onMouseEnter={(e) => {
-                  if (!opt.disabled && !isSelected) {
-                    e.currentTarget.style.background = 'var(--bg-elevated)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!opt.disabled && !isSelected) {
-                    e.currentTarget.style.background = 'transparent';
-                  }
-                }}
+                onMouseEnter={() => { if (!opt.disabled) setActiveIdx(i); }}
               >
                 {opt.label}
               </div>

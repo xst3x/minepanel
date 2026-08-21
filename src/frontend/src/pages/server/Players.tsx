@@ -265,9 +265,16 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
   const hasStats = d?.stats?.stats != null;
 
+  // HIG Modality — Escape closes the modal
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return createPortal(
-    <div className="player-modal-overlay">
-      <div className="player-modal-container">
+    <div className="player-modal-overlay" onClick={onClose}>
+      <div className="player-modal-container" role="dialog" aria-modal="true" aria-label={`Player details: ${player.name}`} onClick={e => e.stopPropagation()}>
 
         {/* ══ MODAL HEADER ═══════════════════════════════════════════════════ */}
         <div className="player-modal-header">
@@ -424,7 +431,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
                       Raw stats JSON
                     </summary>
                     <pre style={{
-                      fontSize: '0.67rem', maxHeight: 260, overflowY: 'auto',
+                      fontSize: '0.72rem', maxHeight: 260, overflowY: 'auto',
                       background: 'var(--bg-input)', border: '1px solid var(--border)',
                       borderRadius: 'var(--radius)', padding: '0.75rem',
                       whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: '0.5rem',
@@ -669,7 +676,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
               <ActionGroup title="Wipe Player Data" hint="Permanently deletes playerdata .dat, stats JSON and advancements JSON. Server must be stopped first.">
                 <button className="btn danger small" onClick={async () => {
-                  if (await showConfirm(`PERMANENTLY wipe all saved data for ${player.name}? This cannot be undone.`)) cmd('wipe');
+                  if (await showConfirm(`PERMANENTLY wipe all saved data for ${player.name}? This cannot be undone.`, 'Wipe Player Data', { danger: true, confirmLabel: 'Wipe Data' })) cmd('wipe');
                 }}>Wipe All Data</button>
               </ActionGroup>
 
@@ -698,7 +705,7 @@ function QuickPill({ label, val, color }) {
       alignItems: 'center',
       minWidth: 70,
     }}>
-      <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>{label}</span>
+      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>{label}</span>
       <span style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: color || 'var(--text-primary)', marginTop: 2 }}>{val}</span>
     </div>
   );
@@ -750,7 +757,7 @@ function RpgStatBox({ label, val, tip, color, accent }) {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
         <span style={{
-          fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase',
+          fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase',
           letterSpacing: '0.08em', color: 'var(--text-muted)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{label}</span>

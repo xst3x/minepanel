@@ -146,6 +146,7 @@ export default function Docs() {
                   <button
                     className={`docs-cat-header${hasActive ? ' has-active' : ''}`}
                     onClick={() => toggleCat(cat)}
+                    aria-expanded={isOpen}
                   >
                     <span>{categoryLabel(cat)}</span>
                     <Chevron open={isOpen} />
@@ -159,6 +160,7 @@ export default function Docs() {
                           key={doc.slug}
                           className={`docs-item${activeDoc?.slug === doc.slug ? ' active' : ''}`}
                           onClick={() => selectDoc(doc)}
+                          aria-current={activeDoc?.slug === doc.slug ? 'page' : undefined}
                         >
                           {doc.title}
                         </button>

@@ -51,6 +51,18 @@ export default function GlobalServerModals() {
   // Load versions once on mount
   useEffect(() => { loadVersions(); }, []);
 
+  // Escape closes the modal (HIG Modality — obvious dismissal path)
+  useEffect(() => {
+    if (!modal) return;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (modal === 'import' && impBusy) return; // don't abandon an in-flight import
+      close();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modal, impBusy, close]);
+
   // Reset create form when modal opens
   useEffect(() => {
     if (modal === 'create') {
@@ -223,8 +235,8 @@ export default function GlobalServerModals() {
     <>
       {/* Create Modal */}
       {modal === 'create' && (
-        <div className="modal-overlay active">
-          <div className={`modal${csTab === 'modpacks' ? ' large' : ''}`}>
+        <div className="modal-overlay active" onClick={close}>
+          <div className={`modal${csTab === 'modpacks' ? ' large' : ''}`} role="dialog" aria-modal="true" aria-label="Create new server" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Create new server</h3>
               <button className="close-btn" onClick={close}>&times;</button>
@@ -411,8 +423,8 @@ export default function GlobalServerModals() {
 
       {/* Import Modal */}
       {modal === 'import' && (
-        <div className="modal-overlay active">
-          <div className="modal large">
+        <div className="modal-overlay active" onClick={() => { if (!impBusy) close(); }}>
+          <div className="modal large" role="dialog" aria-modal="true" aria-label="Import existing server" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Import Existing Server</h3>
               <button className="close-btn" onClick={close} disabled={impBusy}>&times;</button>

@@ -45,7 +45,10 @@ export default function ServerFiles() {
   // File editing modal state
   const [editingPath, setEditingPath] = useState(null);
   const [editorContent, setEditorContent] = useState('');
+  const [savedContentRef, setSavedContentRef] = useState('');
   const [savingFile, setSavingFile] = useState(false);
+
+  const editorDirty = editingPath != null && editorContent !== savedContentRef;
 
   const fileInputRef = useRef(null);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
@@ -117,9 +120,23 @@ export default function ServerFiles() {
       const r = await api(`/api/servers/${serverId}/files/read?path=${encodeURIComponent(filePath)}`);
       setEditingPath(filePath);
       setEditorContent(r.content || '');
+      setSavedContentRef(r.content || '');
     } catch (err) {
       toast(err.message || 'Failed to read file.', 'error');
     }
+  };
+
+  // HIG Modality — confirm before closing the editor when unsaved edits would be lost
+  const closeEditor = async () => {
+    if (editorDirty) {
+      const ok = await showConfirm(
+        `Discard unsaved changes to "${editingPath?.split('/').pop()}"?`,
+        'Unsaved Changes',
+        { danger: true, confirmLabel: 'Discard' }
+      );
+      if (!ok) return;
+    }
+    setEditingPath(null);
   };
 
   const handleSaveFile = async () => {
@@ -139,6 +156,8 @@ export default function ServerFiles() {
   const handleUpload = async (e) => {
     const files = e.target.files;
     if (!files || !files.length) return;
+    const dismiss = toastProgress(`Uploading ${files.length} file${files.length !== 1 ? 's' : ''}…`);
+    let failed = 0;
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
       const fd = new FormData();
@@ -147,9 +166,12 @@ export default function ServerFiles() {
       try {
         await api(`/api/servers/${serverId}/files/upload`, { method: 'POST', body: fd });
       } catch (err) {
+        failed++;
         toast(`Failed to upload ${f.name}: ${err.message}`, 'error');
       }
     }
+    if (failed === 0) dismiss(null, `Uploaded ${files.length} file${files.length !== 1 ? 's' : ''}.`);
+    else dismiss();
     loadFiles();
     e.target.value = '';
   };
@@ -402,6 +424,16 @@ export default function ServerFiles() {
     return () => window.removeEventListener('keydown', onKey);
   }, [selectMode, items]);
 
+  // ── Editor modal: Escape asks before discarding unsaved edits ────────────
+  useEffect(() => {
+    if (!editingPath) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape' && !savingFile) { e.preventDefault(); closeEditor(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   const sortedItems = [...items].sort((a, b) => {
     if (a.isDirectory && !b.isDirectory) return -1;
     if (!a.isDirectory && b.isDirectory) return 1;
@@ -465,8 +497,25 @@ export default function ServerFiles() {
             <p className="text-muted" style={{ padding: '1rem' }}>Loading files...</p>
           ) : (
             <>
+              {!sortedItems.length && (
+                <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>This folder is empty.</p>
+                  {hasPerm('server.files.edit') && (
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem' }}>
+                      Use <strong>New Folder</strong>, <strong>New File</strong> or <strong>Upload</strong> to add content.
+                    </p>
+                  )}
+                </div>
+              )}
               {currentPath !== '/' && (
-                <div className="fm-item" onClick={handleGoUp}>
+                <div
+                  className="fm-item"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Go up one directory"
+                  onClick={handleGoUp}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleGoUp(); } }}
+                >
                   <div className="fm-icon">{FOLDER_SVG}</div>
                   <div className="fm-col name fm-item-name" style={{ fontWeight: '500' }}>..</div>
                   <div className="fm-col size">--</div>
@@ -487,7 +536,24 @@ export default function ServerFiles() {
                   <div
                     key={item.name}
                     className={`fm-item${isSelected ? ' fm-selected' : ''}`}
+                    role={selectMode ? 'checkbox' : 'button'}
+                    aria-checked={selectMode ? isSelected : undefined}
+                    tabIndex={0}
+                    aria-label={item.name}
                     onClick={() => {
+                      if (selectMode) {
+                        toggleSelect(item.name);
+                      } else if (item.isDirectory) {
+                        handleFolderClick(item.name);
+                      } else if (isImage || isZip) {
+                        openPreview(item);
+                      } else {
+                        handleOpenFile(item);
+                      }
+                    }}
+                    onKeyDown={e => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      e.preventDefault();
                       if (selectMode) {
                         toggleSelect(item.name);
                       } else if (item.isDirectory) {
@@ -682,14 +748,26 @@ export default function ServerFiles() {
       {/* ── Editor Modal ────────────────────────────────────────────────── */}
       {editingPath && (
         <div className="modal-overlay active" id="modal-file-editor">
-          <div className="modal large">
+          <div className="modal large" role="dialog" aria-modal="true" aria-label={`Editing ${editingPath}`}>
             <div className="modal-header">
-              <h3 id="editor-filename">editing: {editingPath}</h3>
+              <h3 id="editor-filename" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, overflow: 'hidden' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{editingPath}</span>
+                {editorDirty && (
+                  <span
+                    title="Unsaved changes"
+                    aria-label="Unsaved changes"
+                    style={{ flexShrink: 0, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0.12rem 0.45rem', borderRadius: 999, background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent-glow)' }}
+                  >
+                    UNSAVED
+                  </span>
+                )}
+              </h3>
               <div className="modal-header-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button className="btn outline small" onClick={closeEditor} disabled={savingFile}>Cancel</button>
                 <button className="btn primary small" onClick={handleSaveFile} disabled={savingFile}>
                   {savingFile ? 'Saving...' : 'Save'}
                 </button>
-                <button className="close-btn" onClick={() => setEditingPath(null)} disabled={savingFile}>&times;</button>
+                <button className="close-btn" aria-label="Close editor" onClick={closeEditor} disabled={savingFile}>&times;</button>
               </div>
             </div>
             <div className="modal-body no-pad" style={{ padding: 0 }}>

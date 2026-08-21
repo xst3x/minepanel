@@ -327,7 +327,7 @@ export default function ServerSettings() {
         setSwitchWarnings(check.warnings);
         setShowSwitchModal(true);
       } else {
-        const ok = await showConfirm(`Switch to ${newSoftware.toUpperCase()} ${newVersion}?`, 'Confirm Switch');
+        const ok = await showConfirm(`Switch to ${newSoftware.toUpperCase()} ${newVersion}? The server directory contents may change.`, 'Confirm Switch', { danger: true, confirmLabel: 'Switch Engine' });
         if (!ok) return;
         executeSwitchSoftware();
       }
@@ -355,7 +355,8 @@ export default function ServerSettings() {
   const handleDeleteServer = async () => {
     const ok = await showConfirm(
       'PERMANENTLY DELETE THIS SERVER? This cannot be undone. All server files, logs, databases, and configs will be completely deleted.',
-      'Delete Server'
+      'Delete Server',
+      { danger: true, confirmLabel: 'Delete Server' }
     );
     if (!ok) return;
 
@@ -555,10 +556,10 @@ export default function ServerSettings() {
                     <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Autostart on boot</div>
                     <div className="text-muted" style={{ fontSize: '0.79rem', marginTop: '0.15rem' }}>Automatically start this server when the panel boots up.</div>
                   </div>
-                  <label className="toggle-switch">
-                    <input type="checkbox" checked={autostart} onChange={(e) => setAutostart(e.target.checked)} />
+                  <span className="toggle-switch">
+                    <input type="checkbox" checked={autostart} onChange={(e) => setAutostart(e.target.checked)} aria-label="Autostart on boot" />
                     <span className="toggle-slider"></span>
-                  </label>
+                  </span>
                 </label>
 
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', gap: '1rem' }}>
@@ -568,10 +569,10 @@ export default function ServerSettings() {
                       Automatically restart this server if it crashes (non-zero exit code). Does not trigger on manual stops/kills.
                     </div>
                   </div>
-                  <label className="toggle-switch">
-                    <input type="checkbox" checked={autostartCrash} onChange={(e) => setAutostartCrash(e.target.checked)} />
+                  <span className="toggle-switch">
+                    <input type="checkbox" checked={autostartCrash} onChange={(e) => setAutostartCrash(e.target.checked)} aria-label="Autostart on crash" />
                     <span className="toggle-slider"></span>
-                  </label>
+                  </span>
                 </label>
               </div>
             </div>
@@ -670,15 +671,16 @@ export default function ServerSettings() {
                 <div style={{ fontWeight: 500, color: warn ? 'var(--warning)' : 'var(--text-primary)', fontSize: '0.88rem' }}>{label}</div>
                 <div className="text-muted" style={{ fontSize: '0.78rem', marginTop: '0.12rem' }}>{desc}</div>
               </div>
-              <label className="toggle-switch">
+              <span className="toggle-switch">
                 <input
                   type="checkbox"
                   checked={locked ? true : upd[key]}
                   disabled={locked}
                   onChange={locked ? undefined : (e) => setUpd(prev => ({ ...prev, [key]: e.target.checked }))}
+                  aria-label={label}
                 />
                 <span className="toggle-slider" />
-              </label>
+              </span>
             </label>
           ))}
         </div>

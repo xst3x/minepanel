@@ -117,7 +117,7 @@ export default function Ranks() {
   };
 
   const handleDeleteRank = async (rank) => {
-    if (!(await showConfirm(`Delete rank "${rank.name}"?`, 'Delete Rank'))) return;
+    if (!(await showConfirm(`Delete rank "${rank.name}"? Users with this rank will lose its permissions.`, 'Delete Rank', { danger: true, confirmLabel: 'Delete Rank' }))) return;
     try {
       await api(`/api/ranks/${rank.id}/delete`, { method: 'POST' });
       toast('Rank deleted.', 'success');
@@ -402,7 +402,7 @@ function RankCard({ rank: r, globalCount, serverCount, isAllGlobal, reorderMode,
             {r.name}
           </span>
           {r.is_builtin && (
-            <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.45rem', borderRadius: 4,
+            <span style={{ fontSize: '0.68rem', padding: '0.12rem 0.5rem', borderRadius: 4,
               background: `rgba(${rc},${gc},${bc},0.12)`, color: r.color, fontWeight: 600, letterSpacing: '0.04em' }}>
               BUILT-IN
             </span>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
 import { toast } from '../../components/Toast.tsx';
@@ -20,6 +20,12 @@ export default function ServerFtp() {
   const [revealPass, setRevealPass] = useState(false);
   const [showConfigPass, setShowConfigPass] = useState(false);
   const [plainPassword, setPlainPassword] = useState('');
+  const passwordHideTimer = useRef(null);
+
+  // Clear the auto-hide timer on unmount
+  useEffect(() => () => {
+    if (passwordHideTimer.current) clearTimeout(passwordHideTimer.current);
+  }, []);
 
   useEffect(() => {
     loadFtpInfo();
@@ -90,20 +96,29 @@ export default function ServerFtp() {
 
     if (plainPassword) {
       setRevealPass(true);
+      schedulePasswordHide();
       return;
     }
 
     try {
       setActionLoading(true);
       const data = await api(`/api/servers/${serverId}/ftp/password`);
-      setPlainPassword(data.password || '(not available  enter password again to reveal)');
+      setPlainPassword(data.password || '(not available — enter password again to reveal)');
       setRevealPass(true);
+      schedulePasswordHide();
     } catch (err) {
       setPlainPassword('(not available)');
       setRevealPass(true);
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Security UX: auto-hide a revealed password after 30 seconds
+  const schedulePasswordHide = () => {
+    if (passwordHideTimer) clearTimeout(passwordHideTimer);
+    const t = setTimeout(() => setRevealPass(false), 30000);
+    setPasswordHideTimer(t);
   };
 
   const currentHost = window.location.hostname;
@@ -147,14 +162,29 @@ export default function ServerFtp() {
                     {revealPass ? plainPassword : ''}
                   </code>
                   {hasPerm('server.ftp.manage') && (
-                    <button
-                      className="btn outline small"
-                      style={{ padding: '2px 8px', fontSize: '0.72rem' }}
-                      onClick={handleRevealPassword}
-                      disabled={actionLoading}
-                    >
-                      {revealPass ? 'Hide' : 'Show'}
-                    </button>
+                    <>
+                      {revealPass && plainPassword && !plainPassword.startsWith('(') && (
+                        <button
+                          className="btn outline small"
+                          style={{ padding: '2px 8px', fontSize: '0.72rem' }}
+                          onClick={() => {
+                            navigator.clipboard.writeText(plainPassword);
+                            toast('Password copied to clipboard.', 'success');
+                          }}
+                        >
+                          Copy
+                        </button>
+                      )}
+                      <button
+                        className="btn outline small"
+                        style={{ padding: '2px 8px', fontSize: '0.72rem' }}
+                        onClick={handleRevealPassword}
+                        disabled={actionLoading}
+                        title={revealPass ? 'Hide password (auto-hides after 30s)' : 'Reveal password'}
+                      >
+                        {revealPass ? 'Hide' : 'Show'}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -234,12 +264,12 @@ export default function ServerFtp() {
       <div className="card">
         <h3 style={{ marginBottom: '0.75rem' }}>How to connect</h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-          This panel uses <strong>SFTP</strong> (SSH File Transfer Protocol)  not plain FTP. Use FileZilla, WinSCP, or any SFTP-capable client.
+          This panel uses <strong>SFTP</strong> (SSH File Transfer Protocol) — not plain FTP. Use FileZilla, WinSCP, or any SFTP-capable client.
         </p>
         <ol style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', paddingLeft: '1.25rem', lineHeight: 1.9, margin: '0 0 0.75rem' }}>
           <li>Set credentials &amp; port, click <strong>Save &amp; Apply</strong></li>
           <li>Click <strong>Start FTP</strong> to start the SFTP daemon</li>
-          <li><strong>FileZilla:</strong> Site Manager &rarr; Protocol: <em>SFTP  SSH File Transfer Protocol</em></li>
+          <li><strong>FileZilla:</strong> Site Manager &rarr; Protocol: <em>SFTP — SSH File Transfer Protocol</em></li>
           <li><strong>WinSCP:</strong> New Session &rarr; File Protocol: <em>SFTP</em></li>
           <li>Enter Host / Port / Username / Password from the Connection Info card</li>
         </ol>

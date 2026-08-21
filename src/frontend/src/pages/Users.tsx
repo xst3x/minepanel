@@ -22,14 +22,30 @@ export default function Users() {
 );
 
 const EyeOffIcon = ({ size = 16 }) => (
-  <svg width={size} height={24} viewBox="0 0 24 24" fill="none"
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M10.58 10.58A2 2 0 1 0 12 14a2 2 0 0 0-1.42-.59" />
     <path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c7 0 10 8 10 8a18.45 18.45 0 0 1-3.22 4.5" />
     <path d="M6.1 6.1C3.6 8 2 12 2 12s3 8 10 8a10.94 10.94 0 0 0 4.12-.76" />
     <path d="M2 2l20 20" />
   </svg>
-);  
+);
+
+// Shared password reveal toggle — renders the actual icon components
+// (previously these were rendered as literal '<EyeIcon />' strings) and is
+// keyboard-operable with an accessible name.
+const EyeToggle = ({ show, onToggle, label }) => (
+  <button
+    type="button"
+    onClick={onToggle}
+    aria-label={show ? `Hide ${label}` : `Show ${label}`}
+    aria-pressed={show}
+    title={show ? `Hide ${label}` : `Show ${label}`}
+    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, display: 'inline-flex', borderRadius: 'var(--radius-sm)' }}
+  >
+    {show ? <EyeOffIcon /> : <EyeIcon />}
+  </button>
+);
 
   // Modals state
   const [activeModal, setActiveModal] = useState(null);
@@ -111,7 +127,7 @@ const EyeOffIcon = ({ size = 16 }) => (
   };
 
   const handleDeleteUser = async (user) => {
-    if (!await showConfirm(`Delete user ${user.username}? This action is permanent.`, 'Delete User')) return;
+    if (!await showConfirm(`Delete user ${user.username}? This action is permanent.`, 'Delete User', { danger: true, confirmLabel: 'Delete User' })) return;
     try {
       await api(`/api/users/${user.id}/delete`, { method: 'POST' });
       toast('User deleted.', 'success');
@@ -165,7 +181,7 @@ const EyeOffIcon = ({ size = 16 }) => (
   };
 
   const handleClearAllTokens = async () => {
-    if (!await showConfirm('Are you sure you want to clear ALL invite tokens? This will invalidate any existing registration tokens.', 'Clear All Tokens')) return;
+    if (!await showConfirm('Are you sure you want to clear ALL invite tokens? This will invalidate any existing registration tokens.', 'Clear All Tokens', { danger: true, confirmLabel: 'Clear All' })) return;
     try {
       await api('/api/users/tokens/clear-all', { method: 'DELETE' });
       toast('All invite tokens cleared.', 'success');
@@ -353,20 +369,21 @@ const EyeOffIcon = ({ size = 16 }) => (
 
                 return (
                   <div key={u.id} className="list-item" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text)' }}>{u.username}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.username}</div>
                     <div>{rankHtml}</div>
                     <div>
                       {isSelf ? (
-                        <label className="toggle-switch" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-                          <input type="checkbox" checked disabled />
+                        <label className="toggle-switch" style={{ opacity: 0.5, cursor: 'not-allowed' }} title="You cannot disable your own account">
+                          <input type="checkbox" checked disabled aria-label="Account enabled" />
                           <span className="toggle-slider"></span>
                         </label>
                       ) : (
-                        <label className="toggle-switch">
+                        <label className="toggle-switch" title={isDisabled ? 'Account is disabled — click to enable' : 'Account is enabled — click to disable'}>
                           <input
                             type="checkbox"
                             checked={!isDisabled}
                             onChange={() => handleToggleDisabled(u)}
+                            aria-label={`${isDisabled ? 'Enable' : 'Disable'} account ${u.username}`}
                           />
                           <span className="toggle-slider"></span>
                         </label>
@@ -446,7 +463,7 @@ const EyeOffIcon = ({ size = 16 }) => (
                 <label>Password</label>
                 <div style={{ position: 'relative' }}>
                   <input type={showCreatePw ? 'text' : 'password'} value={createPassword} onChange={e => setCreatePassword(e.target.value)} placeholder="Password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
-                  <button type="button" onClick={() => setShowCreatePw(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, fontSize: 15 }}>{showCreatePw ? '<EyeOffIcon />' : '<EyeIcon />'}</button>
+                  <EyeToggle show={showCreatePw} onToggle={() => setShowCreatePw(v => !v)} label="password" />
                 </div>
               </div>
             </div>
@@ -567,21 +584,21 @@ const EyeOffIcon = ({ size = 16 }) => (
                 <label>Current Password</label>
                 <div style={{ position: 'relative' }}>
                   <input type={showCpsCurrent ? 'text' : 'password'} value={cpsCurrent} onChange={e => setCpsCurrent(e.target.value)} placeholder="Current password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
-                  <button type="button" onClick={() => setShowCpsCurrent(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, fontSize: 15 }}>{showCpsCurrent ? '<EyeOffIcon />' : '<EyeIcon />'}</button>
+                  <EyeToggle show={showCpsCurrent} onToggle={() => setShowCpsCurrent(v => !v)} label="current password" />
                 </div>
               </div>
               <div className="form-group">
                 <label>New Password</label>
                 <div style={{ position: 'relative' }}>
                   <input type={showCpsNew ? 'text' : 'password'} value={cpsNew} onChange={e => setCpsNew(e.target.value)} placeholder="New password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
-                  <button type="button" onClick={() => setShowCpsNew(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, fontSize: 15 }}>{showCpsNew ? '<EyeOffIcon />' : '<EyeIcon />'}</button>
+                  <EyeToggle show={showCpsNew} onToggle={() => setShowCpsNew(v => !v)} label="new password" />
                 </div>
               </div>
               <div className="form-group">
                 <label>Confirm New Password</label>
                 <div style={{ position: 'relative' }}>
                   <input type={showCpsConfirm ? 'text' : 'password'} value={cpsConfirm} onChange={e => setCpsConfirm(e.target.value)} placeholder="Confirm new password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
-                  <button type="button" onClick={() => setShowCpsConfirm(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, fontSize: 15 }}>{showCpsConfirm ? '<EyeOffIcon />' : '<EyeIcon />'}</button>
+                  <EyeToggle show={showCpsConfirm} onToggle={() => setShowCpsConfirm(v => !v)} label="confirmed password" />
                 </div>
               </div>
             </div>
@@ -634,14 +651,14 @@ const EyeOffIcon = ({ size = 16 }) => (
                 <label>New Password</label>
                 <div style={{ position: 'relative' }}>
                   <input type={showRpaNew ? 'text' : 'password'} value={rpaNew} onChange={e => setRpaNew(e.target.value)} placeholder="New password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
-                  <button type="button" onClick={() => setShowRpaNew(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, fontSize: 15 }}>{showRpaNew ? '<EyeOffIcon />' : '<EyeIcon />'}</button>
+                  <EyeToggle show={showRpaNew} onToggle={() => setShowRpaNew(v => !v)} label="new password" />
                 </div>
               </div>
               <div className="form-group">
                 <label>Confirm Password</label>
                 <div style={{ position: 'relative' }}>
                   <input type={showRpaConfirm ? 'text' : 'password'} value={rpaConfirm} onChange={e => setRpaConfirm(e.target.value)} placeholder="Confirm password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
-                  <button type="button" onClick={() => setShowRpaConfirm(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, fontSize: 15 }}>{showRpaConfirm ? '<EyeOffIcon />' : '<EyeIcon />'}</button>
+                  <EyeToggle show={showRpaConfirm} onToggle={() => setShowRpaConfirm(v => !v)} label="confirmed password" />
                 </div>
               </div>
             </div>
@@ -658,7 +675,7 @@ const EyeOffIcon = ({ size = 16 }) => (
         <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
           <div className="modal large" style={{ maxWidth: '900px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Permissions Matrix  {selectedUser?.username}</h3>
+              <h3>Permissions Matrix — {selectedUser?.username}</h3>
               <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>

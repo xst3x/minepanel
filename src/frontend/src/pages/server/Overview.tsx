@@ -533,7 +533,7 @@ export default function ServerOverview() {
               </span>
             </div>
           )}
-          <canvas ref={canvasRef} className="ov-chart-canvas" />
+          <canvas ref={canvasRef} className="ov-chart-canvas" role="img" aria-label="Server performance chart: CPU, RAM, TPS and players over time. Live values are listed in the legend below." />
         </div>
 
         {/* Toggleable legend */}
@@ -543,6 +543,7 @@ export default function ServerOverview() {
               key={key}
               className={`ov-legend-btn ${enabled[key] ? '' : 'off'}`}
               onClick={() => toggleMetric(key)}
+              aria-pressed={enabled[key]}
               title={enabled[key] ? `Hide ${label}` : `Show ${label}`}
             >
               <span className="ov-legend-dot" style={{ background: color() }} />

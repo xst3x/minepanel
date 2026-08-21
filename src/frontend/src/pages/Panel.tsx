@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { toast, showConfirm, toastProgress } from '../components/Toast.tsx';
@@ -9,7 +9,6 @@ import '../styles/pages/Panel.css';
 
 export default function Panel() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +74,19 @@ export default function Panel() {
     const interval = setInterval(loadServers, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  // Escape closes the create/import modals (HIG Modality — obvious dismissal)
+  useEffect(() => {
+    if (!showCreateModal && !showImportModal) return;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (impBusy) return; // don't abandon an in-flight import
+      setSearchParams({});
+      setCsTab('java');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showCreateModal, showImportModal, impBusy]);
 
   // When the tab changes, reset software & port defaults
   useEffect(() => {
@@ -196,7 +208,7 @@ export default function Panel() {
         setSearchParams({});
         loadServers();
         setImpFile(null); setImpName(''); setImpPort(25565);
-        setImpSoftware('paper'); setImpRam(2048); setImpJar(''); setImpRoot('');
+        setImpSoftware('paper'); setImpRam(2048); setImpRoot('');
         setImportProgress(null);
         toast('Server imported successfully.', 'success');
       } else {
@@ -248,17 +260,44 @@ export default function Panel() {
       </div>
 
       {loading ? (
-        <p className="text-muted">Loading servers...</p>
+        <div
+          role="status"
+          aria-label="Loading servers"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 0', color: 'var(--text-muted)' }}
+        >
+          <span
+            aria-hidden="true"
+            style={{ width: 20, height: 20, border: '2px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'mp-spin 0.8s linear infinite' }}
+          />
+          Loading servers…
+        </div>
       ) : servers.length === 0 ? (
-        <p className="text-muted">No servers found.</p>
+        <div className="card" style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--text-muted)' }}>
+          <svg viewBox="0 0 24 24" width="44" height="44" stroke="currentColor" fill="none" strokeWidth="1.25" style={{ opacity: 0.3, margin: '0 auto 1rem', display: 'block' }}>
+            <rect x="2" y="2" width="20" height="8" rx="2" />
+            <rect x="2" y="14" width="20" height="8" rx="2" />
+            <line x1="6" y1="6" x2="6.01" y2="6" />
+            <line x1="6" y1="18" x2="6.01" y2="18" />
+          </svg>
+          <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-secondary)' }}>No servers yet.</p>
+          <p style={{ margin: '0.4rem 0 1.25rem', fontSize: '0.85rem' }}>
+            Create your first server or import an existing one to get started.
+          </p>
+          {isAdmin && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+              <button className="btn primary" onClick={() => setSearchParams({ action: 'create' })}>Create Server</button>
+              <button className="btn outline" onClick={() => setSearchParams({ action: 'import' })}>Import Server</button>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="servers-grid" id="servers-grid">
           {servers.map((sv, i) => (
-            <div 
-              key={sv.id} 
+            <Link
+              key={sv.id}
+              to={`/server/${sv.id}/overview`}
               className="server-card"
-              style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }}
-              onClick={() => navigate(`/server/${sv.id}/overview`)}
+              style={{ animationDelay: `${Math.min(i, 10) * 35}ms`, textDecoration: 'none', color: 'inherit' }}
             >
               <h4>{sv.name}</h4>
               <p>{sv.software} {sv.version}</p>
@@ -267,15 +306,15 @@ export default function Panel() {
                   {(sv.status || 'offline').toUpperCase()}
                 </span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="modal-overlay active" id="modal-create-server">
-          <div className={`modal${csTab === 'modpacks' ? ' large' : ''}`}>
+        <div className="modal-overlay active" id="modal-create-server" onClick={() => { setSearchParams({}); setCsTab('java'); }}>
+          <div className={`modal${csTab === 'modpacks' ? ' large' : ''}`} role="dialog" aria-modal="true" aria-label="Create new server" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Create new server</h3>
               <button className="close-btn" onClick={() => { setSearchParams({}); setCsTab('java'); }}>&times;</button>
@@ -499,8 +538,8 @@ export default function Panel() {
 
       {/* Import Modal */}
       {showImportModal && (
-        <div className="modal-overlay active" id="modal-import-server">
-          <div className="modal large">
+        <div className="modal-overlay active" id="modal-import-server" onClick={() => { if (!impBusy) setSearchParams({}); }}>
+          <div className="modal large" role="dialog" aria-modal="true" aria-label="Import existing server" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Import Existing Server</h3>
               <button className="close-btn" onClick={() => setSearchParams({})} disabled={impBusy}>&times;</button>

@@ -249,12 +249,12 @@ export default function Settings() {
               <input type="number" value={ftpPort} onChange={e => setFtpPort(e.target.value)} placeholder="2121" min="1" max="65535" />
             </div>
             <div className="form-group">
-              <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+              <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', cursor: 'pointer' }}>
                 <span>Enable Sandboxed FTP</span>
-                <label className="toggle-switch">
-                  <input type="checkbox" checked={ftpEnabled} onChange={e => setFtpEnabled(e.target.checked)} />
+                <span className="toggle-switch">
+                  <input type="checkbox" checked={ftpEnabled} onChange={e => setFtpEnabled(e.target.checked)} aria-label="Enable sandboxed FTP" />
                   <span className="toggle-slider"></span>
-                </label>
+                </span>
               </label>
             </div>
           </div>
@@ -263,7 +263,7 @@ export default function Settings() {
           <div className="card accent-appearance-card" style={{ minWidth: 0 }}>
             <h3>Appearance</h3>
             <p className="text-muted" style={{ fontSize: '0.82rem', margin: '0.25rem 0 1.25rem' }}>
-              Your accent color  saved to your account and applied instantly everywhere.
+              Your accent color is saved to your account and applied instantly everywhere.
             </p>
             <div className="accent-picker" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(50px, 1fr))', gap: '10px 6px', marginBottom: '1rem' }}>
               {ACCENT_PRESETS.map(preset => {
@@ -272,6 +272,8 @@ export default function Settings() {
                   <div key={preset.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
                     <button
                       title={preset.label}
+                      aria-label={`Accent color: ${preset.label}`}
+                      aria-pressed={isSelected}
                       onClick={() => { setSelectedAccent(preset.value); applyAccent(preset.value); toast(`Accent: ${preset.label}`, 'success'); }}
                       style={{
                         width: 44, height: 44, borderRadius: '50%',
@@ -286,7 +288,7 @@ export default function Settings() {
                         flexShrink: 0,
                       }}
                     />
-                    <span style={{ fontSize: '0.62rem', color: isSelected ? 'var(--accent)' : 'var(--text-muted)', whiteSpace: 'nowrap', maxWidth: 52, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.7rem', color: isSelected ? 'var(--accent)' : 'var(--text-muted)', whiteSpace: 'nowrap', maxWidth: 56, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
                       {preset.label}
                     </span>
                   </div>
@@ -296,6 +298,7 @@ export default function Settings() {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
                 <button
                   title="Custom color"
+                  aria-label="Pick a custom accent color"
                   onClick={() => setShowColorWell(true)}
                   style={{
                     width: 44, height: 44, borderRadius: '50%',
@@ -315,7 +318,7 @@ export default function Settings() {
                     <line x1="5" y1="12" x2="19" y2="12" />
                   </svg>
                 </button>
-                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Custom</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Custom</span>
               </div>
             </div>
             <p className="accent-selected-label" style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
@@ -353,12 +356,12 @@ export default function Settings() {
           <div className="card">
             <h3>Account Registration</h3>
             <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
                 <span>Require Invite Token to Create Account</span>
-                <label className="toggle-switch">
-                  <input type="checkbox" checked={requireInviteToken} onChange={e => setRequireInviteToken(e.target.checked)} />
+                <span className="toggle-switch">
+                  <input type="checkbox" checked={requireInviteToken} onChange={e => setRequireInviteToken(e.target.checked)} aria-label="Require invite token to create account" />
                   <span className="toggle-slider"></span>
-                </label>
+                </span>
               </label>
               <p className="text-muted" style={{ fontSize: '0.79rem', margin: '0.5rem 0 0' }}>
                 When enabled, users must have an invite token to register. When disabled, anyone can create an account (invite tokens still work).

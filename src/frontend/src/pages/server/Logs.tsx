@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
+import { toast } from '../../components/Toast.tsx';
 import Select from '../../components/Select.tsx';
 import '../../styles/pages/server/Logs.css';
 
@@ -56,7 +57,7 @@ export default function ServerLogs() {
       setTotalPages(res.totalPages || 1);
       setSelectedFile(file);
     } catch (err) {
-      alert('Failed to read log: ' + err.message);
+      toast('Failed to read log: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -153,11 +154,14 @@ export default function ServerLogs() {
       </div>
 
       <div style={{
+        position: 'relative',
         background: isLight ? '#ffffff' : '#0d0d0d',
         borderRadius: 'var(--radius)',
         border: `1px solid ${isLight ? '#d1d5db' : '#2a2a2a'}`,
         maxHeight: '60vh',
         overflowY: 'auto',
+        opacity: loading ? 0.55 : 1,
+        transition: 'opacity 0.15s ease',
       }}>
         <pre style={{
           margin: 0,

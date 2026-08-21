@@ -18,6 +18,10 @@
     --text-primary: hsl(0, 0%, 95%);     /* Crisp light text */
     --text-secondary: hsl(0, 0%, 70%);   /* Medium secondary label text */
     --text-muted: hsl(0, 0%, 48%);        /* Muted gray descriptors */
+    --text: var(--text-primary);          /* Alias — legacy inline styles use var(--text) */
+
+    /* Focus ring — visible keyboard focus everywhere (HIG Accessibility) */
+    --focus-ring: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--accent);
     
     --border: hsla(0, 0%, 100%, 0.08);   /* Fine-line glass borders */
     --border-hover: hsla(0, 0%, 100%, 0.16);
@@ -70,6 +74,7 @@ html[data-theme="light"] {
     --text-primary: hsl(220, 25%, 12%);
     --text-secondary: hsl(220, 15%, 35%);
     --text-muted: hsl(220, 10%, 48%);
+    --text: var(--text-primary);
     
     --border: rgba(0, 0, 0, 0.09);
     --border-hover: rgba(0, 0, 0, 0.16);
@@ -216,6 +221,36 @@ max-width: 100%;
 }
 
 /* ── End global overflow & text safety ──────────────────────────────────────── */
+
+/* ── Keyboard focus visibility (HIG Accessibility — keyboard alone must work) ── */
+/* Visible focus ring for every interactive element when navigated by keyboard.
+   :focus-visible keeps mouse clicks clean while making Tab navigation obvious. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+summary:focus-visible {
+outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: var(--radius-sm);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+box-shadow: 0 0 0 3px var(--accent-glow);
+    border-color: var(--accent);
+}
+
+/* Custom Select display div (focusable combobox) */
+.custom-select-display:focus-visible {
+box-shadow: 0 0 0 3px var(--accent-glow) !important;
+    border-color: var(--accent) !important;
+}
+
+/* ── End keyboard focus visibility ──────────────────────────────────────────── */
 
 a {
 color: var(--accent); 
@@ -502,6 +537,12 @@ from { opacity: 0; transform: scale(0.93); }
 @keyframes shimmer {
 0%   { background-position: -400px 0; }
     100% { background-position: 400px 0; }
+}
+
+
+/* Spinner — shared loading indicator */
+@keyframes mp-spin {
+to { transform: rotate(360deg); }
 }
 
 

@@ -323,14 +323,15 @@ export default function Profile() {
 
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
                   <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>Enforce at Login</span>
-                  <label className="toggle-switch">
+                  <span className="toggle-switch">
                     <input
                       type="checkbox"
                       checked={twoFaStatus.enabled}
                       onChange={(e) => handleToggle2FaEnforcement(e.target.checked)}
+                      aria-label="Enforce 2FA at login"
                     />
                     <span className="toggle-slider"></span>
-                  </label>
+                  </span>
                 </label>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
@@ -361,7 +362,7 @@ export default function Profile() {
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     Scan this QR code with Google Authenticator, Authy, or any TOTP app:
                   </p>
-                  {qrCode && <img src={qrCode} alt="QR Code" style={{ border: '4px solid white', borderRadius: '8px', width: '180px', height: '180px' }} />}
+                  {qrCode && <img src={qrCode} alt="QR Code" style={{ border: '6px solid #ffffff', outline: '1px solid var(--border)', borderRadius: '8px', width: '180px', height: '180px' }} />}
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     Manual entry code: <strong style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{secret}</strong>
                   </div>
@@ -379,8 +380,8 @@ export default function Profile() {
                 </div>
               ) : (
                 <div>
-                  <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem', background: 'rgba(234,179,8,0.1)', border: '1px solid #ca8a04', borderRadius: 'var(--radius)', marginBottom: '1rem' }}>
-                    <span style={{ fontSize: '0.82rem', color: '#ca8a04', fontWeight: 600 }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem', background: 'rgba(234,179,8,0.1)', border: '1px solid var(--yellow)', borderRadius: 'var(--radius)', marginBottom: '1rem' }}>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--yellow)', fontWeight: 600 }}>
                       Write down these backup codes. They can be used to recover access if you lose your authenticator.
                     </span>
                   </div>
@@ -469,8 +470,8 @@ export default function Profile() {
                 </div>
               ) : (
                 <div>
-                  <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem', background: 'rgba(234,179,8,0.1)', border: '1px solid #ca8a04', borderRadius: 'var(--radius)', marginBottom: '1rem' }}>
-                    <span style={{ fontSize: '0.82rem', color: '#ca8a04', fontWeight: 600 }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem', background: 'rgba(234,179,8,0.1)', border: '1px solid var(--yellow)', borderRadius: 'var(--radius)', marginBottom: '1rem' }}>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--yellow)', fontWeight: 600 }}>
                       Old backup codes are now invalid. Save these new codes!
                     </span>
                   </div>

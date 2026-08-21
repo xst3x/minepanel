@@ -100,7 +100,7 @@ export default function ServerLayout() {
     }
     try {
       if (action === 'kill') {
-        if (!await showConfirm('Force-kill the server process? This may cause data loss.', 'Force Kill')) return;
+        if (!await showConfirm('Force-kill the server process? Unsaved world data may be lost.', 'Force Kill', { danger: true, confirmLabel: 'Force Kill' })) return;
       }
       setConsoleLines(lines => [...lines, `> [Panel] Sending ${action} command...`]);
 

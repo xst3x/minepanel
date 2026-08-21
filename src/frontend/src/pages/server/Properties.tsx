@@ -346,6 +346,7 @@ export default function ServerProperties() {
               type="checkbox"
               checked={v === 'true'}
               onChange={(e) => handlePropChange(k, e.target.checked ? 'true' : 'false')}
+              aria-label={k}
             />
             <span className="toggle-slider"></span>
           </label>
@@ -500,10 +501,11 @@ export default function ServerProperties() {
                           key={c.code}
                           type="button"
                           title={`&${c.code} - ${c.name}`}
+                          aria-label={`Insert color code &${c.code} (${c.name})`}
                           onClick={() => insertTextAtCursor(`&${c.code}`)}
                           style={{
-                            width: '20px',
-                            height: '20px',
+                            width: '24px',
+                            height: '24px',
                             borderRadius: '50%',
                             background: c.hex,
                             border: '1px solid rgba(255,255,255,0.2)',
@@ -512,7 +514,7 @@ export default function ServerProperties() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '8px',
+                            fontSize: '9px',
                             fontWeight: 'bold',
                             color: ['0','1','2','3','4','5','8'].includes(c.code) ? '#fff' : '#000',
                             transition: 'transform 0.1s ease'
@@ -528,12 +530,13 @@ export default function ServerProperties() {
                       <button
                         type="button"
                         title="Custom Color"
+                        aria-label="Open custom color picker"
                         onClick={() => {
                           setShowColorWell(true);
                         }}
                         style={{
-                          width: '20px',
-                          height: '20px',
+                          width: '24px',
+                          height: '24px',
                           borderRadius: '50%',
                           background: pickedCustomColor || 'linear-gradient(135deg, #ff2400, #e81d1d, #e8b01d, #1de840, #1ddde8, #2b1de8, #dd1de8)',
                           border: '1px solid rgba(255,255,255,0.2)',
@@ -885,7 +888,8 @@ export default function ServerProperties() {
                       <input
                         type="checkbox"
                         checked={properties['generate-structures'] === 'true'}
-                        onChange={(e) => handlePropChange('generate-structures', e.checked ? 'true' : 'false')}
+                        onChange={(e) => handlePropChange('generate-structures', e.target.checked ? 'true' : 'false')}
+                        aria-label="Generate structures"
                       />
                       <span className="toggle-slider"></span>
                     </label>
@@ -906,7 +910,8 @@ export default function ServerProperties() {
             <textarea
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              spellcheck="false"
+              spellCheck={false}
+              aria-label="Raw server.properties editor"
               style={{
                 width: '100%',
                 height: '100%',

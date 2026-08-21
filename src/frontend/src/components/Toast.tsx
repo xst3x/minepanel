@@ -28,8 +28,8 @@ export function toastProgress(message) {
   return () => {};
 }
 
-export function showConfirm(message, title = 'Confirm') {
-  if (_confirmFn) return _confirmFn(message, title);
+export function showConfirm(message, title = 'Confirm', options = {}) {
+  if (_confirmFn) return _confirmFn(message, title, options);
   return Promise.resolve(window.confirm(message));
 }
 
@@ -43,9 +43,12 @@ export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const [progressToasts, setProgressToasts] = useState([]); // { id, message }
   const [confirm, setConfirm] = useState(null);
+  const [confirmOptions, setConfirmOptions] = useState({});
   const [prompt, setPrompt] = useState(null);
   const [promptValue, setPromptValue] = useState('');
   const idRef = useRef(0);
+  const cancelBtnRef = useRef(null);
+  const promptInputRef = useRef(null);
 
   const addToast = useCallback((message, type = 'info') => {
     const id = ++idRef.current;
@@ -66,8 +69,9 @@ export function ToastProvider({ children }) {
     };
   }, [addToast]);
 
-  const openConfirm = useCallback((message, title) => {
+  const openConfirm = useCallback((message, title, options = {}) => {
     return new Promise(resolve => {
+      setConfirmOptions(options || {});
       setConfirm({ message, title: title || 'Confirm', resolve });
     });
   }, []);
@@ -87,6 +91,27 @@ export function ToastProvider({ children }) {
     return () => { _toastFn = null; _toastProgressFn = null; _confirmFn = null; _promptFn = null; };
   }, [addToast, addProgressToast, openConfirm, openPrompt]);
 
+  // Escape dismisses the confirm dialog (defaults to "no" — safe for destructive actions)
+  useEffect(() => {
+    if (!confirm && !prompt) return;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (confirm) handleConfirm(false);
+      else if (prompt) handlePromptCancel();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [confirm, prompt, promptValue]);
+
+  // Focus the safe action when a dialog opens: Cancel for confirms,
+  // the input for prompts (HIG Modality — obvious dismissal path).
+  useEffect(() => {
+    if (confirm) cancelBtnRef.current?.focus();
+  }, [confirm]);
+  useEffect(() => {
+    if (prompt) promptInputRef.current?.focus();
+  }, [prompt]);
+
   const handleConfirm = (result) => { if (confirm) confirm.resolve(result); setConfirm(null); };
   const handlePromptSubmit = () => { if (prompt) prompt.resolve(promptValue); setPrompt(null); };
   const handlePromptCancel = () => { if (prompt) prompt.resolve(null); setPrompt(null); };
@@ -105,11 +130,15 @@ export function ToastProvider({ children }) {
       {children}
 
       {/* ── Toasts ── */}
-      <div style={{
-        position: 'fixed', bottom: '2rem', right: '2rem',
-        zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.6rem',
-        pointerEvents: 'none',
-      }}>
+      <div
+        role="status"
+        aria-live="polite"
+        style={{
+          position: 'fixed', bottom: '2rem', right: '2rem',
+          zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.6rem',
+          pointerEvents: 'none',
+        }}
+      >
         {/* Progress toasts (persistent, with indeterminate bar) */}
         {progressToasts.map(t => (
           <div key={t.id} className="toast toast-enter" style={{
@@ -158,7 +187,8 @@ export function ToastProvider({ children }) {
             <span style={{ flex: 1 }}>{t.message}</span>
             <button
               onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: 18, lineHeight: 1, flexShrink: 0, marginLeft: 4 }}
+              aria-label="Dismiss notification"
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 6px', fontSize: 18, lineHeight: 1, flexShrink: 0, marginLeft: 4, borderRadius: 'var(--radius-sm)' }}
             >×</button>
           </div>
         ))}
@@ -167,17 +197,29 @@ export function ToastProvider({ children }) {
       {/* ── Confirm dialog ── */}
       {confirm && (
         <div className="modal-overlay active" onClick={() => handleConfirm(false)}>
-          <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+          <div
+            className="modal"
+            style={{ maxWidth: 420 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={confirm.title}
+            onClick={e => e.stopPropagation()}
+          >
             <div className="modal-header">
               <h3>{confirm.title}</h3>
-              <button className="close-btn" onClick={() => handleConfirm(false)}>&times;</button>
+              <button className="close-btn" aria-label="Cancel" onClick={() => handleConfirm(false)}>&times;</button>
             </div>
             <div className="modal-body">
-              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.6 }}>{confirm.message}</p>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{confirm.message}</p>
             </div>
             <div className="modal-footer">
-              <button className="btn outline" onClick={() => handleConfirm(false)}>Cancel</button>
-              <button className="btn primary" onClick={() => handleConfirm(true)}>Confirm</button>
+              <button ref={cancelBtnRef} className="btn outline" onClick={() => handleConfirm(false)}>Cancel</button>
+              <button
+                className={`btn ${confirmOptions.danger ? 'danger' : 'primary'}`}
+                onClick={() => handleConfirm(true)}
+              >
+                {confirmOptions.confirmLabel || 'Confirm'}
+              </button>
             </div>
           </div>
         </div>
@@ -186,19 +228,27 @@ export function ToastProvider({ children }) {
       {/* ── Prompt dialog ── */}
       {prompt && (
         <div className="modal-overlay active" style={{ zIndex: 10001 }} onClick={handlePromptCancel}>
-          <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+          <div
+            className="modal"
+            style={{ maxWidth: 420 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={prompt.title}
+            onClick={e => e.stopPropagation()}
+          >
             <div className="modal-header">
               <h3>{prompt.title}</h3>
-              <button className="close-btn" onClick={handlePromptCancel}>&times;</button>
+              <button className="close-btn" aria-label="Cancel" onClick={handlePromptCancel}>&times;</button>
             </div>
             <div className="modal-body">
-              <p style={{ margin: '0 0 1rem', color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.6 }}>{prompt.message}</p>
+              <p style={{ margin: '0 0 1rem', color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{prompt.message}</p>
               <input
+                ref={promptInputRef}
                 type="text"
                 value={promptValue}
                 onChange={e => setPromptValue(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handlePromptSubmit(); if (e.key === 'Escape') handlePromptCancel(); }}
-                autoFocus
+                aria-label={prompt.title}
                 style={{ width: '100%', boxSizing: 'border-box' }}
               />
             </div>
