@@ -103,13 +103,13 @@ export default function ServerLogs() {
   return (
     <div className="card">
       <div className="logs-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
-        <div className="logs-toolbar-left" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flex: 1, minWidth: '280px' }}>
+        <div className="logs-toolbar-left" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flex: 1, minWidth: 'min(280px, 100%)', flexWrap: 'wrap' }}>
           <Select
             value={selectedFile}
             onChange={handleFileChange}
             className="log-select"
             style={{
-              minWidth: '180px'
+              minWidth: 'min(180px, 100%)'
             }}
           >
             <option value="">Select a log file...</option>

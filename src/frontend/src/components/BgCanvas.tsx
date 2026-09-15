@@ -43,6 +43,18 @@ export default function BgCanvas() {
 
     const shapes = [];
 
+    // Mobile: keep the geometric backdrop subtle — on a phone it must never
+    // compete with content (HIG: background supports, never distracts).
+    // Fewer shapes, lower alpha, shorter connecting links.
+    let linkDist = 140;
+    let linkAlphaScale = 1;
+
+    function applyViewportProfile() {
+      const mobile = canvas.width < 768;
+      linkDist = mobile ? 100 : 140;
+      linkAlphaScale = mobile ? 0.45 : 1;
+    }
+
     // HIG Accessibility — Reduce Motion: users who opt out of motion get a
     // static composition instead of the drifting/rotating animation loop.
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -50,6 +62,7 @@ export default function BgCanvas() {
     function resize() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      applyViewportProfile();
       // Regenerate shapes so density/coverage adapts to the new viewport size —
       // otherwise newly revealed areas stay empty until shapes drift into them.
       makeShapes();
@@ -77,21 +90,23 @@ export default function BgCanvas() {
       shapes.length = 0;
       const [H, S, L] = getAccentHsl();
       const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-      const N = Math.floor((canvas.width * canvas.height) / 28000) + 8;
+      const mobile = canvas.width < 768;
+      const N = Math.floor((canvas.width * canvas.height) / (mobile ? 62000 : 28000)) + (mobile ? 5 : 8);
       for (let i = 0; i < N; i++) {
         shapes.push({
           type: ['tri', 'hex', 'quad'][Math.floor(Math.random() * 3)],
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
-          size: 25 + Math.random() * 85,
+          size: (mobile ? 20 : 25) + Math.random() * (mobile ? 60 : 85),
           h: H + (Math.random() - 0.5) * 55,
           s: Math.min(100, S + (Math.random() - 0.5) * 20),
           l: isLight
             ? Math.max(15, Math.min(55, L + (Math.random() - 0.5) * 30))  // mai întunecat în light
             : Math.max(15, Math.min(80, L + (Math.random() - 0.5) * 30)),
-          a: isLight
+          a: (isLight
             ? 0.18 + Math.random() * 0.14   // light mode: 0.18–0.32 (vizibile dar nu agresive)
-            : 0.25 + Math.random() * 0.25,  // dark mode:  0.25–0.50
+            : 0.25 + Math.random() * 0.25)  // dark mode:  0.25–0.50
+            * (mobile ? 0.42 : 1),          // mobile: faint wash behind content
           rot: Math.random() * Math.PI * 2,
           vx: (Math.random() - 0.5) * 0.35,
           vy: (Math.random() - 0.5) * 0.35,
@@ -134,11 +149,11 @@ export default function BgCanvas() {
         for (let j = i + 1; j < shapes.length; j++) {
           const a = shapes[i], b = shapes[j];
           const d = Math.hypot(a.x - b.x, a.y - b.y);
-          if (d < 140) {
+          if (d < linkDist) {
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = `hsla(${H},${S}%,${L + 20}%,${(1 - d / 140) * 0.07})`;
+            ctx.strokeStyle = `hsla(${H},${S}%,${L + 20}%,${(1 - d / linkDist) * 0.07 * linkAlphaScale})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -165,11 +180,11 @@ export default function BgCanvas() {
         for (let j = i + 1; j < shapes.length; j++) {
           const a = shapes[i], b = shapes[j];
           const d = Math.hypot(a.x - b.x, a.y - b.y);
-          if (d < 140) {
+          if (d < linkDist) {
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = `hsla(${H},${S}%,${L + 20}%,${(1 - d / 140) * 0.07})`;
+            ctx.strokeStyle = `hsla(${H},${S}%,${L + 20}%,${(1 - d / linkDist) * 0.07 * linkAlphaScale})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }

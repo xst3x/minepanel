@@ -462,7 +462,7 @@ export default function GlobalServerModals() {
                   <span>Only your world(s), <code>plugins</code>/<code>mods</code>, <code>config</code> and server config files (server.properties, eula.txt, ops.json, whitelist, bans, permissions.yml, etc.) are imported from the archive. The server executable is never taken from the zip — MinePanel downloads a fresh, official binary for the software and version you select below, exactly like when creating a new server.</span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Server Name</label>
                     <input type="text" required placeholder="My Imported Server" value={impName} onChange={(e) => setImpName(e.target.value)} />
@@ -473,7 +473,7 @@ export default function GlobalServerModals() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Software</label>
                     <Select value={impSoftware} onChange={(e) => setImpSoftware(e.target.value)}>

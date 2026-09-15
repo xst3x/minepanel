@@ -174,7 +174,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="page" style={{ padding: '2.25rem' }}>
+    <div className="page">
       {/* Back button  same as old frontend */}
       <button className="back-btn" onClick={() => navigate('/panel')} style={{ marginBottom: '1rem' }}>
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
@@ -199,7 +199,7 @@ export default function Settings() {
       {loading ? (
         <p className="text-muted">Loading settings...</p>
       ) : (
-        <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '1.5rem' }}>
 
           {/* Security & Rate Limits */}
           <div className="card">

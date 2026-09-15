@@ -180,6 +180,20 @@
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 13px;
+  min-width: 0;
+}
+
+/* Mobile: 16px so iOS Safari doesn't auto-zoom the field on focus.
+   Desktop keeps the compact 13px console look. */
+@media (max-width: 768px) {
+  #terminal-input,
+  #chat-input {
+    font-size: 16px;
+  }
+  .console-input-bar,
+  .chat-input-bar {
+    padding: 8px 12px;
+  }
 }
 /* Chat input matches the console input — same mono font and size. */
 #terminal-input:disabled,

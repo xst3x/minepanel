@@ -125,7 +125,7 @@ export default function ServerFtp() {
   const displayHost = (currentHost === 'localhost' || currentHost === '127.0.0.1') ? '127.0.0.1' : currentHost;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '1.5rem' }}>
       
       {/* Connection Info Card */}
       <div className="card">

@@ -19,6 +19,9 @@ import '@fontsource/fira-code/500.css';
 import '@fontsource/fira-code/600.css';
 
 import log from './lib/logger.ts';
+// Mobile native layer — MUST stay the last stylesheet import so its rules win
+// cascade ties against legacy responsive patches (see styles/mobile.css).
+import './styles/mobile.css';
 
 // Apply saved accent color on boot
 (function() {

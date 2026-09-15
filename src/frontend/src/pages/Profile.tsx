@@ -222,13 +222,13 @@ export default function Profile() {
   };
 
   return (
-    <div className="page" style={{ padding: '2.25rem' }}>
+    <div className="page">
       <h2 style={{ marginTop: 0, marginBottom: '1.5rem' }}>My Account</h2>
 
       {loading ? (
         <p className="text-muted">Loading profile details...</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '1.5rem' }}>
           
           {/* Change Username Card */}
           <div className="card">

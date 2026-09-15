@@ -41,7 +41,7 @@ const EyeToggle = ({ show, onToggle, label }) => (
     aria-label={show ? `Hide ${label}` : `Show ${label}`}
     aria-pressed={show}
     title={show ? `Hide ${label}` : `Show ${label}`}
-    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, display: 'inline-flex', borderRadius: 'var(--radius-sm)' }}
+    style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 8, display: 'inline-flex', borderRadius: 'var(--radius-sm)' }}
   >
     {show ? <EyeOffIcon /> : <EyeIcon />}
   </button>
@@ -318,7 +318,7 @@ const EyeToggle = ({ show, onToggle, label }) => (
   };
 
   return (
-    <div className="page" id="view-users" style={{ padding: '2.25rem' }}>
+    <div className="page" id="view-users">
       <button className="back-btn" onClick={() => navigate('/panel')} style={{ marginBottom: '1rem' }}>
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
           <line x1="19" y1="12" x2="5" y2="12" />
@@ -341,12 +341,12 @@ const EyeToggle = ({ show, onToggle, label }) => (
         <p className="text-muted">Loading users...</p>
       ) : (
         <div className="card" style={{ padding: 0 }}>
-          <div className="list-header" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', fontWeight: '600', color: 'var(--text-secondary)' }}>
+          <div className="list-header">
             <div>Username</div>
             <div>Rank / Role</div>
             <div>Status</div>
             <div>Created At</div>
-            <div style={{ textAlign: 'right' }}>Actions</div>
+            <div>Actions</div>
           </div>
           
           <div className="list-body">
@@ -368,7 +368,7 @@ const EyeToggle = ({ show, onToggle, label }) => (
                 );
 
                 return (
-                  <div key={u.id} className="list-item" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', alignItems: 'center' }}>
+                  <div key={u.id} className="list-item">
                     <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.username}</div>
                     <div>{rankHtml}</div>
                     <div>
@@ -726,9 +726,10 @@ const EyeToggle = ({ show, onToggle, label }) => (
                 })}
               </div>
 
-              {/* Permission Matrix Grid */}
+              {/* Permission Matrix Grid — wrapped for horizontal scroll (many servers → many columns) */}
               <h4 style={{ marginBottom: '0.75rem' }}>Detailed Permissions</h4>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+              <div style={{ overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: servers.length > 2 ? '520px' : undefined }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border)' }}>
                     <th style={{ padding: '8px' }}>Permission</th>
@@ -811,8 +812,9 @@ const EyeToggle = ({ show, onToggle, label }) => (
                   })()}
                 </tbody>
               </table>
+              </div>
             </div>
-            <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+            <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1rem', flexWrap: 'wrap' }}>
               <button className="btn outline" onClick={() => setActiveModal(null)}>Cancel</button>
               <button className="btn primary" onClick={handleSavePerms}>Save Changes</button>
             </div>

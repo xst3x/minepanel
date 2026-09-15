@@ -162,7 +162,7 @@ export default function Ranks() {
 
 
   return (
-    <div className="page" style={{ padding: '2.25rem' }}>
+    <div className="page">
       <button className="back-btn" onClick={() => navigate('/panel')} style={{ marginBottom: '1rem' }}>
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
           <line x1="19" y1="12" x2="5" y2="12" />
@@ -245,7 +245,7 @@ export default function Ranks() {
               <button className="close-btn" onClick={() => setShowEditor(false)}>&times;</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)', gap: '1.25rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>Rank Name</label>
                   <input type="text" value={rankName} onChange={e => setRankName(e.target.value)}

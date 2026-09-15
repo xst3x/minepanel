@@ -138,8 +138,8 @@ export default function Login() {
       aria-pressed={show}
       title={show ? `Hide ${label}` : `Show ${label}`}
       style={{
-        position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-        background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4,
+        position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)',
+        background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 8,
         borderRadius: 'var(--radius-sm)', display: 'inline-flex'
       }}
     >

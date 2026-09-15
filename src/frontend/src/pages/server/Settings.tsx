@@ -422,7 +422,7 @@ export default function ServerSettings() {
             ? 'This server runs a curated Modpack environment. Engine and version switching is locked to prevent corruption.'
             : 'Switch server engine software or upgrade/downgrade version. The server must be stopped first.'}
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '1rem' }}>
           <div className="form-group">
             <label>Current Engine</label>
             <input
@@ -458,7 +458,7 @@ export default function ServerSettings() {
         )}
 
         {hasPerm('server.properties.write') && !serverInfo?.modpack_title && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem', alignItems: 'flex-end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '1rem', marginTop: '1rem', alignItems: 'flex-end' }}>
             <div className="form-group" style={{ margin: 0 }}>
               <label>New Engine Software</label>
               <Select
@@ -516,7 +516,7 @@ export default function ServerSettings() {
           <p className="text-muted">Loading settings</p>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label>Server Name</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="My Minecraft Server" />
@@ -539,7 +539,7 @@ export default function ServerSettings() {
 
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
               <h4 style={{ margin: '0 0 0.75rem' }}>Retention &amp; Lifecycle</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
                 <div className="form-group">
                   <label>Log Retention (Days)</label>
                   <input type="number" value={logRetention} onChange={(e) => setLogRetention(e.target.value)} placeholder="7" min="0" />
@@ -686,7 +686,7 @@ export default function ServerSettings() {
         </div>
 
         {/* Interval picker */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
           <div className="form-group" style={{ margin: 0 }}>
             <label>Check interval (hours)</label>
             <input

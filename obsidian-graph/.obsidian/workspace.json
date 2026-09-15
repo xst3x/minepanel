@@ -1,0 +1,218 @@
+{
+  "main": {
+    "id": "6612c06ae662c98a",
+    "type": "split",
+    "children": [
+      {
+        "id": "5e88f01ec409b2d1",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e6d55c951af5ae87",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "5fe28473d61cf799",
+    "type": "split",
+    "children": [
+      {
+        "id": "f995bc4893dbeac0",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e0977d5e916336a9",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "36c893b6eb807675",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "ec8c5fd47bdee255",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "aff6e8badf36d2b7",
+    "type": "split",
+    "children": [
+      {
+        "id": "822c461265b60324",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5447ad5e9353964f",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "27998b5029b3d4f2",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "39b076a071bba026",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "fbb01f74a9841875",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "7b3fbeb70f095169",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "e6d55c951af5ae87",
+  "lastOpenFiles": [
+    "Documentation/users/roles-and-permissions.md",
+    "Documentation/users/ranks.md",
+    "Documentation/getting-started/welcome.md",
+    "Documentation/getting-started/architecture.md",
+    "Documentation/discord/discord-bot.md",
+    "Documentation/automations/Automations.md",
+    "Documentation/advanced/websocket.md",
+    "Documentation/advanced/sftp-and-db.md",
+    "Documentation/advanced/panel-settings.md",
+    "Documentation/users",
+    "Documentation/getting-started",
+    "Documentation/discord",
+    "Documentation/automations",
+    "Documentation/advanced",
+    "Documentation",
+    "Audit/DEEP_AUDIT.md",
+    "Audit",
+    "Plans/plan 3/files/README.md",
+    "Plans/plan 3/files/Implementation_Guide_Top5.md",
+    "Plans/plan 3/files/MinePanel_vs_Crafty_Analiza_Completa.md",
+    "Plans/plan 3/files/EXECUTIVE_SUMMARY.md",
+    "Plans/plan 3/files",
+    "Plans/plan 2/STAGE_8_TESTING_RELEASE.md",
+    "Plans/plan 2/STAGE_7_TEMPLATES_WEBHOOKS.md",
+    "Plans/plan 2/STAGE_6_STATISTICS_DASHBOARD (to do now).md",
+    "Plans/plan 2/STAGE_5_DATABASE_MIGRATIONS.md",
+    "Plans/plan 2/STAGE_4_LOGGING.md",
+    "Plans/plan 2/STAGE_3_INPUT_VALIDATION.md",
+    "Plans/plan 2/STAGE_2_ERROR_HANDLING.md",
+    "Plans/plan 2/STAGE_1_SECURITY.md",
+    "Plans/plan 2/MINEPANEL_VS_CRAFTY_ANALYSIS.md",
+    "Plans/plan 2/MINEPANEL_ACTIONPLAN.md",
+    "Plans/plan 1/phase-9-documentation.md",
+    "Plans/plan 1/phase-8-logging.md",
+    "Plans/plan 3",
+    "Plans/plan 2"
+  ]
+}

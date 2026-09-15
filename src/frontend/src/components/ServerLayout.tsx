@@ -304,7 +304,7 @@ export default function ServerLayout() {
             </div>
             <div>
               <h2 id="sh-name">{serverInfo?.name || 'Server'}</h2>
-              <p className="sh-meta" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <p className="sh-meta">
                 <span>
                   {serverInfo?.modpack_title ? (
                     <span id="sh-software">
@@ -325,7 +325,7 @@ export default function ServerLayout() {
               </p>
             </div>
           </div>
-          <div className="sh-actions" style={{ flexWrap: 'nowrap', gap: '0.4rem' }}>
+          <div className="sh-actions">
             <button className="btn success" onClick={() => sendControl('start')} disabled={status === 'online' || status === 'starting' || status === 'stopping'}>Start</button>
             <button className="btn danger" onClick={() => sendControl('stop')} disabled={status === 'offline' || status === 'stopping'}>Stop</button>
             <button className="btn outline" onClick={() => sendControl('restart')} disabled={status === 'offline' || status === 'starting' || status === 'stopping'}>Restart</button>

@@ -64,6 +64,15 @@ font-size: 1.35rem;
 color: var(--text-secondary);
     font-size: 0.85rem;
     margin-top: 0.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.sh-meta .status-badge {
+flex-shrink: 0;
 }
 
 .sh-actions {
@@ -217,7 +226,9 @@ flex: 1;
 
 .server-view {
 box-sizing: border-box !important;
-    max-width: 100% !important;
+    /* Cap very wide screens; min() never exceeds the parent container.
+       mobile.css re-enables full-bleed (max-width: none) on mobile. */
+    max-width: min(1440px, 100%) !important;
     width: 100% !important;
     overflow-x: hidden !important;
 }

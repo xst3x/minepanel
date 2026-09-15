@@ -153,7 +153,7 @@ export default function ServerBackups() {
       {hasPerm('server.backups.write') && (
         <div className="card">
           <h3 style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text)' }}>Backup Configuration</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '1rem', marginBottom: '1rem' }}>
             <div className="form-group">
               <label>Auto-Backup Interval (Hours)</label>
               <input
@@ -205,11 +205,11 @@ export default function ServerBackups() {
 
       {/* Backups List Card */}
       <div className="card" style={{ padding: 0 }}>
-        <div className="list-header" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', fontWeight: '600', color: 'var(--text-secondary)' }}>
-          <div>Filename</div>
-          <div>Size</div>
-          <div>Date</div>
-          <div style={{ textAlign: 'right' }}>Actions</div>
+        <div className="list-header">
+          <div className="col col-wide">Filename</div>
+          <div className="col col-created">Size</div>
+          <div className="col col-status">Date</div>
+          <div className="col actions">Actions</div>
         </div>
 
         <div className="list-body">
@@ -224,14 +224,13 @@ export default function ServerBackups() {
               <div
                 key={b.name}
                 className="list-item"
-                style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', alignItems: 'center' }}
               >
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text)' }}>{b.name}</div>
-                <div>{formatBytes(b.size)}</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  {new Date(b.date).toLocaleString()}
+                <div className="col col-wide" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text)' }}>{b.name}</div>
+                <div className="col col-created" data-label="Size">{formatBytes(b.size)}</div>
+                <div className="col col-status" data-label="Date" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  {new Date(b.date).toLocaleDateString()}
                 </div>
-                <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end' }}>
+                <div className="col actions" data-label="Actions">
                   <button className="btn outline small" onClick={() => handleDownload(b.name)}>Download</button>
                   {hasPerm('server.backups.write') && (
                     <>

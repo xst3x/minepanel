@@ -174,6 +174,26 @@ function AppLayoutInner() {
     document.documentElement.setAttribute('data-theme', themeMode);
   }, [themeMode]);
 
+  // Escape closes the mobile drawer / user dropdown (keyboard dismissal)
+  useEffect(() => {
+    if (!isMobileMenuOpen && !isUserDropdownOpen) return;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      setIsMobileMenuOpen(false);
+      setIsUserDropdownOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isMobileMenuOpen, isUserDropdownOpen]);
+
+  // Lock body scroll while the drawer is open on mobile
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isMobileMenuOpen]);
+
   const isAdmin = user?.role === 'admin' ||
     (Array.isArray(user?.globalPermissions) && (
       user.globalPermissions.includes('*') ||
@@ -216,10 +236,10 @@ function AppLayoutInner() {
 
       {/* ── Mobile Top Bar (fixed, outside main-view flow) ── */}
       <header className="mobile-top-bar">
-        <button className="mobile-hamburger" aria-label="Toggle menu"
-          onClick={() => setIsMobileMenuOpen(v => !v)}
-          onTouchEnd={e => { e.preventDefault(); setIsMobileMenuOpen(v => !v); }}>
-          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <button className="mobile-hamburger" aria-label="Toggle navigation menu"
+          aria-expanded={isMobileMenuOpen}
+          onClick={() => setIsMobileMenuOpen(v => !v)}>
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="3" y1="6"  x2="21" y2="6"/>
             <line x1="3" y1="12" x2="21" y2="12"/>
             <line x1="3" y1="18" x2="21" y2="18"/>
@@ -229,32 +249,28 @@ function AppLayoutInner() {
           <FaviconIcon style={{ width: '24px', height: '24px' }} />
           <span>MinePanel</span>
         </div>
-        <div className="mobile-user-circle"
-          onClick={() => setIsUserDropdownOpen(v => !v)}
-          onTouchEnd={e => { e.preventDefault(); setIsUserDropdownOpen(v => !v); }}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+        <button className="mobile-user-circle" aria-label="Open user menu"
+          aria-expanded={isUserDropdownOpen}
+          aria-haspopup="menu"
+          onClick={() => setIsUserDropdownOpen(v => !v)}>
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }} aria-hidden="true">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
           </svg>
-        </div>
+        </button>
         {isUserDropdownOpen && (
           <>
             <div className="mobile-dropdown-backdrop"
-              onClick={() => setIsUserDropdownOpen(false)}
-              onTouchEnd={e => { e.preventDefault(); setIsUserDropdownOpen(false); }} />
-            <div className="mobile-user-dropdown">
+              onClick={() => setIsUserDropdownOpen(false)} />
+            <div className="mobile-user-dropdown" role="menu">
               <div className="dropdown-username">{user?.username || 'User'}</div>
-              <button className="dropdown-item"
-                onClick={() => { setIsUserDropdownOpen(false); navigate('/profile'); }}
-                onTouchEnd={e => { e.preventDefault(); setIsUserDropdownOpen(false); navigate('/profile'); }}>My Account</button>
-              <button className="dropdown-item"
-                onClick={() => { setIsUserDropdownOpen(false); toggleTheme(); }}
-                onTouchEnd={e => { e.preventDefault(); setIsUserDropdownOpen(false); toggleTheme(); }}>
+              <button className="dropdown-item" role="menuitem"
+                onClick={() => { setIsUserDropdownOpen(false); navigate('/profile'); }}>My Account</button>
+              <button className="dropdown-item" role="menuitem"
+                onClick={() => { setIsUserDropdownOpen(false); toggleTheme(); }}>
                 {themeMode === 'dark' ? 'Light Mode' : 'Dark Mode'}
               </button>
-              <button className="dropdown-item dropdown-item-danger"
-                onClick={handleLogout}
-                onTouchEnd={e => { e.preventDefault(); handleLogout(); }}>Logout</button>
+              <button className="dropdown-item dropdown-item-danger" role="menuitem"
+                onClick={handleLogout}>Logout</button>
             </div>
           </>
         )}
@@ -264,15 +280,13 @@ function AppLayoutInner() {
       <div id="main-view">
         {/* ── Mobile overlay behind drawer ── */}
         {isMobileMenuOpen && (
-          <div className="mobile-overlay active"
-            onClick={() => setIsMobileMenuOpen(false)}
-            onTouchEnd={e => { e.preventDefault(); setIsMobileMenuOpen(false); }} />
+          <div className="mobile-overlay active" aria-hidden="true"
+            onClick={() => setIsMobileMenuOpen(false)} />
         )}
 
         <aside className={`sidebar${isMobileMenuOpen ? ' drawer-open' : ''}`} id="sidebar">
           <button className="sidebar-close-btn" aria-label="Close menu"
-            onClick={() => setIsMobileMenuOpen(false)}
-            onTouchEnd={e => { e.preventDefault(); setIsMobileMenuOpen(false); }}>
+            onClick={() => setIsMobileMenuOpen(false)}>
             &times;
           </button>
 

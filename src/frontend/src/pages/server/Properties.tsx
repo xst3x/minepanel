@@ -195,6 +195,13 @@ export default function ServerProperties() {
 
   const renderMotdPreview = useCallback((text) => {
     const colorMap = MC_COLORS.reduce((acc, c) => { acc[c.code] = c.hex; return acc; }, {});
+    // Escape before embedding in HTML — MOTD text is server-operator input and
+    // is rendered via dangerouslySetInnerHTML, so <, &, > must become entities.
+    const escapeHtml = (s) => s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
     let html = '';
     let i = 0;
     let currentColor = '#aaa';
@@ -266,11 +273,11 @@ export default function ServerProperties() {
           closeAndStartNew(currentColor, bold, italic, underline, strikethrough, true);
           i += 2;
         } else {
-          currentSpanContent += text[i];
+          currentSpanContent += escapeHtml(text[i]);
           i++;
         }
       } else {
-        currentSpanContent += text[i];
+        currentSpanContent += escapeHtml(text[i]);
         i++;
       }
     }
@@ -473,7 +480,7 @@ export default function ServerProperties() {
         {mode === 'visual' ? (
           <>
             {/* Visual Editor Categories Tabs */}
-            <div className="sub-nav" style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border)' }}>
+            <div className="sub-nav sub-nav-inner" style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border)' }}>
               {['gameplay', 'performance', 'world', 'network', 'security', 'other'].map(cat => (
                 <button
                   key={cat}
@@ -900,7 +907,7 @@ export default function ServerProperties() {
             })()}
 
             {/* Properties List Grid */}
-            <div className="props-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+            <div className="props-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '1.25rem' }}>
               {renderVisualProperties()}
             </div>
           </>

@@ -416,7 +416,8 @@ transform: scale(1.05);
     inset: 0;
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(6px);
-    z-index: 10000;
+    /* Above mobile top bar (8000) and drawer (10000) */
+    z-index: 11000;
     display: flex;
     align-items: center;
     justify-content: center;

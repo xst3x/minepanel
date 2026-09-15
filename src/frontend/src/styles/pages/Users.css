@@ -432,7 +432,7 @@ transform: translateX(1px);
 .users-header-actions {
     display: flex;
     gap: 0.5rem;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
 }
 
@@ -468,7 +468,7 @@ transform: translateX(1px);
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.55);
-    z-index: 500;
+    z-index: 11000; /* above top bar + modals */
     display: flex;
     align-items: flex-end;
     justify-content: center;

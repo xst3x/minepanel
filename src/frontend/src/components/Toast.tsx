@@ -135,7 +135,7 @@ export function ToastProvider({ children }) {
         aria-live="polite"
         style={{
           position: 'fixed', bottom: '2rem', right: '2rem',
-          zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.6rem',
+          zIndex: 12000, display: 'flex', flexDirection: 'column', gap: '0.6rem',
           pointerEvents: 'none',
         }}
       >
@@ -188,7 +188,7 @@ export function ToastProvider({ children }) {
             <button
               onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}
               aria-label="Dismiss notification"
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 6px', fontSize: 18, lineHeight: 1, flexShrink: 0, marginLeft: 4, borderRadius: 'var(--radius-sm)' }}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 8, margin: -4, fontSize: 18, lineHeight: 1, flexShrink: 0, marginLeft: 4, borderRadius: 'var(--radius-sm)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >×</button>
           </div>
         ))}
@@ -196,7 +196,7 @@ export function ToastProvider({ children }) {
 
       {/* ── Confirm dialog ── */}
       {confirm && (
-        <div className="modal-overlay active" onClick={() => handleConfirm(false)}>
+        <div className="modal-overlay active" style={{ zIndex: 11000 }} onClick={() => handleConfirm(false)}>
           <div
             className="modal"
             style={{ maxWidth: 420 }}
@@ -227,7 +227,7 @@ export function ToastProvider({ children }) {
 
       {/* ── Prompt dialog ── */}
       {prompt && (
-        <div className="modal-overlay active" style={{ zIndex: 10001 }} onClick={handlePromptCancel}>
+        <div className="modal-overlay active" style={{ zIndex: 11000 }} onClick={handlePromptCancel}>
           <div
             className="modal"
             style={{ maxWidth: 420 }}

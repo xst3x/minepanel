@@ -220,7 +220,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.55);
-    z-index: 500;
+    z-index: 11000; /* above top bar + modals */
     display: flex;
     align-items: flex-end;
     justify-content: center;

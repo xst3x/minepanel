@@ -235,7 +235,7 @@ export default function Panel() {
     ));
 
   return (
-    <div className="page" style={{ padding: '2.25rem' }}>
+    <div className="page">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ margin: 0 }}>Your Servers</h2>
         {isAdmin && (
@@ -591,7 +591,7 @@ export default function Panel() {
                   <span>Only your world(s), <code>plugins</code>/<code>mods</code>, <code>config</code> and server config files (server.properties, eula.txt, ops.json, whitelist, bans, permissions.yml, etc.) are imported from the archive. The server executable is never taken from the zip — MinePanel downloads a fresh, official binary for the software and version you select below, exactly like when creating a new server.</span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Server Name</label>
                     <input 
@@ -614,7 +614,7 @@ export default function Panel() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Software</label>
                     <Select 

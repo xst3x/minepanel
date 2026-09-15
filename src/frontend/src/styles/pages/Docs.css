@@ -92,6 +92,28 @@ margin-top: 1.5rem;
     color: var(--text-primary);
 }
 
+/* ── Docs layout: sidebar + content ────────────────────────────── */
+/* Wraps naturally on narrow screens; sidebar becomes a full-width
+   block above the content (not sticky) once it can't sit beside it. */
+.docs-layout {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 900px) {
+    .docs-layout {
+        flex-direction: column;
+    }
+    .docs-layout .docs-sidebar {
+        width: 100%;
+        position: static;
+        max-height: none;
+        order: -1;
+    }
+}
+
 .doc-content h1 {
 font-size: 1.5rem;
     border-bottom: 1px solid var(--border);

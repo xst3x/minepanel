@@ -1,0 +1,919 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   MinePanel — Mobile Native Layer
+   ─────────────────────────────────────────────────────────────────────────
+   Single authoritative stylesheet for phone-class viewports (≤768px).
+
+   Design language (per Apple HIG, adapted to the web):
+   • FLATTEN — one surface level. A "card" is a semantic section (inset
+     grouped surface); everything nested inside it becomes flat rows separated
+     by hairlines, never bordered boxes.
+   • HIERARCHY through typography + spacing + separators, not borders.
+   • Native list rows (≥44pt touch targets), scrollable underline tab bar,
+     sheet modals, top-banner toasts, safe-area insets, dynamic viewport.
+   • This file loads LAST in the bundle (imported at the end of main.tsx) so
+     its rules win ties against legacy responsive patches.
+
+   Breakpoints
+     ≤768px  phone layout (drawer nav, flattened groups)
+     ≤480px  compact phones
+     ≤390px  iPhone 12/13/14/16e class
+     ≤360px  small Android
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 0. Mobile tokens ────────────────────────────────────────────────────── */
+:root {
+    --mp-bar-h: 56px;                       /* mobile top bar (synced w/ legacy offsets) */
+    --mp-safe-t: env(safe-area-inset-top, 0px);
+    --mp-safe-b: env(safe-area-inset-bottom, 0px);
+    --mp-safe-l: env(safe-area-inset-left, 0px);
+    --mp-safe-r: env(safe-area-inset-right, 0px);
+    --mp-pad-x: 16px;                       /* screen gutter */
+    --mp-group-pad: 14px;                   /* padding inside a grouped surface */
+    --mp-sep: var(--border);                /* hairline separator */
+    --mp-radius-group: 16px;                /* grouped surface radius */
+    --mp-material: var(--bg-surface);       /* bar / sheet translucent material */
+}
+
+@media (max-width: 768px) {
+
+    /* ═══ 1. Viewport shell — dynamic height, no page bounce ═══════════════ */
+    html, body {
+        min-width: 320px;
+        overflow-x: hidden;
+    }
+    body {
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;          /* the app scrolls internally, not the page */
+        overscroll-behavior: none;
+        -webkit-text-size-adjust: 100%;
+    }
+    #app, #main-view {
+        height: 100vh;
+        height: 100dvh;
+    }
+
+    /* Prevent whole-page scroll chaining from inner scrollers (drawer, lists,
+       terminal, sheets) — content scrolls, the page behind it stays put. */
+    .sidebar, .modal-body, .fm-sheet, .console-output, .chat-output,
+    .log-viewer, .sub-nav, .sidebar-section-servers {
+        overscroll-behavior: contain;
+    }
+
+    /* No tap flash on anything interactive — native apps highlight via
+       :active surfaces instead. */
+    button, a, input, select, textarea, label, [role="button"] {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* iOS Safari zooms any input with font-size < 16px on focus. */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+    select, textarea {
+        font-size: 16px;
+    }
+
+    /* ═══ 2. Top bar — translucent material, safe-area aware ═══════════════ */
+    .mobile-top-bar {
+        height: calc(var(--mp-bar-h) + var(--mp-safe-t)) !important;
+        padding: var(--mp-safe-t) 10px 0 calc(10px + var(--mp-safe-l)) !important;
+        background: var(--mp-material) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        backdrop-filter: blur(20px) saturate(1.4);
+        border-bottom: 1px solid var(--border) !important;
+    }
+    .mobile-logo span {
+        font-size: 16px;
+        letter-spacing: -0.02em;
+    }
+    .mobile-hamburger, .mobile-user-circle {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    .mobile-user-circle {
+        border: none !important;
+        background: var(--accent-subtle) !important;
+        color: var(--accent) !important;
+    }
+
+    /* Floating context menu (iOS "edit menu" feel) */
+    .mobile-user-dropdown {
+        top: calc(var(--mp-bar-h) + var(--mp-safe-t) + 6px) !important;
+        right: calc(10px + var(--mp-safe-r)) !important;
+        background: var(--bg-elevated) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(1.4);
+        backdrop-filter: blur(24px) saturate(1.4);
+        border: 1px solid var(--border) !important;
+        border-radius: 14px !important;
+        padding: 6px !important;
+        min-width: 200px !important;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45) !important;
+        animation: mpMenuIn 0.18s cubic-bezier(0.2, 1, 0.3, 1);
+    }
+    .dropdown-username {
+        font-size: 12px !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted) !important;
+    }
+    .mobile-user-dropdown .dropdown-item {
+        min-height: 42px;
+        display: flex !important;
+        align-items: center;
+        border-radius: 10px !important;
+        font-size: 14.5px !important;
+    }
+    @keyframes mpMenuIn {
+        from { opacity: 0; transform: scale(0.94) translateY(-4px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* ── Drawer: full-height sheet, safe-area padding ── */
+    .sidebar {
+        width: min(84vw, 300px) !important;
+        min-width: min(84vw, 300px) !important;
+        max-width: min(84vw, 300px) !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        padding-left: var(--mp-safe-l);
+        -webkit-backdrop-filter: blur(24px) saturate(1.3);
+        backdrop-filter: blur(24px) saturate(1.3);
+        transition: transform 0.32s cubic-bezier(0.32, 0.72, 0.32, 1),
+                    box-shadow 0.32s ease !important;
+    }
+    .sidebar-brand {
+        height: calc(var(--mp-bar-h) + var(--mp-safe-t)) !important;
+        padding: var(--mp-safe-t) 1.25rem 0 !important;
+        border-bottom: none;
+        font-size: 17px !important;
+    }
+    .sidebar-close-btn {
+        top: calc(var(--mp-safe-t) + 8px) !important;
+    }
+    /* Roomier rows: 44pt targets */
+    .sidebar-item {
+        min-height: 44px;
+        padding: 11px 14px;
+        font-size: 14px;
+    }
+    .sidebar-section-servers {
+        max-height: none !important;   /* whole drawer scrolls naturally */
+    }
+    .sidebar {
+        overflow-y: auto !important;
+    }
+    .sidebar-footer {
+        padding-bottom: calc(14px + var(--mp-safe-b));
+    }
+
+    /* ── Content column sits below the bar, full width ── */
+    .content-area {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: calc(100vh - var(--mp-bar-h)) !important;
+        height: calc(100dvh - var(--mp-bar-h)) !important;
+        margin-top: calc(var(--mp-bar-h) + var(--mp-safe-t)) !important;
+        padding-top: 0 !important;
+        display: block !important;
+    }
+
+    /* ═══ 3. Page rhythm — consistent gutter, breathing room at bottom ═════ */
+    .page,
+    .server-view-sticky,
+    .server-tab-body {
+        padding-left: var(--mp-pad-x) !important;
+        padding-right: var(--mp-pad-x) !important;
+    }
+    .page {
+        padding-top: 14px !important;
+        padding-bottom: calc(24px + var(--mp-safe-b)) !important;
+    }
+
+    /* ═══ 4. Server view — material sticky header, flat content ════════════ */
+    .server-view {
+        height: calc(100vh - var(--mp-bar-h));
+        height: calc(100dvh - var(--mp-bar-h));
+        min-height: calc(100dvh - var(--mp-bar-h));
+        padding: 0 !important;
+        max-width: none !important; /* full-bleed on mobile; centered cap is desktop-only */
+    }
+    .server-view-sticky {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 40 !important;
+        padding-top: 6px !important;
+        padding-bottom: 0 !important;
+        background: var(--mp-material) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        backdrop-filter: blur(20px) saturate(1.4);
+        border-bottom: 1px solid var(--border) !important;
+    }
+
+    /* Back link — iOS navbar style: accent chevron + label, no chrome */
+    .server-view-sticky .back-btn {
+        color: var(--accent) !important;
+        background: none !important;
+        padding: 6px 8px 6px 0 !important;
+        margin: 0 0 2px -6px !important;
+        font-size: 14px !important;
+        min-height: 36px;
+    }
+    .back-btn:hover {
+        background: none !important;
+        color: var(--accent) !important;
+    }
+
+    /* Header info sits directly on the material — no card inside the bar */
+    .server-header-card {
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        padding: 2px 0 10px !important;
+        margin: 0 !important;
+        gap: 10px !important;
+    }
+    .sh-icon {
+        width: 38px !important;
+        height: 38px !important;
+        background: var(--accent-subtle) !important;
+        border: none !important;
+        border-radius: 10px !important;
+    }
+    .sh-icon svg {
+        width: 20px !important;
+        height: 20px !important;
+    }
+    .sh-info { gap: 10px !important; }
+    .sh-info h2 {
+        font-size: 17px !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sh-meta {
+        font-size: 12px !important;
+        color: var(--text-secondary) !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block !important;
+    }
+    .status-badge {
+        font-size: 10px !important;
+        padding: 2px 8px !important;
+    }
+
+    /* ── Controls: 2×2 action grid (Start/Stop primary, Restart/Kill below).
+          Equal-width halves, 44pt tall — no four-across squeeze. ── */
+    .sh-actions {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+        width: 100% !important;
+        flex-wrap: unset !important;
+    }
+    .sh-actions .btn {
+        min-height: 42px !important;
+        padding: 8px 12px !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        border-radius: 12px !important;
+    }
+    .sh-actions .btn.outline {
+        background: var(--bg-elevated) !important;
+        border-color: transparent !important;
+    }
+    .sh-actions .btn.danger:not(.btn.outline) { /* filled Stop/Kill keep their fill */
+        border-radius: 12px !important;
+    }
+    /* Kill reads as the destructive outlier: red text on quiet surface */
+    .sh-actions .btn.danger.outline,
+    .sh-actions .btn.outline + .btn.danger {
+        background: color-mix(in srgb, var(--red) 12%, transparent) !important;
+        color: var(--red) !important;
+        border: none !important;
+    }
+
+    /* ═══ 5. Tabs — full-bleed underline bar (iOS top tabs) ════════════════ */
+    .sub-nav {
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        gap: 0 !important;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        /* Edge-fade hints more tabs off-screen */
+        -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+        mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+    }
+    .sub-nav::-webkit-scrollbar { display: none; }
+    .sub-nav-item {
+        position: relative;
+        margin: 0 16px 0 0;
+        padding: 12px 2px !important;
+        min-height: 44px;
+        font-size: 13.5px !important;   /* readable — never shrink to fit */
+        border-radius: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: var(--text-secondary) !important;
+        animation: none !important;
+    }
+    .sub-nav-item:hover {
+        color: var(--text-primary) !important;
+        background: transparent !important;
+    }
+    .sub-nav-item.active {
+        color: var(--accent) !important;
+    }
+    .sub-nav-item.active::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 14px;   /* optical: compensate trailing margin */
+        bottom: 0;
+        height: 2.5px;
+        border-radius: 2px 2px 0 0;
+        background: var(--accent);
+        animation: mpTabUnderline 0.25s cubic-bezier(0.2, 1, 0.3, 1);
+    }
+    @keyframes mpTabUnderline {
+        from { transform: scaleX(0.4); opacity: 0; }
+        to   { transform: scaleX(1); opacity: 1; }
+    }
+    /* Inner sub-navs (Players tabs etc.) get a quieter pill treatment so the
+       page-level bar stays the only underline navigation. */
+    .sub-nav.sub-nav-inner {
+        background: var(--bg-elevated) !important;
+        border-radius: 12px !important;
+        padding: 3px !important;
+        gap: 2px !important;
+        margin-bottom: 12px !important;
+        mask-image: none !important;
+        -webkit-mask-image: none !important;
+        overflow-x: auto;
+    }
+    .sub-nav.sub-nav-inner .sub-nav-item {
+        margin: 0;
+        padding: 8px 14px !important;
+        min-height: 38px;
+        border-radius: 9px !important;
+        font-size: 13px !important;
+    }
+    .sub-nav.sub-nav-inner .sub-nav-item.active {
+        background: var(--bg-card-solid, var(--bg-elevated)) !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25) !important;
+    }
+    .sub-nav.sub-nav-inner .sub-nav-item.active::after { display: none; }
+
+    /* Tab body scrolls under the material bar */
+    .server-tab-body {
+        padding-top: 14px !important;
+        padding-bottom: calc(28px + var(--mp-safe-b)) !important;
+    }
+
+    /* ═══ 6. Flatten — one surface level, grouped-list sections ════════════ */
+    /* A .card is a semantic section: quiet opaque surface, generous radius,
+       no border, no shadow, no hover lift. */
+    .card {
+        background: var(--bg-card-solid, var(--bg-surface)) !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: var(--mp-radius-group) !important;
+        padding: var(--mp-group-pad) !important;
+        margin-bottom: 14px !important;
+        transition: none !important;
+    }
+    .card:hover { box-shadow: none !important; }
+    .card h3 {
+        font-size: 15px !important;
+        margin-bottom: 12px !important;
+    }
+
+    /* Nested surfaces inside a card collapse to flat rows with hairlines. */
+    .card .card,
+    .stat-box,
+    .prop-item,
+    .perm-item,
+    .ov-backup-row,
+    .ov-player-row,
+    .ov-activity-item,
+    .ov-ftp-row .ov-ftp-val {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    .stat-box, .prop-item, .perm-item {
+        border-radius: 0 !important;
+        padding: 10px 2px !important;
+        border-bottom: 1px solid var(--mp-sep) !important;
+    }
+    .stat-box:last-child, .prop-item:last-child, .perm-item:last-child {
+        border-bottom: none !important;
+    }
+
+    /* Overview stat tiles: keep them as the one allowed tile layer, but quiet. */
+    .ov-stat-card {
+        background: var(--bg-elevated) !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 14px !important;
+        padding: 12px !important;
+        gap: 10px !important;
+    }
+    .ov-stat-card:hover { transform: none !important; }
+    .ov-stat-icon {
+        background: transparent !important;
+        border: none !important;
+        width: 30px !important;
+        height: 30px !important;
+        color: var(--accent) !important;
+    }
+    .ov-stat-label { font-size: 10px !important; }
+    .ov-stat-val { font-size: 14px !important; }
+    .ov-stats-row { gap: 8px !important; margin-bottom: 14px !important; }
+
+    /* Chart block */
+    .ov-chart-wrap {
+        border: none !important;
+        border-radius: 12px !important;
+        height: 225px;
+    }
+    .ov-legend-btn {
+        min-height: 34px;
+    }
+
+    /* ═══ 7. Native list rows (Users, Ranks, Keys, Backups…) ═══════════════ */
+    /* Undo the legacy "every row is a card" treatment: rows become flat,
+       hairline-separated entries inside their grouped surface. */
+    .list-body {
+        margin: 0 -6px;   /* let rows use the card's inner padding as inset */
+    }
+    .list-item {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: 2px 14px;
+        background: transparent !important;
+        border: none !important;
+        border-bottom: 1px solid var(--mp-sep) !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 12px 6px !important;
+        min-height: 44px;
+    }
+    .list-item:last-child { border-bottom: none !important; }
+    .list-item:hover { background: var(--bg-elevated) !important; }
+
+    /* Primary column = the row title; secondary columns become a quiet
+       metadata line that wraps naturally beneath it. */
+    .list-item .col {
+        display: block !important;
+        width: auto !important;
+        flex: 0 1 auto !important;
+        min-height: 0 !important;
+        padding: 1px 0 !important;
+        border: none !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        font-size: 12.5px !important;
+        color: var(--text-secondary) !important;
+        word-break: break-word;
+    }
+    .list-item .col-wide {
+        flex: 1 1 100% !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        color: var(--text-primary) !important;
+        padding-bottom: 3px !important;
+    }
+    .list-item .col-wide.text-muted {
+        font-size: 12.5px !important;
+        font-weight: 400 !important;
+        color: var(--text-secondary) !important;
+    }
+    /* ── Modal / form columns: label above input, side-by-side pairs ──
+       The legacy ".col = label-value row" treatment must NOT apply inside
+       forms — it squeezes labels into mid-word wraps ("Por t"). Form cols
+       stack label over input and share the row equally. */
+    .form-group.row {
+        flex-direction: row !important;   /* paired fields stay side-by-side */
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+    .form-group .col {
+        display: block !important;
+        flex: 1 1 0 !important;
+        width: auto !important;
+        min-height: 0 !important;
+        min-width: 0 !important;
+        padding: 0 !important;
+        border-bottom: none !important;
+        justify-content: initial !important;
+    }
+    .form-group .col label {
+        display: block;
+        margin-bottom: 6px;
+        overflow-wrap: break-word;
+    }
+    .form-group .col small {
+        display: block;
+        margin-top: 4px;
+    }
+    /* Very narrow phones: paired fields stack full-width instead of squeezing */
+    @media (max-width: 360px) {
+        .form-group.row {
+            flex-direction: column !important;
+            gap: 0.75rem !important;
+        }
+        .form-group.row .col {
+            flex: 1 1 auto !important;
+            width: 100% !important;
+        }
+    }
+
+    /* Label secondary values where the page provides data-label (Players) */
+    .list-item .col[data-label]::before {
+        content: attr(data-label) ': ';
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted);
+    }
+    .list-item .col[data-label="Actions"]::before { content: none; }
+
+    /* Actions: compact tinted pills on their own line, no heavy divider */
+    .list-item .col.actions {
+        flex: 1 1 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        padding: 8px 0 2px !important;
+        margin-top: 4px !important;
+        border: none !important;
+    }
+    .list-item .col.actions .btn {
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+        min-height: 36px;
+        padding: 6px 14px !important;
+        font-size: 13px !important;
+        border-radius: 10px !important;
+    }
+    .list-item .col.actions .btn.outline {
+        background: var(--bg-elevated) !important;
+        border-color: transparent !important;
+    }
+    .list-item .col.actions .btn.danger {
+        background: color-mix(in srgb, var(--red) 14%, transparent) !important;
+        color: var(--red) !important;
+    }
+    .list-header { display: none !important; }
+
+    /* ═══ 8. File browser — native document list ═══════════════════════════ */
+    .file-manager {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+
+    /* Toolbar: path row + one scrollable strip of compact actions */
+    .fm-toolbar {
+        position: static !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        padding: 2px 0 10px !important;
+        background: transparent !important;
+        border-bottom: none !important;
+    }
+    .fm-breadcrumb {
+        font-size: 13px !important;
+        padding: 0 2px;
+        max-width: none !important;
+    }
+    .fm-actions {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+        -webkit-overflow-scrolling: touch;
+    }
+    .fm-actions::-webkit-scrollbar { display: none; }
+    .fm-actions > button,
+    .fm-actions .btn {
+        flex: 0 0 auto !important;
+        min-height: 38px !important;
+        padding: 7px 14px !important;
+        font-size: 13px !important;
+        border-radius: 11px !important;
+    }
+    .fm-actions .btn.outline {
+        background: var(--bg-elevated) !important;
+        border-color: transparent !important;
+        color: var(--text-primary) !important;
+    }
+
+    /* The list itself: ONE grouped surface, rows separated by hairlines. */
+    .file-manager .card {
+        padding: 0 !important;
+        overflow: hidden;
+    }
+    .fm-list-header { display: none !important; }
+
+    .fm-item {
+        border: none !important;
+        border-bottom: 1px solid var(--mp-sep) !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 12px 14px !important;
+        gap: 12px !important;
+        min-height: 48px;
+        font-size: 14.5px;
+    }
+    .fm-item:last-child { border-bottom: none !important; }
+    .fm-item:active { background: var(--bg-elevated) !important; }
+    .fm-item.fm-selected {
+        background: var(--accent-subtle) !important;
+        border-left: none !important;
+        box-shadow: inset 3px 0 0 var(--accent) !important;
+    }
+    .fm-item-name { font-size: 14.5px !important; }
+    .fm-icon svg { width: 20px; height: 20px; }
+    .fm-col.size, .fm-col.date { display: none !important; }
+    .fm-chk input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Row actions: kebab only (bottom sheet opens the full set) */
+    .fm-inline-actions { display: none !important; }
+    .fm-mobile-menu-btn {
+        display: flex !important;
+        width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        color: var(--text-secondary) !important;
+        border-radius: 12px !important;
+    }
+    .fm-mobile-menu-btn:active { background: var(--bg-elevated) !important; }
+
+    /* Selection mode → fixed bottom toolbar (thumb reach, iOS style) */
+    .fm-batch-bar {
+        position: fixed !important;
+        top: auto !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 260;
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
+        padding: 10px 12px calc(10px + var(--mp-safe-b)) !important;
+        background: var(--mp-material) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        backdrop-filter: blur(20px) saturate(1.4);
+        border-top: 1px solid var(--border) !important;
+        border-bottom: none !important;
+    }
+    .fm-batch-bar .btn {
+        flex: 1 1 0 !important;
+        min-height: 40px !important;
+        padding: 8px 6px !important;
+        font-size: 12.5px !important;
+        border-radius: 11px !important;
+        justify-content: center !important;
+    }
+    .fm-batch-bar .btn.outline {
+        background: var(--bg-elevated) !important;
+        border-color: transparent !important;
+        color: var(--text-primary) !important;
+    }
+    /* Keep the last rows reachable above the fixed bar */
+    .file-manager:has(.fm-batch-bar) {
+        padding-bottom: 84px;
+    }
+
+    /* Bottom sheet (row actions) — already native; align its material */
+    .fm-sheet {
+        background: var(--bg-elevated) !important;
+        border: none !important;
+        padding-bottom: calc(1rem + var(--mp-safe-b)) !important;
+    }
+    .fm-sheet-item {
+        min-height: 46px;
+        font-size: 15px !important;
+    }
+
+    /* ═══ 9. Console — fills the phone, semantic surface kept ══════════════ */
+    .console-container {
+        height: clamp(300px, 56dvh, 520px);
+        border: none !important;
+        border-radius: var(--mp-radius-group) !important;
+    }
+    .console-toolbar { height: 44px; }
+    .ct-tab { padding: 0 12px; min-height: 44px; }
+    .console-output, .chat-output { font-size: 12px; }
+
+    /* ═══ 10. Modals → sheets; alerts → centered cards ═════════════════════ */
+    .modal-overlay {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+    .modal {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 92vh !important;
+        max-height: 92dvh !important;
+        border: none !important;
+        border-bottom: none !important;
+        border-radius: 18px 18px 0 0 !important;
+        padding: 24px 18px calc(20px + var(--mp-safe-b)) !important;
+        background: var(--bg-card-solid, var(--bg-surface)) !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        animation: mpSheetUp 0.34s cubic-bezier(0.32, 0.72, 0.32, 1) forwards !important;
+    }
+    .modal::before {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 38px;
+        height: 4.5px;
+        border-radius: 3px;
+        background: var(--border-hover);
+    }
+    .modal.large {
+        height: 92vh !important;
+        height: 92dvh !important;
+        max-height: 92dvh !important;
+        width: 100% !important;
+    }
+    .modal-header { padding: 6px 0 12px !important; }
+    .modal-body { padding: 14px 0 !important; }
+    .modal-footer {
+        padding: 12px 0 0 !important;
+        gap: 10px !important;
+    }
+    .modal-footer .btn {
+        flex: 1 1 auto !important;
+        min-height: 44px !important;
+        min-width: 0 !important;
+        border-radius: 12px !important;
+    }
+    .modal-footer .btn.outline {
+        background: var(--bg-elevated) !important;
+        border-color: transparent !important;
+        color: var(--text-primary) !important;
+    }
+    .close-btn {
+        width: 40px;
+        height: 40px;
+    }
+    @keyframes mpSheetUp {
+        from { transform: translateY(100%); }
+        to   { transform: translateY(0); }
+    }
+
+    /* ═══ 11. Toasts → top banners (iOS notification style) ════════════════ */
+    #toast-container {
+        top: calc(var(--mp-bar-h) + var(--mp-safe-t) + 10px) !important;
+        right: 12px !important;
+        bottom: auto !important;
+        left: 12px !important;
+        align-items: stretch !important;
+    }
+    .toast {
+        min-width: 0 !important;
+        max-width: none !important;
+        width: 100%;
+        background: var(--bg-elevated) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        backdrop-filter: blur(20px) saturate(1.4);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4) !important;
+        border-radius: 14px !important;
+        border: 1px solid var(--border) !important;
+        border-left: 4px solid var(--accent) !important;
+        min-height: 44px;
+    }
+    .toast-enter { animation: mpToastIn 0.32s cubic-bezier(0.2, 1, 0.3, 1) forwards; }
+    .toast-exit  { animation: mpToastOut 0.24s ease forwards; }
+    @keyframes mpToastIn {
+        from { opacity: 0; transform: translateY(-16px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes mpToastOut {
+        from { opacity: 1; transform: translateY(0) scale(1); }
+        to   { opacity: 0; transform: translateY(-12px) scale(0.97); }
+    }
+
+    /* ═══ 12. Panel (server list) — full-width native cards ════════════════ */
+    .page-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        margin-bottom: 16px !important;
+    }
+    .page-header h2 { font-size: 22px !important; letter-spacing: -0.03em; }
+    .page-header > div {
+        display: flex !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+    .page-header > div > .btn {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+        min-height: 44px !important;
+        justify-content: center;
+    }
+    .servers-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    .server-card {
+        padding: 16px !important;
+        border-radius: var(--mp-radius-group) !important;
+    }
+    .server-card:hover { transform: none !important; }
+    .server-card p { margin-bottom: 0.9rem !important; }
+
+    /* ═══ 13. Touch polish — hover lifts are pointer-only feedback ═════════ */
+    .btn:hover, .icon-btn:hover, .server-card:hover, .sidebar-item:hover,
+    .ov-stat-card:hover, .ov-backup-row:hover, .ov-legend-btn:hover,
+    .sub-nav-item:hover, .list-item:hover {
+        transform: none !important;
+    }
+    .btn:active { transform: scale(0.97); }
+    .icon-btn:active { transform: scale(0.92); }
+    .btn { min-height: 42px; }
+    .btn.small { min-height: 36px; }
+    .icon-btn { min-width: 40px; min-height: 40px; }
+
+    /* Hide desktop-only scrollbars on touch — content edges communicate
+       scrollability (plus edge fades on tab strips). */
+    .content-area::-webkit-scrollbar { width: 0; }
+
+    /* ═══ 14. Compact phones (≤480px) ══════════════════════════════════════ */
+    .plugins-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    .ov-stats-row { grid-template-columns: repeat(2, 1fr) !important; }
+    .terminal-container { height: clamp(260px, 48dvh, 420px) !important; }
+
+    /* ═══ 15. Small phones (≤390px) — iPhone 12/13/14/16e class ════════════ */
+    .sh-info h2 { font-size: 16px !important; }
+    .ov-stat-val { font-size: 13px !important; }
+    .sub-nav-item { margin-right: 12px; }
+    .sub-nav-item.active::after { right: 10px; }
+
+    /* ═══ 16. Small Android (≤360px) ═══════════════════════════════════════ */
+    :root {
+        --mp-pad-x: 12px;
+    }
+    .sh-actions { gap: 6px !important; }
+    .sh-actions .btn { font-size: 13px !important; }
+    .fm-actions { gap: 6px !important; }
+
+    /* ═══ 17. Landscape phones — reclaim vertical space ════════════════════ */
+    @media (max-height: 500px) {
+        .server-header-card { padding-bottom: 6px !important; }
+        .sh-actions .btn { min-height: 36px !important; }
+        .console-container { height: clamp(200px, 70dvh, 420px); }
+        .sub-nav-item { min-height: 38px; padding-top: 8px !important; padding-bottom: 8px !important; }
+        #toast-container { top: calc(var(--mp-safe-t) + 6px); }
+    }
+}
+
+/* ═══ Tablet tune-up (769–1024px) — narrower gutter, same language ═════════ */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .page { padding: 1.25rem 1.25rem; }
+    .server-view-sticky { padding: 1rem 1.25rem 0; }
+    .server-tab-body { padding: 1.25rem 1.25rem 1.5rem; }
+}

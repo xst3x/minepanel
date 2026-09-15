@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { marked } from 'marked';
+import { parseMarkdown } from '../lib/markdown.ts';
 import { api } from '../lib/api.ts';
 import '../styles/pages/Docs.css';
 
@@ -15,8 +15,6 @@ const CATEGORY_LABELS = {
 function categoryLabel(cat) {
   return CATEGORY_LABELS[cat] || cat.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
-
-marked.setOptions({ breaks: true, gfm: true });
 
 // Chevron icon — points right when collapsed, down when expanded
 function Chevron({ open }) {
@@ -111,7 +109,7 @@ export default function Docs() {
   }
 
   return (
-    <div className="page" style={{ padding: '2.25rem' }}>
+    <div className="page">
       <button className="back-btn" onClick={() => navigate('/panel')} style={{ marginBottom: '1rem' }}>
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
           <line x1="19" y1="12" x2="5" y2="12" />
@@ -128,7 +126,7 @@ export default function Docs() {
         <div className="card" style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>
       )}
 
-      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
+      <div className="docs-layout" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
 
         {/* ── Sidebar ────────────────────────────────────────────────── */}
         <div className="docs-sidebar" style={{ alignSelf: 'flex-start' }}>
@@ -174,7 +172,7 @@ export default function Docs() {
         </div>
 
         {/* ── Content ────────────────────────────────────────────────── */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
           {loading && (
             <div className="card" style={{ color: 'var(--text-muted)' }}>Loading documentation…</div>
           )}
@@ -182,7 +180,7 @@ export default function Docs() {
             <div
               className="card doc-content"
               style={{ lineHeight: 1.7 }}
-              dangerouslySetInnerHTML={{ __html: marked.parse(activeDoc.content) }}
+              dangerouslySetInnerHTML={{ __html: parseMarkdown(activeDoc.content) }}
             />
           )}
           {!loading && !activeDoc && !error && (
