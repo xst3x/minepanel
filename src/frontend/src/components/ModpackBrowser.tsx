@@ -303,7 +303,7 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
                     borderBottom: detailTab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
                     color: detailTab === t.id ? 'var(--accent)' : 'var(--text-muted)',
                     cursor: 'pointer', fontWeight: detailTab === t.id ? 600 : 400,
-                    fontSize: '0.85rem', transition: 'color 0.15s, border-color 0.15s',
+                    fontSize: '0.875rem', transition: 'color 0.15s, border-color 0.15s',
                   }}
                 >
                   {t.label}
@@ -314,36 +314,31 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
             {detailTab === 'contents' && (
               <div style={{ marginBottom: '1rem' }}>
                 {contentsLoading ? (
-                  <p className="text-muted" style={{ fontSize: '0.85rem' }}>Loading included content…</p>
+                  <p className="text-muted" style={{ fontSize: '0.875rem' }}>Loading included content…</p>
                 ) : contents ? (
                   (() => {
                     const total = (contents.mods?.length || 0) + (contents.resource_packs?.length || 0) + (contents.shaders?.length || 0);
-                    if (total === 0) return <p className="text-muted" style={{ fontSize: '0.85rem' }}>No dependency information available for this version.</p>;
+                    if (total === 0) return <p className="text-muted" style={{ fontSize: '0.875rem' }}>No dependency information available for this version.</p>;
 
                     const renderList = (title, items) => {
                       if (!items?.length) return null;
                       return (
                         <div style={{ marginBottom: '1.25rem' }}>
-                          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
                             {title} <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{items.length}</span>
                           </h4>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                             {items.map(item => (
-                              <div key={item.project_id} style={{
-                                display: 'flex', alignItems: 'center', gap: '0.6rem',
-                                padding: '0.4rem 0.6rem', borderRadius: 'var(--radius)',
-                                background: 'var(--bg-input)', border: '1px solid var(--border-color)',
-                                fontSize: '0.82rem',
-                              }}>
+                              <div className="detail-row" key={item.project_id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.875rem' }}>
                                 {item.icon_url && (
                                   <img src={`/api/modpacks/icon?url=${encodeURIComponent(item.icon_url)}`} alt="" width={20} height={20} style={{ borderRadius: '3px', flexShrink: 0 }} loading="lazy" />
                                 )}
                                 <span style={{ fontWeight: 500, color: 'var(--text-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
                                 {item.dependency_type === 'optional' && (
-                                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flexShrink: 0 }}>optional</span>
+                                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', flexShrink: 0 }}>optional</span>
                                 )}
                                 <a href={`https://modrinth.com/mod/${item.slug}`} target="_blank" rel="noopener noreferrer"
-                                  style={{ color: 'var(--accent)', fontSize: '0.72rem', flexShrink: 0 }}
+                                  style={{ color: 'var(--accent)', fontSize: '0.875rem', flexShrink: 0 }}
                                   onClick={e => e.stopPropagation()}
                                 >↗</a>
                               </div>
@@ -362,7 +357,7 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
                     );
                   })()
                 ) : (
-                  <p className="text-muted" style={{ fontSize: '0.85rem' }}>Select a version and click "Included Content" to load dependencies.</p>
+                  <p className="text-muted" style={{ fontSize: '0.875rem' }}>Select a version and click "Included Content" to load dependencies.</p>
                 )}
               </div>
             )}
@@ -426,7 +421,7 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
   return (
     <div className="modpack-browser">
       <div className="plugins-header">
-        <input
+        <input aria-label="Search modpacks on Modrinth…"
           type="text"
           ref={searchInputRef}
           placeholder="Search modpacks on Modrinth…"
@@ -439,14 +434,14 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
       <div className="modpack-browser-filters">
         <div>
           <label>Minecraft Version</label>
-          <Select value={mcVersion} onChange={e => setMcVersion(e.target.value)}>
+          <Select aria-label="Minecraft Version" value={mcVersion} onChange={e => setMcVersion(e.target.value)}>
             <option value="">All versions</option>
             {gameVersions.map(v => <option key={v} value={v}>{v}</option>)}
           </Select>
         </div>
         <div>
           <label>Mod Loader</label>
-          <Select value={loader} onChange={e => setLoader(e.target.value)}>
+          <Select aria-label="Mod Loader" value={loader} onChange={e => setLoader(e.target.value)}>
             <option value="">All loaders</option>
             <option value="fabric">Fabric</option>
             <option value="forge">Forge</option>
@@ -456,7 +451,7 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
         </div>
         <div>
           <label>Sort By</label>
-          <Select value={sort} onChange={e => setSort(e.target.value)}>
+          <Select aria-label="Sort By" value={sort} onChange={e => setSort(e.target.value)}>
             {SORT_OPTIONS.map(([id, label]) => (
               <option key={id} value={id}>{label}</option>
             ))}
@@ -539,7 +534,7 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
           <button type="button" className="btn outline small" disabled={currentPage <= 1} onClick={() => goToPage(currentPage - 2)}>Prev</button>
           <div className="plugin-page-status">
             Page{' '}
-            <input
+            <input inputMode="numeric"
               type="number"
               min={1}
               max={totalPages}

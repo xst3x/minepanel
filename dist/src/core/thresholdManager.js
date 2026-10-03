@@ -1,3 +1,5 @@
+"use strict";
+const paths_1 = require("../paths");
 // src/core/thresholdManager.js
 // Multi-threshold escalation system for MinePanel.
 // Replaces the single-value tempThresholdCelsius with a full escalation ladder.
@@ -194,16 +196,14 @@ function getCpuTemperature() {
             }
         }
         // Windows optional helper file
-        const helperFile = path.join(__dirname, '../../data/cpu_temp.txt');
+        const helperFile = path.join(paths_1.PROJECT_ROOT, 'data', 'cpu_temp.txt');
         if (fs.existsSync(helperFile)) {
             const val = parseFloat(fs.readFileSync(helperFile, 'utf8').trim());
             if (!isNaN(val))
                 return val;
         }
     }
-    catch (e) {
-        logger.warn('[ThresholdManager] Failed to load thresholds: ' + (e.message || e));
-    }
+    catch (_) { }
     return null;
 }
 async function getRamPercent(pid) {
@@ -309,9 +309,7 @@ async function fireAction(sid, metric, threshold, currentValue) {
             try {
                 processManager.sendCommand(sid, `say [MinePanel] ${label}: ${metric.replace('_', ' ')} at ${currentValue.toFixed(1)}${unit}!`);
             }
-            catch (e) {
-                logger.warn('[ThresholdManager] Send alert command failed: ' + (e.message || e));
-            }
+            catch (_) { }
             break;
         case 'throttle': {
             // Progressive: 80% throttle at first throttle threshold, 50% and 25% for subsequent ones
@@ -324,9 +322,7 @@ async function fireAction(sid, metric, threshold, currentValue) {
             try {
                 processManager.sendCommand(sid, `say [MinePanel] CPU throttled to ${pct}% due to ${label}.`);
             }
-            catch (e) {
-                logger.warn('[ThresholdManager] Send throttle command failed: ' + (e.message || e));
-            }
+            catch (_) { }
             break;
         }
         case 'restart':
@@ -336,9 +332,7 @@ async function fireAction(sid, metric, threshold, currentValue) {
                 try {
                     processManager.sendCommand(sid, `say [MinePanel] Server restarting due to ${label}.`);
                 }
-                catch (e) {
-                    logger.warn('[ThresholdManager] Send restart command failed: ' + (e.message || e));
-                }
+                catch (_) { }
                 setTimeout(async () => {
                     try {
                         await processManager.gracefulStop(sid, 15000);
@@ -349,9 +343,7 @@ async function fireAction(sid, metric, threshold, currentValue) {
                         if (server)
                             await processManager.start(server);
                     }
-                    catch (e) {
-                        logger.warn('[ThresholdManager] Auto-restart failed: ' + (e.message || e));
-                    }
+                    catch (_) { }
                     stopping.delete(sid);
                 }, 5000);
             }
@@ -363,9 +355,7 @@ async function fireAction(sid, metric, threshold, currentValue) {
                 try {
                     processManager.sendCommand(sid, `say [MinePanel] Server stopping due to ${label}!`);
                 }
-                catch (e) {
-                    logger.warn('[ThresholdManager] Send stop command failed: ' + (e.message || e));
-                }
+                catch (_) { }
                 setTimeout(() => {
                     try {
                         processManager.gracefulStop(sid, 15000);

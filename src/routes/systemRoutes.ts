@@ -1,3 +1,4 @@
+import { SETTINGS_FILE } from '../paths';
 import express = require('express')
 import os = require('os')
 import fs = require('fs')
@@ -5,8 +6,6 @@ const fsp = require('fs').promises;
 import path = require('path')
 import authModule = require('../core/auth')
 const { authenticateToken } = authModule;
-import databaseModule = require('../db/database')
-const { dbGet } = databaseModule;
 import permissionsModule = require('../core/permissions')
 const { hasPermission } = permissionsModule;
 import errorsModule = require('../core/errors')
@@ -19,9 +18,6 @@ const { initFtpServer, stopFtpServer, isFtpRunning } = ftpServerModule;
 import logger = require('../core/utils/logger')
 
 const router = express.Router();
-const SETTINGS_FILE = process.env.DATA_DIR
-    ? path.join(process.env.DATA_DIR, 'settings.json')
-    : path.resolve(__dirname, '../../settings.json');
 
 const getSettings = async () => {
     const defaults = {
@@ -43,7 +39,7 @@ const getSettings = async () => {
             return { ...defaults, ...JSON.parse(data) };
         }
     } catch (_) {}
-    return defaults;
+    return { ...defaults };
 };
 
 const saveSettings = async (data) => {

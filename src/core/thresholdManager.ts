@@ -1,3 +1,4 @@
+import { PROJECT_ROOT } from '../paths';
 // src/core/thresholdManager.js
 // Multi-threshold escalation system for MinePanel.
 // Replaces the single-value tempThresholdCelsius with a full escalation ladder.
@@ -210,7 +211,7 @@ function getCpuTemperature() {
             }
         }
         // Windows optional helper file
-        const helperFile = path.join(__dirname, '../../data/cpu_temp.txt');
+        const helperFile = path.join(PROJECT_ROOT, 'data', 'cpu_temp.txt');
         if (fs.existsSync(helperFile)) {
             const val = parseFloat(fs.readFileSync(helperFile, 'utf8').trim());
             if (!isNaN(val)) return val;

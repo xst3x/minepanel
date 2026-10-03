@@ -1,9 +1,10 @@
 "use strict";
+const paths_1 = require("../paths");
 const fs = require("fs");
 const path = require("path");
 const { fetchAllVersions } = require('./versionFetcher');
 const logger = require("./utils/logger");
-const CACHE_FILE = path.resolve(__dirname, '../../cache/versions.json');
+const CACHE_FILE = path.join(paths_1.PROJECT_ROOT, 'cache', 'versions.json');
 // Default fallbacks in case APIs fail and we have no cache yet
 const DEFAULTS = {
     vanilla: ['1.21.1', '1.21', '1.20.6', '1.20.4', '1.20.2', '1.20.1', '1.19.4', '1.18.2', '1.16.5', '1.12.2'],

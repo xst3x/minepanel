@@ -1,3 +1,5 @@
+import Section from '../../components/Section.tsx';
+import ModalOverlay from '../../components/ModalOverlay.tsx';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
@@ -54,6 +56,10 @@ export default function ServerFiles() {
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const actionsMenuRef = useRef(null);
   const [openRowMenu, setOpenRowMenu] = useState(null);
+  const [infoItem, setInfoItem] = useState(null);
+  const [infoData, setInfoData] = useState(null);
+  const [infoLoading, setInfoLoading] = useState(false);
+  const [infoError, setInfoError] = useState('');
   const rowMenuRef = useRef(null);
 
   // Load files list
@@ -320,6 +326,38 @@ export default function ServerFiles() {
     } catch (e) { dismiss(e.message); }
   };
 
+  const itemPath = (name) => currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
+  const handleSingleRename = async (item) => {
+    const name = (await showPrompt('New name', item.name, 'Rename'))?.trim();
+    if (!name || name === item.name) return;
+    if (name === '.' || name === '..' || /[/\\]/.test(name)) return toast('Enter a name without folder separators.', 'error');
+    try {
+      await api(`/api/servers/${serverId}/files/rename`, { method: 'POST', body: { oldPath: itemPath(item.name), newPath: itemPath(name) } });
+      toast(`Renamed to ${name}.`, 'success');
+      loadFiles();
+    } catch (error) { toast(error.message || 'Rename failed.', 'error'); }
+  };
+  const handleSingleMove = async (item) => {
+    const destination = (await showPrompt('Destination folder path', '/', 'Move'))?.trim();
+    if (!destination || destination === currentPath) return;
+    try {
+      const result = await api(`/api/servers/${serverId}/files/move`, { method: 'POST', body: { paths: [itemPath(item.name)], destination } });
+      if (result.results?.[0]?.status === 'error') throw new Error(result.results[0].error);
+      toast(`Moved ${item.name}.`, 'success');
+      loadFiles();
+    } catch (error) { toast(error.message || 'Move failed.', 'error'); }
+  };
+  const openInfo = async (item) => {
+    setInfoItem(item);
+    setInfoData(null);
+    setInfoError('');
+    setInfoLoading(true);
+    try {
+      setInfoData(await api(`/api/servers/${serverId}/files/info?path=${encodeURIComponent(itemPath(item.name))}`));
+    } catch (error) { setInfoError(error.message || 'Could not load file information.'); }
+    finally { setInfoLoading(false); }
+  };
+
   const handleSingleDownload = async (item) => {
     const filePath = currentPath === '/' ? `/${item.name}` : `${currentPath}/${item.name}`;
     const dlName = item.name + (item.isDirectory ? '.zip' : '');
@@ -483,12 +521,10 @@ export default function ServerFiles() {
         </div>
       )}
 
-      <div className="card" style={{ padding: 0 }}>
+      <Section className="" style={{  }}>
         <div className="fm-list-header">
           <div style={{ width: '20px', flexShrink: 0 }} />
           <div className="fm-col name">Name</div>
-          <div className="fm-col size">Size</div>
-          <div className="fm-col date">Modified</div>
           <div style={{ flex: '0 0 auto', textAlign: 'right' }}>Actions</div>
         </div>
 
@@ -501,7 +537,7 @@ export default function ServerFiles() {
                 <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>This folder is empty.</p>
                   {hasPerm('server.files.edit') && (
-                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem' }}>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.875rem' }}>
                       Use <strong>New Folder</strong>, <strong>New File</strong> or <strong>Upload</strong> to add content.
                     </p>
                   )}
@@ -518,15 +554,12 @@ export default function ServerFiles() {
                 >
                   <div className="fm-icon">{FOLDER_SVG}</div>
                   <div className="fm-col name fm-item-name" style={{ fontWeight: '500' }}>..</div>
-                  <div className="fm-col size">--</div>
-                  <div className="fm-col date">--</div>
                   <div className="fm-col actions" />
                 </div>
               )}
 
               {sortedItems.map((item) => {
                 const icon = item.isDirectory ? FOLDER_SVG : FILE_SVG;
-                const sz = item.isDirectory ? '--' : formatBytes(item.size);
                 const ext = item.name.split('.').pop()?.toLowerCase();
                 const isImage = !item.isDirectory && IMAGE_EXTS.has(ext);
                 const isZip = !item.isDirectory && ext === 'zip';
@@ -572,32 +605,14 @@ export default function ServerFiles() {
                     )}
                     <div className="fm-icon">{icon}</div>
                     <div className="fm-col name fm-item-name">{item.name}</div>
-                    <div className="fm-col size">{sz}</div>
-                    <div className="fm-col date">{new Date(item.modifiedAt).toLocaleString()}</div>
                     <div className="fm-col actions fm-item-actions fm-row-menu-wrap" onClick={e => e.stopPropagation()}>
-                      {/* Desktop: all action buttons inline */}
-                      <div className="fm-inline-actions">
-                        <button className="btn outline small fm-action-btn" onClick={() => handleSingleDownload(item)}>Download</button>
-                        {hasPerm('server.files.edit') && (
-                          <>
-                            <button className="btn outline small fm-action-btn" onClick={() => handleSingleCopy(item.name)}>Copy</button>
-                            <button className="btn outline small fm-action-btn" onClick={() => handleSingleCut(item.name)}>Cut</button>
-                            {isZip ? (
-                              <button className="btn outline small fm-action-btn" onClick={() => openPreview(item)}>Extract</button>
-                            ) : (
-                              <button className="btn outline small fm-action-btn" onClick={() => handleSingleArchive(item.name)}>Archive</button>
-                            )}
-                            <button className="btn danger small fm-action-btn" onClick={() => handleSingleDelete(item.name)}>Delete</button>
-                          </>
-                        )}
-                      </div>
-                      {/* Mobile: 3-dot → bottom sheet */}
                       <button
-                        className="btn outline small fm-row-menu-btn fm-mobile-menu-btn"
+                        className="btn outline small fm-row-menu-btn"
                         onClick={() => setOpenRowMenu(item.name)}
-                        aria-label="Row actions"
+                        aria-label={`Actions for ${item.name}`}
+                        aria-haspopup="dialog"
                       >
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
                           <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
                         </svg>
                       </button>
@@ -608,66 +623,74 @@ export default function ServerFiles() {
             </>
           )}
         </div>
-      </div>
+      </Section>
 
-      {/* ── Per-row actions bottom sheet ──────────────────────────────────── */}
+      {/* One action menu on all viewports; the overlay handles focus and Escape. */}
       {openRowMenu && (() => {
-        const menuItem = items.find(i => i.name === openRowMenu);
-        if (!menuItem) return null;
-        const ext = menuItem.name.split('.').pop()?.toLowerCase();
-        const isZipItem = !menuItem.isDirectory && ext === 'zip';
+        const item = items.find(entry => entry.name === openRowMenu);
+        if (!item) return null;
+        const ext = item.name.split('.').pop()?.toLowerCase();
+        const isZip = !item.isDirectory && ext === 'zip';
+        const close = () => setOpenRowMenu(null);
+        const action = (callback) => () => { close(); callback(); };
         return (
-          <div className="fm-sheet-overlay" onClick={() => setOpenRowMenu(null)}>
-            <div className="fm-sheet" onClick={e => e.stopPropagation()}>
+          <ModalOverlay className="fm-sheet-overlay" onClick={close}>
+            <div className="fm-sheet" onClick={event => event.stopPropagation()}>
               <div className="fm-sheet-handle" />
-              <div className="fm-sheet-title">{menuItem.name}</div>
-              <button className="fm-sheet-item" onClick={() => { setOpenRowMenu(null); handleSingleDownload(menuItem); }}>
-                <span>Download</span>
-              </button>
-              {hasPerm('server.files.edit') && (
-                <>
-                  <button className="fm-sheet-item" onClick={() => { setOpenRowMenu(null); handleSingleCopy(menuItem.name); }}>
-                    <span>Copy</span>
-                  </button>
-                  <button className="fm-sheet-item" onClick={() => { setOpenRowMenu(null); handleSingleCut(menuItem.name); }}>
-                    <span>Cut</span>
-                  </button>
-                  {isZipItem ? (
-                    <button className="fm-sheet-item" onClick={() => { setOpenRowMenu(null); openPreview(menuItem); }}>
-                      <span>Extract</span>
-                    </button>
-                  ) : (
-                    <button className="fm-sheet-item" onClick={() => { setOpenRowMenu(null); handleSingleArchive(menuItem.name); }}>
-                      <span>Archive</span>
-                    </button>
-                  )}
-                  <button className="fm-sheet-item fm-sheet-danger" onClick={() => { setOpenRowMenu(null); handleSingleDelete(menuItem.name); }}>
-                    <span>Delete</span>
-                  </button>
-                </>
-              )}
-              <button className="fm-sheet-item fm-sheet-cancel" onClick={() => setOpenRowMenu(null)}>
-                <span>Cancel</span>
-              </button>
+              <div className="fm-sheet-title">{item.name}</div>
+              <button className="fm-sheet-item" onClick={action(() => openInfo(item))}>Info</button>
+              {!item.isDirectory && <button className="fm-sheet-item" onClick={action(() => isZip ? openPreview(item) : handleOpenFile(item))}>{isZip ? 'View archive' : 'Edit / Open'}</button>}
+              <button className="fm-sheet-item" onClick={action(() => handleSingleDownload(item))}>Download</button>
+              {hasPerm('server.files.edit') && <>
+                <button className="fm-sheet-item" onClick={action(() => handleSingleRename(item))}>Rename</button>
+                <button className="fm-sheet-item" onClick={action(() => handleSingleMove(item))}>Move</button>
+                <button className="fm-sheet-item" onClick={action(() => handleSingleCopy(item.name))}>Copy</button>
+                <button className="fm-sheet-item" onClick={action(() => handleSingleCut(item.name))}>Cut</button>
+                <button className="fm-sheet-item" onClick={action(() => isZip ? openPreview(item) : handleSingleArchive(item.name))}>{isZip ? 'Extract' : 'Archive'}</button>
+                <button className="fm-sheet-item fm-sheet-danger fm-sheet-separator" onClick={action(() => handleSingleDelete(item.name))}>Delete</button>
+              </>}
+              <button className="fm-sheet-item fm-sheet-cancel" onClick={close}>Cancel</button>
             </div>
-          </div>
+          </ModalOverlay>
         );
       })()}
 
+      {infoItem && (
+        <ModalOverlay className="fm-sheet-overlay" onClick={() => setInfoItem(null)}>
+          <div className="fm-sheet fm-info-sheet" onClick={event => event.stopPropagation()}>
+            <div className="fm-sheet-handle" />
+            <div className="fm-sheet-title">File information</div>
+            {infoLoading ? <p role="status">Loading information…</p> : infoError ? <p role="alert">{infoError}</p> : infoData && (
+              <dl className="fm-info-list">
+                <div><dt>Name</dt><dd>{infoData.name}</dd></div>
+                <div><dt>Type</dt><dd>{infoData.isDirectory ? 'Folder' : (infoData.extension ? `${infoData.extension.toUpperCase()} file` : 'File')}</dd></div>
+                <div><dt>Created</dt><dd>{infoData.createdAt ? new Date(infoData.createdAt).toLocaleString() : 'Unavailable'}</dd></div>
+                <div><dt>Size</dt><dd>{formatBytes(infoData.size)}</dd></div>
+                {infoData.isDirectory ? <>
+                  <div><dt>Subfolders</dt><dd>{infoData.folderCount}</dd></div>
+                  <div><dt>Files</dt><dd>{infoData.fileCount}</dd></div>
+                </> : <div><dt>Last modified</dt><dd>{infoData.modifiedAt ? new Date(infoData.modifiedAt).toLocaleString() : 'Unavailable'}</dd></div>}
+              </dl>
+            )}
+            <button className="fm-sheet-item fm-sheet-cancel" onClick={() => setInfoItem(null)}>Close</button>
+          </div>
+        </ModalOverlay>
+      )}
+
       {/* ── Archive naming modal ────────────────────────────────────────── */}
       {showArchiveModal && (
-        <div className="modal-overlay active" onClick={() => { if (!archiveModalLoading) setShowArchiveModal(false); }}>
+        <ModalOverlay className="modal-overlay active" onClick={() => { if (!archiveModalLoading) setShowArchiveModal(false); }}>
           <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Archive Selected</h3>
-              <button className="close-btn" onClick={() => { if (!archiveModalLoading) setShowArchiveModal(false); }}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => { if (!archiveModalLoading) setShowArchiveModal(false); }}>&times;</button>
             </div>
             <div className="modal-body">
               <p style={{ margin: '0 0 1rem', color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.6 }}>
                 Create a .zip archive with {selCount} selected item{selCount !== 1 ? 's' : ''} in the current directory.
               </p>
-              <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem', display: 'block' }}>Archive name</label>
-              <input
+              <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem', display: 'block' }}>Archive name</label>
+              <input aria-label="Archive name"
                 type="text"
                 value={archiveModalName}
                 onChange={e => setArchiveModalName(e.target.value.replace(/[^a-zA-Z0-9.\-_]/g, '_').replace(/\.zip$/i, ''))}
@@ -676,7 +699,7 @@ export default function ServerFiles() {
                 style={{ width: '100%', boxSizing: 'border-box' }}
                 placeholder="archive"
               />
-              <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Will be saved as: {archiveModalName || 'archive'}.zip</p>
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Will be saved as: {archiveModalName || 'archive'}.zip</p>
             </div>
             <div className="modal-footer">
               <button className="btn outline" onClick={() => setShowArchiveModal(false)} disabled={archiveModalLoading}>Cancel</button>
@@ -685,12 +708,12 @@ export default function ServerFiles() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* ── Preview modal (archive tree / image viewer) ──────────────────── */}
       {previewPath && (
-        <div className="modal-overlay active" onClick={closePreview}>
+        <ModalOverlay className="modal-overlay active" onClick={closePreview}>
           <div className={`modal ${archiveTree ? '' : 'large'}`} style={archiveTree ? { maxWidth: 520 } : {}} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3 id="preview-filename" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -706,10 +729,10 @@ export default function ServerFiles() {
                 {archiveTree && (
                   <button className="btn primary small" onClick={handleExtractArchive}>Extract Here</button>
                 )}
-                <button className="close-btn" onClick={closePreview}>&times;</button>
+                <button aria-label="Close dialog" className="close-btn" onClick={closePreview}>&times;</button>
               </div>
             </div>
-            <div className="modal-body" style={{ padding: 0, maxHeight: '65vh', overflow: 'auto' }}>
+            <div className="modal-body" style={{ padding: 0, maxHeight: "65dvh", overflow: 'auto' }}>
               {archiveTree ? (
                 <div className="archive-tree">
                   <div className="archive-tree-header">{archiveTree.totalEntries} entr{archiveTree.totalEntries === 1 ? 'y' : 'ies'}</div>
@@ -731,10 +754,10 @@ export default function ServerFiles() {
                 </div>
               ) : previewUrl ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: '#00000008' }}>
-                  <img
+                  <img loading="lazy"
                     src={previewUrl}
                     alt={previewPath?.split('/').pop()}
-                    style={{ maxWidth: '100%', maxHeight: '62vh', borderRadius: 'var(--radius)', objectFit: 'contain', boxShadow: 'var(--shadow-md)' }}
+                    style={{ maxWidth: '100%', maxHeight: "62dvh", borderRadius: 'var(--radius)', objectFit: 'contain', boxShadow: 'var(--shadow-md)' }}
                   />
                 </div>
               ) : (
@@ -742,12 +765,12 @@ export default function ServerFiles() {
               )}
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* ── Editor Modal ────────────────────────────────────────────────── */}
       {editingPath && (
-        <div className="modal-overlay active" id="modal-file-editor">
+        <ModalOverlay className="modal-overlay active" id="modal-file-editor">
           <div className="modal large" role="dialog" aria-modal="true" aria-label={`Editing ${editingPath}`}>
             <div className="modal-header">
               <h3 id="editor-filename" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, overflow: 'hidden' }}>
@@ -756,7 +779,7 @@ export default function ServerFiles() {
                   <span
                     title="Unsaved changes"
                     aria-label="Unsaved changes"
-                    style={{ flexShrink: 0, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0.12rem 0.45rem', borderRadius: 999, background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent-glow)' }}
+                    style={{ flexShrink: 0, fontSize: '0.875rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0.12rem 0.45rem', borderRadius: 999, background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent-glow)' }}
                   >
                     UNSAVED
                   </span>
@@ -779,7 +802,7 @@ export default function ServerFiles() {
               />
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import { PROJECT_ROOT } from '../paths';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as logger from './logger';
@@ -20,6 +21,7 @@ export function startBackend(port: number, token: string): Promise<void> {
         
         // Spawn with IPC channel enabled
         child = spawn(process.execPath, [backendScript], {
+            cwd: PROJECT_ROOT,
             stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
             env: {
                 ...process.env,

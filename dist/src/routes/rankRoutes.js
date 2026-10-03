@@ -22,16 +22,12 @@ router.get('/', authenticateToken, async (req, res) => {
             try {
                 parsedPerms = JSON.parse(r.permissions);
             }
-            catch (e) {
-                logger.warn('[rankRoutes] Failed to parse permissions for rank: ' + r.name);
-            }
+            catch (e) { }
             let parsedGlobal = [];
             try {
                 parsedGlobal = JSON.parse(r.global_permissions || '[]');
             }
-            catch (e) {
-                logger.warn('[rankRoutes] Failed to parse global_permissions for rank: ' + r.name);
-            }
+            catch (e) { }
             return { ...r, permissions: parsedPerms, global_permissions: parsedGlobal };
         }));
     }

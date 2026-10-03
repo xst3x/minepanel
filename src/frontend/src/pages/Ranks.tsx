@@ -1,3 +1,5 @@
+import ModalOverlay from '../components/ModalOverlay.tsx';
+import PermissionMatrix from '../components/PermissionMatrix.tsx';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.ts';
@@ -196,7 +198,7 @@ export default function Ranks() {
       </div>
 
       {reorderMode && (
-        <div style={{ marginBottom: '1rem', padding: '0.6rem 1rem', borderRadius: 'var(--radius)', background: 'var(--accent-subtle)', border: '1px solid var(--accent)', fontSize: '0.85rem', color: 'var(--accent)' }}>
+        <div className="detail-row" style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--accent)' }}>
           Drag and drop the rank cards to reorder them, then click <strong>Save Order</strong>.
         </div>
       )}
@@ -238,89 +240,50 @@ export default function Ranks() {
 
       {/* Editor Modal */}
       {showEditor && (
-        <div className="modal-overlay active" onClick={() => setShowEditor(false)}>
-          <div className="modal large" style={{ maxWidth: 900 }} onClick={e => e.stopPropagation()}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setShowEditor(false)}>
+          <div className="modal large permissions-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editingRank ? `Edit Rank — ${editingRank.name}` : 'Create Custom Rank'}</h3>
-              <button className="close-btn" onClick={() => setShowEditor(false)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setShowEditor(false)}>&times;</button>
             </div>
-            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+            <div className="modal-body">
+              <div className="layout-grid" style={{ marginBottom: '1.5rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>Rank Name</label>
-                  <input type="text" value={rankName} onChange={e => setRankName(e.target.value)}
+                  <input aria-label="Rank Name" type="text" value={rankName} onChange={e => setRankName(e.target.value)}
                     placeholder="e.g. Moderator" disabled={editingRank?.is_builtin} />
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>Rank Color</label>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <input type="color" value={rankColor} onChange={e => setRankColor(e.target.value)}
+                    <input aria-label="Rank Color" type="color" value={rankColor} onChange={e => setRankColor(e.target.value)}
                       style={{ padding: 0, width: 40, height: 38, border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', cursor: 'pointer', background: 'none' }} />
-                    <input type="text" value={rankColor} onChange={e => setRankColor(e.target.value)} placeholder="#3b82f6" style={{ flex: 1 }} />
+                    <input aria-label="Rank Color" type="text" value={rankColor} onChange={e => setRankColor(e.target.value)} placeholder="#3b82f6" style={{ flex: 1 }} />
                   </div>
                 </div>
               </div>
 
               <h4 style={{ marginBottom: '0.75rem' }}>Permissions Matrix</h4>
-              <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: servers.length > 3 ? '600px' : undefined }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    <th style={{ padding: 8, whiteSpace: 'nowrap' }}>Permission</th>
-                    <th style={{ padding: 8, whiteSpace: 'nowrap' }}>Global</th>
-                    {servers.map(s => <th key={s.id} style={{ padding: 8, whiteSpace: 'nowrap' }}>{s.name}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    const rows = [];
-                    let lastGroup = '';
-                    allPerms.forEach(p => {
-                      if (p.group !== lastGroup) {
-                        lastGroup = p.group;
-                        rows.push(
-                          <tr key={`g-${p.group}`} style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
-                            <td colSpan={servers.length + 2} style={{ padding: '6px 8px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--accent)' }}>{p.group}</td>
-                          </tr>
-                        );
-                      }
-                      const isGlobal = localGlobalPerms.includes(p.key);
-                      rows.push(
-                        <tr key={p.key} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: 8 }}>
-                            <div style={{ fontWeight: 600 }}>{p.label}</div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.key}</div>
-                          </td>
-                          <td style={{ padding: 8 }}>
-                            <input type="checkbox" checked={isGlobal} onChange={e => toggleGlobalPerm(p.key, e.target.checked)} />
-                          </td>
-                          {servers.map(s => {
-                            const isDisabled = p.globalOnly || p.key === 'account.manage' || p.key === 'panel.settings';
-                            const isServer = (localServerPerms[s.id] || []).includes(p.key);
-                            return (
-                              <td key={s.id} style={{ padding: 8 }}>
-                                {isDisabled
-                                  ? <span style={{ color: 'var(--text-muted)', opacity: 0.3 }}>—</span>
-                                  : <input type="checkbox" checked={isServer} onChange={e => toggleServerPerm(s.id, p.key, e.target.checked)} />
-                                }
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    });
-                    return rows;
-                  })()}
-                </tbody>
-              </table>
-              </div>
+              <PermissionMatrix
+                permissions={allPerms}
+                servers={servers}
+                getState={(permission, scope) => scope === 'global'
+                  ? { checked: localGlobalPerms.includes(permission.key) }
+                  : {
+                    checked: (localServerPerms[scope] || []).includes(permission.key),
+                    unavailable: permission.globalOnly || permission.key === 'account.manage' || permission.key === 'panel.settings'
+                  }}
+                onToggle={(permission, scope, checked) => scope === 'global'
+                  ? toggleGlobalPerm(permission.key, checked)
+                  : toggleServerPerm(scope, permission.key, checked)}
+              />
             </div>
             <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
               <button className="btn outline" onClick={() => setShowEditor(false)}>Cancel</button>
               <button className="btn primary" onClick={handleSaveRank}>Save Changes</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );
@@ -337,36 +300,10 @@ function RankCard({ rank: r, globalCount, serverCount, isAllGlobal, reorderMode,
   };
   const [rc, gc, bc] = hexToRgb(r.color || '#3b82f6');
 
-  const cardStyle = {
-    background: hovered && !reorderMode
-      ? `linear-gradient(135deg, rgba(${rc},${gc},${bc},0.08) 0%, var(--bg-card) 60%)`
-      : 'var(--bg-card)',
-    borderRadius: 'var(--radius)',
-    border: hovered && !reorderMode
-      ? `1px solid rgba(${rc},${gc},${bc},0.45)`
-      : isDragging
-        ? '1px dashed var(--accent)'
-        : isOver
-          ? `1px solid rgba(${rc},${gc},${bc},0.6)`
-          : '1px solid var(--border-color)',
-    borderLeft: `5px solid ${r.color || '#3b82f6'}`,
-    padding: '1.1rem 1.25rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-    cursor: reorderMode ? 'grab' : 'default',
-    transition: 'all 0.18s ease',
-    opacity: isDragging ? 0.4 : 1,
-    boxShadow: hovered && !reorderMode
-      ? `0 4px 20px rgba(${rc},${gc},${bc},0.18), 0 1px 4px rgba(0,0,0,0.2)`
-      : '0 1px 4px rgba(0,0,0,0.15)',
-    transform: isOver && !isDragging ? 'scale(1.01)' : 'none',
-    userSelect: 'none',
-  };
 
   return (
     <div
-      style={cardStyle}
+      className={`rank-card${reorderMode ? ' reorderable' : ''}${isOver ? ' drag-over' : ''}`} style={{ opacity: isDragging ? 0.4 : 1, borderLeftColor: r.color }}
       draggable={reorderMode}
       onDragStart={onDragStart}
       onDragEnter={onDragEnter}
@@ -388,27 +325,27 @@ function RankCard({ rank: r, globalCount, serverCount, isAllGlobal, reorderMode,
       )}
 
       {/* Color dot */}
-      <div style={{
-        width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+      <div className="rank-color-dot" style={{
+        borderRadius: '50%', flexShrink: 0,
         background: r.color || '#3b82f6',
         boxShadow: hovered ? `0 0 12px rgba(${rc},${gc},${bc},0.55)` : 'none',
         transition: 'box-shadow 0.18s ease',
       }} />
 
       {/* Name + perms */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="rank-main" style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 700, fontSize: '1rem', color: r.color || 'var(--text-primary)' }}>
             {r.name}
           </span>
           {r.is_builtin && (
-            <span style={{ fontSize: '0.68rem', padding: '0.12rem 0.5rem', borderRadius: 4,
+            <span style={{ fontSize: '0.875rem', padding: '0.12rem 0.5rem', borderRadius: 4,
               background: `rgba(${rc},${gc},${bc},0.12)`, color: r.color, fontWeight: 600, letterSpacing: '0.04em' }}>
               BUILT-IN
             </span>
           )}
         </div>
-        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
           {globalCount} global perm{globalCount !== 1 ? 's' : ''}
           {serverCount > 0 && ` · ${serverCount} server perm${serverCount !== 1 ? 's' : ''}`}
           {isAllGlobal && <span style={{ color: r.color, fontWeight: 600 }}> · ALL permissions</span>}
@@ -417,7 +354,7 @@ function RankCard({ rank: r, globalCount, serverCount, isAllGlobal, reorderMode,
 
       {/* Actions */}
       {!reorderMode && (
-        <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0, flexWrap: 'wrap' }}>
+        <div className="rank-row-actions" style={{ display: 'flex', gap: '0.4rem', flexShrink: 0, flexWrap: 'wrap' }}>
           <button className="btn outline small" onClick={onEdit}
             style={{ borderColor: hovered ? `rgba(${rc},${gc},${bc},0.5)` : undefined,
                      color: hovered ? r.color : undefined, transition: 'all 0.15s' }}>

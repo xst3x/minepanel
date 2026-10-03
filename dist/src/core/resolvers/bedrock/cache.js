@@ -1,3 +1,5 @@
+"use strict";
+const paths_1 = require("../../../paths");
 /**
  * cache.js
  * ────────
@@ -15,7 +17,7 @@
 'use strict';
 const fs = require('fs');
 const path = require("path");
-const CACHE_DIR = path.join(__dirname, '../../../../cache/resolvers');
+const CACHE_DIR = path.join(paths_1.PROJECT_ROOT, 'cache', 'resolvers');
 function ensureDir() {
     if (!fs.existsSync(CACHE_DIR))
         fs.mkdirSync(CACHE_DIR, { recursive: true });

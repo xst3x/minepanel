@@ -1,5 +1,5 @@
 "use strict";
-require('dotenv').config({ path: require('path').resolve(process.cwd(), '.env') });
+const { PROJECT_ROOT, ENV_FILE, SETTINGS_FILE, AVATARS_DIR } = require('./paths');
 require('./core/utils/envHelper').sanitizeSecrets();
 // --- Launcher Process Logic (must be the absolute first thing) ---
 if (process.env.MINEPANEL_SERVER !== 'true' && process.env.NODE_ENV !== 'test') {
@@ -11,7 +11,7 @@ if (process.env.MINEPANEL_SERVER !== 'true' && process.env.NODE_ENV !== 'test') 
     process.stdout.write(process.platform === 'win32' ? '\x1Bc' : '\x1B[2J\x1B[3J\x1B[H');
     // ─────────────────────────────────────────────────────────────────────────
     function getPortFromEnv() {
-        const envPath = path.resolve(process.cwd(), '.env');
+        const envPath = ENV_FILE;
         if (fs.existsSync(envPath)) {
             const content = fs.readFileSync(envPath, 'utf8');
             const match = content.match(/^PORT=(\d+)/m);
@@ -25,6 +25,7 @@ if (process.env.MINEPANEL_SERVER !== 'true' && process.env.NODE_ENV !== 'test') 
         const currentPort = getPortFromEnv();
         console.log(`[Launcher] Starting MinePanel server on port ${currentPort}...`);
         const child = spawn(process.execPath, [__filename], {
+            cwd: PROJECT_ROOT,
             stdio: 'inherit',
             env: { ...process.env, MINEPANEL_SERVER: 'true' }
         });
@@ -80,8 +81,6 @@ else {
     const { statsRouter, statsConfigRouter } = require('./routes/statsRoutes');
     const docsRoutes = require('./routes/docsRoutes');
     const automationRoutes = require('./routes/automationRoutes');
-    const worldRoutes = require('./routes/worldRoutes');
-    const serverApiKeyManagementRoutes = require('./routes/serverApiKeyManagementRoutes');
     const automationEngine = require('./core/automationEngine');
     const statsCollector = require('./core/statsCollector');
     const processManager = require('./core/processManager');
@@ -95,6 +94,8 @@ else {
     const jwt = require('jsonwebtoken');
     const logger = require('./core/utils/logger');
     const executionManager = require('./core/executionManager');
+    // Host timezone — used for the Overview "Server Timezone" card and stats payloads.
+    const HOST_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     const app = express();
     // --- HTTPS / HTTP server setup ---
     let server;
@@ -105,8 +106,8 @@ else {
         const fs = require('fs');
         const path = require('path');
         const net = require('net');
-        const keyPath = require('path').resolve(process.cwd(), CONFIG.HTTPS_KEY);
-        const certPath = require('path').resolve(process.cwd(), CONFIG.HTTPS_CERT);
+        const keyPath = path.resolve(PROJECT_ROOT, CONFIG.HTTPS_KEY);
+        const certPath = path.resolve(PROJECT_ROOT, CONFIG.HTTPS_CERT);
         if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
             console.error(`[HTTPS] Certificate files not found!`);
             process.exit(1);
@@ -174,7 +175,16 @@ else {
         res.setHeader('X-Content-Type-Options', 'nosniff');
         if (CONFIG.HTTPS_ENABLED)
             res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-        res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' ws: wss: https:; frame-ancestors 'none'");
+        res.setHeader('Content-Security-Policy', [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline'",
+            "font-src 'self' data:",
+            "img-src 'self' data: blob: https:",
+            "connect-src 'self' ws: wss: https:",
+            "worker-src 'self' blob:",
+            "frame-ancestors 'none'",
+        ].join('; '));
         res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
         res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
         next();
@@ -188,16 +198,14 @@ else {
         if (cachedSettings && (now - lastCacheTime < 30000))
             return cachedSettings;
         try {
-            const settingsPath = path.resolve(process.cwd(), 'settings.json');
+            const settingsPath = SETTINGS_FILE;
             if (fs.existsSync(settingsPath)) {
                 cachedSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
                 lastCacheTime = now;
                 return cachedSettings;
             }
         }
-        catch (_) {
-            logger.warn('[Settings] Failed to read settings.json');
-        }
+        catch (_) { }
         cachedSettings = {};
         lastCacheTime = now;
         return cachedSettings;
@@ -212,13 +220,11 @@ else {
             return next();
         return globalRateLimiter(req, res, next);
     });
-    app.use(express.static(path.join(process.cwd(), 'src', 'public')));
+    app.use(express.static(path.join(PROJECT_ROOT, 'src', 'public')));
     app.get('/health', (req, res) => {
-        res.json({ status: 'ok', version: require('../package.json').version, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
+        res.json({ status: 'ok', version: require(path.join(PROJECT_ROOT, 'package.json')).version, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
     });
-    app.use('/avatars', express.static(process.env.DATA_DIR
-        ? require('path').join(process.env.DATA_DIR, 'avatars')
-        : path.join(process.cwd(), 'data', 'avatars')));
+    app.use('/avatars', express.static(AVATARS_DIR));
     app.get('/metrics', (req, res) => {
         const metricsAuthDisabled = process.env.METRICS_AUTH === 'false';
         if (!metricsAuthDisabled) {
@@ -228,8 +234,7 @@ else {
             try {
                 jwt.verify(token, SECRET_KEY);
             }
-            catch (err) {
-                logger.warn('[Metrics] Invalid token attempt');
+            catch (_) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
         }
@@ -268,11 +273,9 @@ else {
     app.use('/api/stats/config', statsConfigRouter);
     app.use('/api/docs', docsRoutes);
     app.use('/api/servers/:serverId/automation', automationRoutes);
-    app.use('/api/servers/:serverId/worlds', worldRoutes);
-    app.use('/api/servers/:serverId/api-keys', serverApiKeyManagementRoutes);
     // SPA catch-all — trimite index.html pentru orice rută non-API (React Router)
     app.get(/^(?!\/api\/).*$/, (req, res) => {
-        res.sendFile(path.join(process.cwd(), 'src', 'public', 'index.html'));
+        res.sendFile(path.join(PROJECT_ROOT, 'src', 'public', 'index.html'));
     });
     app.use((err, req, res, next) => {
         if (err.message === 'Not allowed by CORS')
@@ -292,6 +295,7 @@ else {
         }
         let authenticated = false;
         let canWrite = false;
+        let canChatSend = false;
         let authTimeout = setTimeout(() => { if (!authenticated)
             ws.close(4002, 'Authentication timeout'); }, 5000);
         let statsInterval = null;
@@ -309,6 +313,7 @@ else {
                             try {
                                 const canRead = await hasPermission(user.id, serverId, 'server.console.read');
                                 canWrite = await hasPermission(user.id, serverId, 'server.console.write');
+                                canChatSend = await hasPermission(user.id, serverId, 'server.console.chat.send');
                                 if (!canRead) {
                                     ws.close(4003, 'Forbidden');
                                     return;
@@ -339,15 +344,13 @@ else {
                                     if (ws.readyState !== 1)
                                         return;
                                     try {
-                                        ws.send(JSON.stringify({ type: 'stats', data: await executionManager.getStats(serverId) }));
+                                        const stats = await executionManager.getStats(serverId);
+                                        ws.send(JSON.stringify({ type: 'stats', data: { ...stats, timezone: HOST_TIMEZONE } }));
                                     }
-                                    catch (err) {
-                                        logger.error('[WebSocket] Stats interval error:', err);
-                                    }
-                                }, 2000);
+                                    catch (_) { }
+                                }, 500);
                             }
                             catch (e) {
-                                logger.error('[WebSocket] Auth handler error:', e);
                                 ws.close(5000, 'Internal Server Error');
                             }
                         });
@@ -364,10 +367,21 @@ else {
                     }
                     processManager.sendCommand(serverId, parsed.data);
                 }
+                if (parsed.type === 'chat') {
+                    // Chat is always executed as `/say <raw>` — the raw text can never
+                    // inject arbitrary commands. Permission is enforced server-side.
+                    if (!canChatSend) {
+                        ws.send(JSON.stringify({ type: 'chat_error', data: 'Access denied: Missing server.console.chat.send permission.' }));
+                        return;
+                    }
+                    // Replace embedded newlines so a crafted payload can never smuggle
+                    // a second console command through `/say`.
+                    const text = typeof parsed.data === 'string' ? parsed.data.replace(/[\r\n]+/g, ' ').trim().slice(0, 256) : '';
+                    if (text)
+                        processManager.sendCommand(serverId, `/say ${text}`);
+                }
             }
-            catch (e) {
-                logger.error('[WebSocket] Message handler error:', e);
-            }
+            catch (e) { }
         });
         ws.on('close', () => {
             clearTimeout(authTimeout);
@@ -391,7 +405,7 @@ else {
         if (typeof versionManager.init === 'function')
             versionManager.init();
         const { dbRun } = require('./db/database');
-        const cleanupInterval = setInterval(async () => {
+        setInterval(async () => {
             try {
                 await dbRun('DELETE FROM account_creation_tokens WHERE expires_at < ?', [new Date().toISOString()]);
             }
@@ -399,7 +413,6 @@ else {
                 logger.error('[Cleanup Error]', err);
             }
         }, 60 * 60 * 1000);
-        cleanupInterval.unref();
         try {
             await migrateServerDirectories();
             logger.info('Server directory migration complete.');
@@ -528,19 +541,14 @@ else {
                 try {
                     await require('./core/discord/discordManager').destroyAll();
                 }
-                catch (e) {
-                    logger.warn('[Shutdown] Discord manager error: ' + (e.message || e));
-                }
+                catch (e) { }
                 try {
                     require('./core/ftpServer').stopFtpServer();
                 }
-                catch (e) {
-                    logger.warn('[Shutdown] FTP server error: ' + (e.message || e));
-                }
+                catch (e) { }
                 statsCollector.stop();
                 server.close(() => { process.exit(100); });
-                const restartTimeout = setTimeout(() => process.exit(100), 2000);
-                restartTimeout.unref();
+                setTimeout(() => process.exit(100), 2000);
             }
             catch (err) {
                 logger.error('[Server] Error in changePortAndRestart:', err);
@@ -571,15 +579,11 @@ else {
         try {
             require('./core/update/UpdateScheduler').stop();
         }
-        catch (e) {
-            logger.warn('[Shutdown] UpdateScheduler error: ' + (e.message || e));
-        }
+        catch (_) { }
         try {
             await require('./core/discord/discordManager').destroyAll();
         }
-        catch (e) {
-            logger.warn('[Shutdown] Discord error: ' + (e.message || e));
-        }
+        catch (_) { }
         process.exit(0);
     };
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));

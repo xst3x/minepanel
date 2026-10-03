@@ -1,3 +1,4 @@
+import Section from '../components/Section.tsx';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { parseMarkdown } from '../lib/markdown.ts';
@@ -123,7 +124,7 @@ export default function Docs() {
       </div>
 
       {error && (
-        <div className="card" style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>
+        <Section className="" style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</Section>
       )}
 
       <div className="docs-layout" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -131,7 +132,7 @@ export default function Docs() {
         {/* ── Sidebar ────────────────────────────────────────────────── */}
         <div className="docs-sidebar" style={{ alignSelf: 'flex-start' }}>
           {loading ? (
-            <div className="text-muted" style={{ fontSize: '0.85rem', padding: '0.5rem' }}>Loading…</div>
+            <div className="text-muted" style={{ fontSize: '0.875rem', padding: '0.5rem' }}>Loading…</div>
           ) : (
             orderedCategories.map(cat => {
               const isOpen = !!openCats[cat];
@@ -174,17 +175,17 @@ export default function Docs() {
         {/* ── Content ────────────────────────────────────────────────── */}
         <div style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
           {loading && (
-            <div className="card" style={{ color: 'var(--text-muted)' }}>Loading documentation…</div>
+            <Section className="" style={{ color: 'var(--text-muted)' }}>Loading documentation…</Section>
           )}
           {!loading && activeDoc && (
-            <div
-              className="card doc-content"
+            <Section
+              className="doc-content"
               style={{ lineHeight: 1.7 }}
               dangerouslySetInnerHTML={{ __html: parseMarkdown(activeDoc.content) }}
             />
           )}
           {!loading && !activeDoc && !error && (
-            <div className="card text-muted">No documentation available.</div>
+            <Section className="text-muted">No documentation available.</Section>
           )}
         </div>
 

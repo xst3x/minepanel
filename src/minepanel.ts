@@ -1,4 +1,4 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+const { PROJECT_ROOT, ENV_FILE, SETTINGS_FILE, AVATARS_DIR } = require('./paths');
 require('./core/utils/envHelper').sanitizeSecrets();
 
 // --- Launcher Process Logic (must be the absolute first thing) ---
@@ -13,7 +13,7 @@ if (process.env.MINEPANEL_SERVER !== 'true' && process.env.NODE_ENV !== 'test') 
     // ─────────────────────────────────────────────────────────────────────────
 
     function getPortFromEnv() {
-        const envPath = path.resolve(__dirname, '../.env');
+        const envPath = ENV_FILE;
         if (fs.existsSync(envPath)) {
             const content = fs.readFileSync(envPath, 'utf8');
             const match = content.match(/^PORT=(\d+)/m);
@@ -29,6 +29,7 @@ if (process.env.MINEPANEL_SERVER !== 'true' && process.env.NODE_ENV !== 'test') 
         console.log(`[Launcher] Starting MinePanel server on port ${currentPort}...`);
         
         const child = spawn(process.execPath, [__filename], {
+            cwd: PROJECT_ROOT,
             stdio: 'inherit',
             env: { ...process.env, MINEPANEL_SERVER: 'true' }
         });
@@ -113,8 +114,8 @@ if (CONFIG.HTTPS_ENABLED) {
     const path = require('path')
     const net = require('net')
     
-    const keyPath = require('path').resolve(__dirname, '..', CONFIG.HTTPS_KEY);
-    const certPath = require('path').resolve(__dirname, '..', CONFIG.HTTPS_CERT);
+    const keyPath = path.resolve(PROJECT_ROOT, CONFIG.HTTPS_KEY);
+    const certPath = path.resolve(PROJECT_ROOT, CONFIG.HTTPS_CERT);
     if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
         console.error(`[HTTPS] Certificate files not found!`);
         process.exit(1);
@@ -206,7 +207,7 @@ const getSettings = () => {
     const now = Date.now();
     if (cachedSettings && (now - lastCacheTime < 30000)) return cachedSettings;
     try {
-        const settingsPath = path.resolve(__dirname, '../settings.json');
+        const settingsPath = SETTINGS_FILE;
         if (fs.existsSync(settingsPath)) {
             cachedSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
             lastCacheTime = now;
@@ -228,16 +229,14 @@ app.use('/api/', (req, res, next) => {
     return globalRateLimiter(req, res, next);
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(PROJECT_ROOT, 'src', 'public')));
 
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', version: require('../package.json').version, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', version: require(path.join(PROJECT_ROOT, 'package.json')).version, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
 });
 
 app.use('/avatars', express.static(
-    process.env.DATA_DIR
-        ? require('path').join(process.env.DATA_DIR, 'avatars')
-        : path.join(__dirname, '../data/avatars')
+    AVATARS_DIR
 ));
 
 app.get('/metrics', (req, res) => {
@@ -286,7 +285,7 @@ app.use('/api/servers/:serverId/automation', automationRoutes);
 
 // SPA catch-all — trimite index.html pentru orice rută non-API (React Router)
 app.get(/^(?!\/api\/).*$/, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(PROJECT_ROOT, 'src', 'public', 'index.html'));
 });
 
 app.use((err, req, res, next) => {

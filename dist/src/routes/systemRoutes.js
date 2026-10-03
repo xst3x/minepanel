@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../paths");
 const express = require("express");
 const os = require("os");
 const fs = require("fs");
@@ -6,8 +7,6 @@ const fsp = require('fs').promises;
 const path = require("path");
 const authModule = require("../core/auth");
 const { authenticateToken } = authModule;
-const databaseModule = require("../db/database");
-const { dbGet } = databaseModule;
 const permissionsModule = require("../core/permissions");
 const { hasPermission } = permissionsModule;
 const errorsModule = require("../core/errors");
@@ -19,9 +18,6 @@ const ftpServerModule = require("../core/ftpServer");
 const { initFtpServer, stopFtpServer, isFtpRunning } = ftpServerModule;
 const logger = require("../core/utils/logger");
 const router = express.Router();
-const SETTINGS_FILE = process.env.DATA_DIR
-    ? path.join(process.env.DATA_DIR, 'settings.json')
-    : path.resolve(__dirname, '../../settings.json');
 const getSettings = async () => {
     const defaults = {
         loginCooldown: 30,
@@ -37,18 +33,16 @@ const getSettings = async () => {
         defaultJavaPath: 'java'
     };
     try {
-        if (await fsp.access(SETTINGS_FILE).then(() => true).catch(() => false)) {
-            const data = await fsp.readFile(SETTINGS_FILE, 'utf8');
+        if (await fsp.access(paths_1.SETTINGS_FILE).then(() => true).catch(() => false)) {
+            const data = await fsp.readFile(paths_1.SETTINGS_FILE, 'utf8');
             return { ...defaults, ...JSON.parse(data) };
         }
     }
-    catch (e) {
-        logger.warn('[SystemRoutes] Failed to read settings file: ' + (e.message || e));
-    }
-    return defaults;
+    catch (_) { }
+    return { ...defaults };
 };
 const saveSettings = async (data) => {
-    await fsp.writeFile(SETTINGS_FILE, JSON.stringify(data, null, 2), 'utf8');
+    await fsp.writeFile(paths_1.SETTINGS_FILE, JSON.stringify(data, null, 2), 'utf8');
 };
 let lastCpuUsage = { user: 0, system: 0, idle: 0 };
 let cachedCpuPercent = 0;
@@ -269,9 +263,7 @@ router.get('/detect-java', authenticateToken, async (req, res) => {
                 }
             }
         }
-        catch (e) {
-            logger.warn('[SystemRoutes] Failed to detect bundled Java: ' + (e.message || e));
-        }
+        catch (_) { }
     }
     else {
         // Linux / macOS

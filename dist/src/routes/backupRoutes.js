@@ -135,7 +135,7 @@ router.post('/:filename/restore', authenticateToken, checkPermission('server.bac
                     return;
                 }
                 if (entry.type === 'Directory') {
-                    fsp.mkdir(entryPath, { recursive: true }).catch(err => { logger.warn('[Backup] Restore mkdir error: ' + (err.message || err)); });
+                    fsp.mkdir(entryPath, { recursive: true }).catch(() => { });
                     entry.autodrain();
                 }
                 else {
@@ -177,9 +177,7 @@ const runScheduledBackups = () => {
                         continue;
                 }
             }
-            catch (e) {
-                logger.warn('[Backup] Failed to check existing backups: ' + (e.message || e));
-            }
+            catch (_) { }
             try {
                 await createBackup(serverDir, 'auto', s.backup_includes || 'all');
                 logger.info(`[Backup] Auto backup completed for server ${s.id}`);

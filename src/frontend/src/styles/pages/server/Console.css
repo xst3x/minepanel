@@ -1,16 +1,15 @@
-/* ── Console container & toolbar ──────────────────────────────────── */
+@layer components {
 .console-container {
   display: flex;
   flex-direction: column;
-  height: 72vh;
+  height: 72dvh;
   background: var(--bg-elevated, #111);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-  max-width: 100% !important;
+  max-width: 100%;
 }
-
 .console-toolbar {
   display: flex;
   justify-content: space-between;
@@ -21,14 +20,12 @@
   flex-shrink: 0;
   height: 46px;
 }
-
 .console-tabs {
   display: flex;
   align-items: stretch;
   height: 100%;
   gap: 2px;
 }
-
 .ct-tab {
   background: transparent;
   border: none;
@@ -43,11 +40,8 @@
 }
 .ct-tab:hover { color: var(--text-primary); }
 .ct-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
 .console-toolbar-right { display: flex; align-items: center; gap: 10px; }
 .console-count { font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); }
-
-/* ── Console output ──────────────────────────────────────────────── */
 .console-output {
   flex: 1;
   overflow-y: auto;
@@ -57,19 +51,14 @@
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-all;
-  max-width: 100% !important;
-  overflow-x: auto !important;
-  /* Plain clean background — no CRT scanlines. Opaque so the floating
-     background polygons never bleed through behind the log text. */
+  max-width: 100%;
+  overflow-x: auto;
   background: var(--bg-card-solid, #111);
 }
-
 .console-output::-webkit-scrollbar { width: 6px; }
 .console-output::-webkit-scrollbar-track { background: transparent; }
 .console-output::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
-
 .cl-line { min-height: 1em; }
-
 .cl-info    { color: var(--text-secondary); }
 .cl-warn    { color: #f97316; }
 .cl-error   { color: #ef4444; }
@@ -80,8 +69,6 @@
 .cl-leave   { color: #eab308; }
 .cl-death   { color: #f87171; }
 .cl-sys     { color: #a855f7; }
-
-/* ── Minecraft color palette (§/& codes) ─────────────────────────── */
 .mc-black        { color: #000000; }
 .mc-dark-blue    { color: #0000aa; }
 .mc-dark-green   { color: #00aa00; }
@@ -108,10 +95,6 @@
   50% { opacity: 0.4; }
   100% { opacity: 1; }
 }
-
-/* ── Chat tab ────────────────────────────────────────────────────── */
-/* Shares the same base styling as the console output so both tabs look
-   identical — same background, padding, font and line height. */
 .chat-output {
   flex: 1;
   overflow-y: auto;
@@ -120,26 +103,22 @@
   font-size: 13px;
   line-height: 1.55;
   white-space: pre-wrap;
-  max-width: 100% !important;
-  overflow-x: auto !important;
+  max-width: 100%;
+  overflow-x: auto;
   background: var(--bg-card-solid, #111);
 }
 .chat-output::-webkit-scrollbar { width: 6px; }
 .chat-output::-webkit-scrollbar-track { background: transparent; }
 .chat-output::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
-
 .chat-row { display: flex; align-items: baseline; gap: 6px; padding: 2px 0; }
 .chat-player { color: #e2e8f0; font-weight: 700; }
 .chat-colon { color: var(--text-secondary); }
 .chat-text { color: #94a3b8; word-break: break-word; }
-
 .chat-row.chat-server .chat-player,
 .chat-row.chat-server .chat-text { color: #94a3b8; font-style: italic; font-weight: 600; }
-
 .chat-event { color: #eab308; font-size: 13px; }
 .chat-death { color: #f87171; font-size: 13.5px; }
 .chat-empty { color: var(--text-secondary); text-align: center; padding-top: 80px; font-size: 13px; }
-
 .chat-error {
   margin: 0 14px 10px;
   padding: 8px 12px;
@@ -151,8 +130,6 @@
   font-family: var(--font-mono);
   flex-shrink: 0;
 }
-
-/* ── Input bars ──────────────────────────────────────────────────── */
 .console-input-bar,
 .chat-input-bar {
   display: flex;
@@ -163,14 +140,12 @@
   background: var(--bg-elevated, #111);
   flex-shrink: 0;
 }
-
 .console-prompt {
   color: var(--accent);
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: 15px;
 }
-
 #terminal-input,
 #chat-input {
   flex: 1;
@@ -182,23 +157,8 @@
   font-size: 13px;
   min-width: 0;
 }
-
-/* Mobile: 16px so iOS Safari doesn't auto-zoom the field on focus.
-   Desktop keeps the compact 13px console look. */
-@media (max-width: 768px) {
-  #terminal-input,
-  #chat-input {
-    font-size: 16px;
-  }
-  .console-input-bar,
-  .chat-input-bar {
-    padding: 8px 12px;
-  }
-}
-/* Chat input matches the console input — same mono font and size. */
 #terminal-input:disabled,
 #chat-input:disabled { color: var(--text-secondary); }
-
 .console-readonly {
   padding: 8px 16px;
   border-top: 1px solid var(--border);
@@ -207,4 +167,5 @@
   font-size: 12px;
   color: var(--text-secondary);
   font-family: var(--font-mono);
+}
 }

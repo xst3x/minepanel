@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../../paths");
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
@@ -46,7 +47,7 @@ const fetchJson = (url) => {
         }).on('error', reject);
     });
 };
-const CACHE_DIR = path.join(__dirname, '../../../cache/jars');
+const CACHE_DIR = path.join(paths_1.PROJECT_ROOT, 'cache', 'jars');
 if (!fs.existsSync(CACHE_DIR)) {
     fs.mkdirSync(CACHE_DIR, { recursive: true });
 }

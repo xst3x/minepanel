@@ -3,7 +3,6 @@
 // Calculates disk usage for a server directory (recursive, non-blocking).
 const fs = require('fs');
 const path = require("path");
-const logger = require('./utils/logger');
 /**
  * Returns total size in bytes of all files under `dirPath`.
  * Returns 0 if the directory doesn't exist or can't be read.
@@ -29,9 +28,7 @@ async function getDirSize(dirPath) {
         const sizes = await Promise.all(tasks);
         total = sizes.reduce((a, b) => a + b, 0);
     }
-    catch (e) {
-        logger.warn('[diskUsage] Failed to sum directory sizes: ' + (e.message || e));
-    }
+    catch (_) { }
     return total;
 }
 module.exports = { getDirSize };

@@ -1,3 +1,4 @@
+import { MODPACK_ICON_CACHE_DIR } from '../paths';
 /**
  * Modpack browser API — Modrinth search, detail, versions, and server creation.
  */
@@ -30,9 +31,7 @@ const { createModpackServer } = modpackInstallerModule;
 
 const router = express.Router();
 
-const ICON_CACHE_DIR = process.env.DATA_DIR
-    ? path.join(process.env.DATA_DIR, 'modpack-icon-cache')
-    : path.resolve(__dirname, '../../cache/modpack-icons');
+const ICON_CACHE_DIR = MODPACK_ICON_CACHE_DIR;
 
 if (!fs.existsSync(ICON_CACHE_DIR)) {
     try { fs.mkdirSync(ICON_CACHE_DIR, { recursive: true }); } catch (_) {}

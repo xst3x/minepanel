@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../paths");
 /**
  * Modpack browser API — Modrinth search, detail, versions, and server creation.
  */
@@ -22,9 +23,7 @@ const { MODPACK_CATEGORIES, LOADERS, searchModpacks, getGameVersions, getProject
 const modpackInstallerModule = require("../core/services/modpackInstaller");
 const { createModpackServer } = modpackInstallerModule;
 const router = express.Router();
-const ICON_CACHE_DIR = process.env.DATA_DIR
-    ? path.join(process.env.DATA_DIR, 'modpack-icon-cache')
-    : path.resolve(__dirname, '../../cache/modpack-icons');
+const ICON_CACHE_DIR = paths_1.MODPACK_ICON_CACHE_DIR;
 if (!fs.existsSync(ICON_CACHE_DIR)) {
     try {
         fs.mkdirSync(ICON_CACHE_DIR, { recursive: true });

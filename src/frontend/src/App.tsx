@@ -12,6 +12,7 @@ import Settings from './pages/Settings.tsx';
 import Discord from './pages/Discord.tsx';
 import Docs from './pages/Docs.tsx';
 import Profile from './pages/Profile.tsx';
+import Accounts from './pages/Accounts.tsx';
 
 import ServerOverview from './pages/server/Overview.tsx';
 import ServerConsole from './pages/server/Console.tsx';
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/discord" element={<Discord />} />
         <Route path="/docs/:category?/:page?" element={<Docs />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/accounts" element={<Accounts />} />
 
         <Route path="/server/:id" element={<ServerLayout />}>
           <Route index element={<Navigate to="overview" replace />} />

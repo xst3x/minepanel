@@ -1,9 +1,10 @@
+import { PROJECT_ROOT } from '../paths';
 import fs = require('fs')
 import path = require('path')
 const { fetchAllVersions } = require('./versionFetcher')
 import logger = require('./utils/logger')
 
-const CACHE_FILE = path.resolve(__dirname, '../../cache/versions.json');
+const CACHE_FILE = path.join(PROJECT_ROOT, 'cache', 'versions.json');
 
 // Default fallbacks in case APIs fail and we have no cache yet
 const DEFAULTS = {

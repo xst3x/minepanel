@@ -139,6 +139,55 @@ router.get('/list', authenticateToken, checkPermission('server.files.read'), asy
     }
 });
 
+// Fetch detailed metadata only when the file manager's Info action is opened.
+router.get('/info', authenticateToken, checkPermission('server.files.read'), async (req: any, res: any) => {
+    if (typeof req.query.path !== 'string' || !req.query.path) return sendError(res, E.FILE_PATH_REQUIRED, 400);
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const serverDir = getServerDir(server);
+        const safePath = getSafePath(serverDir, req.query.path);
+        const rootReal = await fsp.realpath(serverDir);
+        const targetReal = await fsp.realpath(safePath);
+        const relative = path.relative(rootReal, targetReal);
+        if (relative.startsWith('..') || path.isAbsolute(relative)) return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        const stats = await fsp.lstat(safePath);
+        if (stats.isSymbolicLink()) return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        const isDirectory = stats.isDirectory();
+        let size = isDirectory ? 0 : stats.size;
+        let folderCount = 0;
+        let fileCount = 0;
+        if (isDirectory) {
+            const pending = [safePath];
+            while (pending.length) {
+                const directory = pending.pop()!;
+                const children = await fsp.readdir(directory, { withFileTypes: true });
+                for (const child of children) {
+                    if (child.isSymbolicLink()) continue;
+                    const childPath = path.join(directory, child.name);
+                    if (child.isDirectory()) { folderCount++; pending.push(childPath); }
+                    else if (child.isFile()) { fileCount++; size += (await fsp.stat(childPath)).size; }
+                }
+            }
+        }
+        res.json({
+            name: path.basename(safePath),
+            isDirectory,
+            createdAt: stats.birthtimeMs > 0 ? stats.birthtime : null,
+            modifiedAt: stats.mtime,
+            size,
+            folderCount: isDirectory ? folderCount : undefined,
+            fileCount: isDirectory ? fileCount : undefined,
+            extension: isDirectory ? undefined : path.extname(safePath).slice(1).toLowerCase()
+        });
+    } catch (e: any) {
+        if (e.code === 'ENOENT') return sendError(res, E.FILE_NOT_FOUND, 404);
+        if (e.message?.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        logger.error(`[fileRoutes] info error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+
 // Read file
 router.get('/read', authenticateToken, checkPermission('server.files.read'), async (req: any, res: any) => {
     if (!req.query.path) return sendError(res, E.FILE_PATH_REQUIRED, 400);

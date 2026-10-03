@@ -1,76 +1,15 @@
-import { useState, useEffect } from 'react';
+import BrandLogo from './BrandLogo.tsx';
+import { createPortal } from 'react-dom';
+import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.tsx';
 import { api } from '../lib/api.ts';
-import BgCanvas from './BgCanvas.tsx';
 import { ServerModalsProvider, useServerModals } from '../context/ServerModalsContext.tsx';
 import GlobalServerModals from './GlobalServerModals.tsx';
 import { showConfirm, toast } from './Toast.tsx';
 import '../styles/components/AppLayout.css';
 
 // Logo SVG Components
-const LogoIcon = () => (
-  <svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" className="sidebar-logo">
-    <defs>
-      <filter id="logo-glow-f">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
-        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    </defs>
-    {/* Three faces as a single shape group — solid fills derived from accent, no stroke anywhere */}
-    <polygon points="128,52 196,90 128,128 60,90"   fill="hsl(149,90%,42%)"  stroke="none"/>
-    <polygon points="60,90 128,128 128,204 60,166"   fill="hsl(149,80%,18%)"  stroke="none"/>
-    <polygon points="128,128 196,90 196,166 128,204" fill="hsl(149,80%,28%)"  stroke="none"/>
-    {/* Circuit traces */}
-    <g filter="url(#logo-glow-f)" opacity="0.85">
-      <polyline points="60,90 28,70 14,70"    fill="none" stroke="var(--accent,hsl(149,100%,47%))" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-      <polyline points="196,90 228,70 242,70"  fill="none" stroke="var(--accent,hsl(149,100%,47%))" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-      <polyline points="60,166 28,186 14,186"  fill="none" stroke="var(--accent,hsl(149,100%,47%))" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-      <polyline points="196,166 228,186 242,186" fill="none" stroke="var(--accent,hsl(149,100%,47%))" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="128" y1="204" x2="128" y2="234" stroke="var(--accent,hsl(149,100%,47%))" strokeWidth="1.4" strokeLinecap="round"/>
-      <circle cx="28"  cy="70"  r="2.5" fill="var(--accent,hsl(149,100%,47%))"/>
-      <circle cx="228" cy="70"  r="2.5" fill="var(--accent,hsl(149,100%,47%))"/>
-      <circle cx="28"  cy="186" r="2.5" fill="var(--accent,hsl(149,100%,47%))"/>
-      <circle cx="228" cy="186" r="2.5" fill="var(--accent,hsl(149,100%,47%))"/>
-      <circle cx="14"  cy="70"  r="4"   fill="var(--accent,hsl(149,100%,47%))"/>
-      <circle cx="242" cy="70"  r="4"   fill="var(--accent,hsl(149,100%,47%))"/>
-      <circle cx="14"  cy="186" r="4"   fill="var(--accent,hsl(149,100%,47%))"/>
-      <circle cx="242" cy="186" r="4"   fill="var(--accent,hsl(149,100%,47%))"/>
-      <circle cx="128" cy="234" r="4"   fill="var(--accent,hsl(149,100%,47%))"/>
-    </g>
-    {/* Power button on top face, centred at (128,90) */}
-    <g filter="url(#logo-glow-f)">
-      <line x1="128" y1="76" x2="128" y2="83" stroke="var(--accent,hsl(149,100%,47%))" strokeWidth="2.2" strokeLinecap="round"/>
-      <path d="M 114,84 A 14,14 0 1 0 142,84" fill="none" stroke="var(--accent,hsl(149,100%,47%))" strokeWidth="2.2" strokeLinecap="round"/>
-    </g>
-  </svg>
-);
-
-const FaviconIcon = (props) => (
-  <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" {...props}>
-    <polygon points="32,4  60,20 32,36 4,20"  fill="hsl(149,90%,42%)" stroke="none"/>
-    <polygon points="4,20  32,36 32,60 4,44"  fill="hsl(149,80%,18%)" stroke="none"/>
-    <polygon points="32,36 60,20 60,44 32,60" fill="hsl(149,80%,28%)" stroke="none"/>
-    <line x1="32" y1="13" x2="32" y2="17" stroke="var(--accent,hsl(149,100%,47%))" strokeWidth="1.4" strokeLinecap="round"/>
-    <path d="M 25,16 A 7,7 0 1 0 39,16" fill="none" stroke="var(--accent,hsl(149,100%,47%))" strokeWidth="1.4" strokeLinecap="round"/>
-  </svg>
-);
-
-// Inject SVG favicon — CSS vars can't work inside data URIs so we resolve --accent at runtime
-const FAVICON_SVG_TPL = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><polygon points="32,4 60,20 32,36 4,20" fill="hsl(149,90%,42%)" stroke="none"/><polygon points="4,20 32,36 32,60 4,44" fill="hsl(149,80%,18%)" stroke="none"/><polygon points="32,36 60,20 60,44 32,60" fill="hsl(149,80%,28%)" stroke="none"/><line x1="32" y1="13" x2="32" y2="17" stroke="__A__" stroke-width="1.4" stroke-linecap="round"/><path d="M 25,16 A 7,7 0 1 0 39,16" fill="none" stroke="__A__" stroke-width="1.4" stroke-linecap="round"/></svg>`;
-
-function useInjectFavicon() {
-  useEffect(() => {
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || 'hsl(149,100%,47%)';
-    const svg = FAVICON_SVG_TPL.replace(/__A__/g, accent);
-    const url = `data:image/svg+xml,${encodeURIComponent(svg)}`;
-    let link = document.querySelector("link[rel~='icon']");
-    if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
-    link.type = 'image/svg+xml';
-    link.href = url;
-  }, []);
-}
-
 function AppLayoutInner() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -87,7 +26,35 @@ function AppLayoutInner() {
   const [dragServerId, setDragServerId] = useState(null);
   const [dragOverServerId, setDragOverServerId] = useState(null);
 
-  useInjectFavicon();
+  const drawerRef = useRef(null);
+  const menuButtonRef = useRef(null);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const drawer = drawerRef.current as HTMLElement | null;
+    const main = document.getElementById('content-area');
+    const media = window.matchMedia('(min-width: 64rem)');
+    const touchInput = window.matchMedia('(hover: none) and (pointer: coarse)');
+    if (main) main.inert = true;
+    if (!touchInput.matches) drawer?.querySelector<HTMLElement>('button, a')?.focus({ preventScroll: true });
+    const onKey = (event) => {
+      if (event.key !== 'Tab' || !drawer) return;
+      const items = Array.from(drawer.querySelectorAll<HTMLElement>('button:not([disabled]), a[href]')).filter(el => el.getClientRects().length);
+      if (event.shiftKey && document.activeElement === items[0]) { event.preventDefault(); items.at(-1)?.focus({ preventScroll: true }); }
+      else if (!event.shiftKey && document.activeElement === items.at(-1)) { event.preventDefault(); items[0]?.focus({ preventScroll: true }); }
+    };
+    const onResize = () => { if (media.matches) setIsMobileMenuOpen(false); };
+    drawer?.addEventListener('keydown', onKey);
+    media.addEventListener('change', onResize);
+    return () => {
+      if (main) main.inert = false;
+      drawer?.removeEventListener('keydown', onKey);
+      media.removeEventListener('change', onResize);
+      if (!media.matches && !touchInput.matches) menuButtonRef.current?.focus({ preventScroll: true });
+    };
+  }, [isMobileMenuOpen]);
+
+
 
   const loadServers = async () => {
     try {
@@ -232,11 +199,11 @@ function AppLayoutInner() {
 
   return (
     <div id="app">
-      <BgCanvas />
+      <a className="skip-link" href="#content-area">Skip to content</a>
 
-      {/* ── Mobile Top Bar (fixed, outside main-view flow) ── */}
-      <header className="mobile-top-bar">
-        <button className="mobile-hamburger" aria-label="Toggle navigation menu"
+      {/* Keep mobile navigation outside the app scroll/stacking container. */}
+      {createPortal(<header className="mobile-top-bar">
+        <button ref={menuButtonRef} aria-controls="sidebar" className="mobile-hamburger" aria-label="Toggle navigation menu"
           aria-expanded={isMobileMenuOpen}
           onClick={() => setIsMobileMenuOpen(v => !v)}>
           <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -246,7 +213,7 @@ function AppLayoutInner() {
           </svg>
         </button>
         <div className="mobile-logo" style={{ opacity: isMobileMenuOpen ? 0 : 1, pointerEvents: isMobileMenuOpen ? 'none' : 'auto', transition: 'opacity 0.2s ease' }}>
-          <FaviconIcon style={{ width: '24px', height: '24px' }} />
+          <BrandLogo />
           <span>MinePanel</span>
         </div>
         <button className="mobile-user-circle" aria-label="Open user menu"
@@ -264,6 +231,8 @@ function AppLayoutInner() {
             <div className="mobile-user-dropdown" role="menu">
               <div className="dropdown-username">{user?.username || 'User'}</div>
               <button className="dropdown-item" role="menuitem"
+                onClick={() => { setIsUserDropdownOpen(false); navigate('/accounts'); }}>Switch Account</button>
+              <button className="dropdown-item" role="menuitem"
                 onClick={() => { setIsUserDropdownOpen(false); navigate('/profile'); }}>My Account</button>
               <button className="dropdown-item" role="menuitem"
                 onClick={() => { setIsUserDropdownOpen(false); toggleTheme(); }}>
@@ -274,7 +243,7 @@ function AppLayoutInner() {
             </div>
           </>
         )}
-      </header>
+      </header>, document.body)}
 
       {/* ── Main layout: sidebar + content ── */}
       <div id="main-view">
@@ -284,14 +253,14 @@ function AppLayoutInner() {
             onClick={() => setIsMobileMenuOpen(false)} />
         )}
 
-        <aside className={`sidebar${isMobileMenuOpen ? ' drawer-open' : ''}`} id="sidebar">
+        <aside ref={drawerRef} aria-label="Main navigation" className={`sidebar${isMobileMenuOpen ? ' drawer-open' : ''}`} id="sidebar">
           <button className="sidebar-close-btn" aria-label="Close menu"
             onClick={() => setIsMobileMenuOpen(false)}>
             &times;
           </button>
 
           <Link to="/panel" className="sidebar-brand" onClick={() => setIsMobileMenuOpen(false)}>
-            <LogoIcon />
+            <BrandLogo className="sidebar-logo" size={32} />
             <span>MinePanel</span>
           </Link>
 
@@ -330,7 +299,7 @@ function AppLayoutInner() {
                 >
                   <span className="sidebar-server-icon-wrap">
                     {sv.icon
-                      ? <img className="sidebar-server-icon" src={sv.icon} alt="" />
+                      ? <img loading="lazy" className="sidebar-server-icon" src={sv.icon} alt="" />
                       : <svg className="sidebar-server-icon sidebar-server-icon-default" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <rect x="2" y="2" width="20" height="8" rx="2"/>
                           <rect x="2" y="14" width="20" height="8" rx="2"/>
@@ -342,17 +311,17 @@ function AppLayoutInner() {
                 </Link>
               );
             })}
-            <button className="sidebar-item sidebar-create" onClick={() => { setIsMobileMenuOpen(false); handleCreateClick(); }}>
+            <button className="sidebar-item sidebar-create" type="button" onClick={() => { setIsMobileMenuOpen(false); handleCreateClick(); }}>
               <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
               </svg>
-              Create Server
+              <span>Create Server</span>
             </button>
-            <button className="sidebar-item sidebar-add" onClick={() => { setIsMobileMenuOpen(false); handleImportClick(); }}>
+            <button className="sidebar-item sidebar-add" type="button" onClick={() => { setIsMobileMenuOpen(false); handleImportClick(); }}>
               <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
-              Import Server
+              <span>Import Server</span>
             </button>
           </div>
 
@@ -420,18 +389,23 @@ function AppLayoutInner() {
                 <span id="sidebar-username">{user?.username || 'user'}</span>
               </div>
               <div className="sidebar-actions">
-                <button className="icon-btn" title="My Account" onClick={() => { setIsMobileMenuOpen(false); navigate('/profile'); }}>
+                <button aria-label="Switch Account" className="icon-btn" title="Switch Account" onClick={() => { setIsMobileMenuOpen(false); navigate('/accounts'); }}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </button>
+                <button aria-label="My Account" className="icon-btn" title="My Account" onClick={() => { setIsMobileMenuOpen(false); navigate('/profile'); }}>
                   <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                   </svg>
                 </button>
-                <button className="icon-btn" title="Toggle theme" onClick={toggleTheme}>
+                <button aria-label="Toggle theme" className="icon-btn" title="Toggle theme" onClick={toggleTheme}>
                   {themeMode === 'dark'
                     ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                     : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
                   }
                 </button>
-                <button className="icon-btn" title="Logout" onClick={handleLogout}>
+                <button aria-label="Logout" className="icon-btn" title="Logout" onClick={handleLogout}>
                   <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
                   </svg>
@@ -441,7 +415,7 @@ function AppLayoutInner() {
           </div>
         </aside>
 
-        <main className="content-area" id="content-area">
+        <main className="content-area" id="content-area" tabIndex={-1}>
           <div key={location.pathname.split('/')[1] || 'panel'} className="route-fade">
             <Outlet />
           </div>

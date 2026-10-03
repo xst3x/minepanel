@@ -1,0 +1,26 @@
+@layer components {
+  .permission-scope-picker { display: grid; gap: 8px; margin-bottom: 16px; }
+  .permission-scope-picker label { font-weight: 600; }
+  .permission-scope-picker select { width: 100%; min-height: 44px; font-size: 16px; }
+  .permission-checklist { display: block; }
+  .permission-table-scroll { display: none; }
+  .permission-group { border-bottom: 1px solid var(--border); }
+  .permission-group h5 { position: sticky; top: 0; z-index: 1; margin: 0; padding: 12px 0; background: var(--bg-surface); color: var(--accent); font-size: 14px; }
+  .permission-check-row { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 0; border-top: 1px solid var(--border); }
+  .permission-check-text { flex: 1; min-width: 0; display: grid; gap: 4px; }
+  .permission-check-text strong { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+  .permission-check-text code { font: 12px/1.4 var(--font-mono); color: var(--text-muted); overflow-wrap: anywhere; }
+  .permission-check-text small { color: var(--text-secondary); }
+  .permission-matrix input[type="checkbox"] { flex: 0 0 44px; width: 44px; height: 44px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  @media (min-width: 48rem) {
+    .permission-scope-picker, .permission-checklist { display: none; }
+    .permission-table-scroll { display: block; max-width: 100%; overflow-x: auto; }
+    .permission-table { width: 100%; min-width: max-content; border-collapse: collapse; }
+    .permission-table th, .permission-table td { min-width: 112px; padding: 12px; border-bottom: 1px solid var(--border); text-align: center; white-space: normal; }
+    .permission-table thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-surface); overflow-wrap: normal; word-break: normal; }
+    .permission-table th:first-child { position: sticky; left: 0; z-index: 3; min-width: 220px; max-width: 280px; text-align: left; background: var(--bg-surface); }
+    .permission-table th:first-child strong, .permission-table th:first-child code { display: block; overflow-wrap: anywhere; }
+    .permission-table th:first-child code { margin-top: 4px; font: 12px/1.4 var(--font-mono); color: var(--text-muted); }
+    .permission-table .permission-group-row th { position: static; background: var(--bg-elevated); color: var(--accent); text-align: left; }
+  }
+}

@@ -1,3 +1,4 @@
+import Section from '../../components/Section.tsx';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
@@ -220,15 +221,15 @@ export default function Automation() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {/* Toggle Server-wide state & description */}
-        <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
-          <div>
+        <Section className="auto-top">
+          <div className="auto-top-text">
             <h3 style={{ margin: 0, color: 'var(--text)' }}>Minecraft Automation IDE</h3>
-            <p className="text-muted" style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem' }}>
+            <p className="text-muted" style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
               Write custom Python scripts triggered by vanilla console log events. Runs in a fully restricted sandbox.
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: serverEnabled ? 'var(--success)' : 'var(--text-muted)' }}>
+          <div className="auto-top-toggle">
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: serverEnabled ? 'var(--success)' : 'var(--text-muted)' }}>
               {serverEnabled ? 'ACTIVE (Events Dispatched)' : 'OFF (Paused)'}
             </span>
             <label className="toggle-switch" style={{ pointerEvents: canWrite ? 'auto' : 'none' }}>
@@ -240,14 +241,14 @@ export default function Automation() {
               <span className="toggle-slider"></span>
             </label>
           </div>
-        </div>
+        </Section>
 
         {/* List of rules */}
-        <div className="card" style={{ padding: 0, background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-          <div className="list-header" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-color)', fontWeight: '600', color: 'var(--text-secondary)', background: 'var(--bg-secondary)' }}>
+        <Section className="" style={{ overflow: 'hidden' }}>
+          <div className="auto-head">
             <div>Script Name</div>
             <div>Status</div>
-            <div style={{ textAlign: 'right' }}>Actions</div>
+            <div className="auto-actions">Actions</div>
           </div>
 
           <div className="list-body">
@@ -259,15 +260,14 @@ export default function Automation() {
               rules.map(r => (
                 <div
                   key={r.id}
-                  className="list-item"
+                  className="auto-row"
                   role="button"
                   tabIndex={0}
                   aria-label={`Edit automation ${r.name}.py`}
                   onClick={() => handleOpenEditor(r)}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOpenEditor(r); } }}
-                  style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-color)', alignItems: 'center', cursor: 'pointer', transition: 'background 0.2s' }}
                 >
-                  <div style={{ fontWeight: '500', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="auto-name">
                     <svg viewBox="0 0 24 24" width="16" height="16" stroke="var(--accent)" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                       <polyline points="14 2 14 8 20 8" />
@@ -275,9 +275,9 @@ export default function Automation() {
                       <line x1="16" y1="17" x2="8" y2="17" />
                       <polyline points="10 9 9 9 8 9" />
                     </svg>
-                    {r.name}.py
+                    <span>{r.name}.py</span>
                   </div>
-                  <div onClick={e => e.stopPropagation()}>
+                  <div className="auto-status" onClick={e => e.stopPropagation()}>
                     <label className="toggle-switch" style={{ pointerEvents: canWrite ? 'auto' : 'none' }}>
                       <input
                         type="checkbox"
@@ -287,7 +287,7 @@ export default function Automation() {
                       <span className="toggle-slider"></span>
                     </label>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
+                  <div className="auto-actions" onClick={e => e.stopPropagation()}>
                     <button className="btn outline small" onClick={() => handleOpenEditor(r)}>Edit</button>
                     {canWrite && (
                       <button className="btn danger small" onClick={(e) => handleDeleteRule(r.id, e)}>Delete</button>
@@ -297,7 +297,7 @@ export default function Automation() {
               ))
             )}
           </div>
-        </div>
+        </Section>
 
         {canWrite && (
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -312,23 +312,23 @@ export default function Automation() {
 
   // Editor View
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '80vh' }}>
+    <div className="auto-editor">
       {/* Editor Toolbar */}
-      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1.25rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      <Section className="auto-editor-toolbar">
+        <div className="auto-editor-heading">
           <button className="btn outline small" onClick={handleBackToDashboard}>
             ← Dashboard
           </button>
-          <span style={{ fontWeight: 600, color: 'var(--text)' }}>
+          <span className="auto-editor-title">
             Editing: {activeRule?.name}.py
             {scriptContent !== savedScriptRef && (
-              <span style={{ marginLeft: '0.5rem', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0.12rem 0.45rem', borderRadius: 999, background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent-glow)', verticalAlign: 'middle' }}>
+              <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0.12rem 0.45rem', borderRadius: 999, background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent-glow)', verticalAlign: 'middle' }}>
                 UNSAVED
               </span>
             )}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="auto-editor-actions">
           <button className="btn outline small" onClick={handleVerifyCode} disabled={verifying}>
             {verifying ? 'Verifying...' : 'Verify Code'}
           </button>
@@ -341,19 +341,19 @@ export default function Automation() {
             </button>
           )}
         </div>
-      </div>
+      </Section>
 
       {/* Editor and Terminal Split */}
-      <div style={{ display: 'grid', gridTemplateRows: '3fr 2fr', gap: '1rem', flex: 1, minHeight: 0 }}>
+      <div className="auto-editor-panes">
         {/* Code Editor Container */}
-        <div style={{ display: 'flex', flexDirection: 'column', background: '#282c34', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+        <div className="detail-row auto-editor-pane">
           {/* Validation Errors Overlay */}
           {validationResult && (
             <div style={{
               background: validationResult.valid ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
               borderBottom: `1px solid ${validationResult.valid ? 'var(--success)' : 'var(--danger)'}`,
               padding: '0.5rem 1rem',
-              fontSize: '0.85rem',
+              fontSize: '0.875rem',
               color: validationResult.valid ? 'var(--success)' : '#f87171',
               display: 'flex',
               flexDirection: 'column',
@@ -374,7 +374,7 @@ export default function Automation() {
             </div>
           )}
           
-          <div style={{ flex: 1, overflow: 'auto' }}>
+          <div className="auto-code-scroll">
             <CodeEditor
               filename={`${activeRule?.name}.py`}
               value={scriptContent}
@@ -385,28 +385,13 @@ export default function Automation() {
         </div>
 
         {/* Live Output Terminal */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          background: '#0d0d0d',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid #2a2a2a',
-          overflow: 'hidden'
-        }}>
+        <div className="detail-row auto-editor-pane">
           {/* Terminal Header */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '6px 14px',
-            borderBottom: '1px solid #2a2a2a',
-            background: '#111111',
-            flexShrink: 0
-          }}>
-            <span style={{ fontSize: 11, color: '#8a8a8a', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-              Python Output Terminal (Real-time logs)
+          <div className="auto-terminal-header">
+            <span className="auto-terminal-title">
+              Python output <small>Real-time logs</small>
             </span>
-            <button className="btn outline small" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => setTerminalLogs([])}>
+            <button className="btn outline small" style={{ padding: '2px 8px', fontSize: '0.875rem' }} onClick={() => setTerminalLogs([])}>
               Clear
             </button>
           </div>
@@ -416,7 +401,7 @@ export default function Automation() {
             flex: 1,
             overflowY: 'auto',
             fontFamily: 'var(--font-mono)',
-            fontSize: 13,
+            fontSize: '0.875rem',
             lineHeight: 1.55,
             padding: '12px 16px',
             color: '#e6e6e6',

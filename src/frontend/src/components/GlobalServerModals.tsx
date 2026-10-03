@@ -1,3 +1,4 @@
+import ModalOverlay from './ModalOverlay.tsx';
 import { useState, useEffect, useRef } from 'react';
 import { api, extractApiErrorMessage } from '../lib/api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
@@ -235,11 +236,11 @@ export default function GlobalServerModals() {
     <>
       {/* Create Modal */}
       {modal === 'create' && (
-        <div className="modal-overlay active" onClick={close}>
+        <ModalOverlay className="modal-overlay active" onClick={close}>
           <div className={`modal${csTab === 'modpacks' ? ' large' : ''}`} role="dialog" aria-modal="true" aria-label="Create new server" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Create new server</h3>
-              <button className="close-btn" onClick={close}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={close}>&times;</button>
             </div>
 
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', padding: '0 1.5rem', gap: '0.25rem' }}>
@@ -279,7 +280,7 @@ export default function GlobalServerModals() {
               <div className="modal-body" style={csTab === 'modpacks' ? { paddingBottom: '0.5rem' } : undefined}>
                 <div className="form-group">
                   <label>Server Name</label>
-                  <input type="text" required={csTab !== 'modpacks'} placeholder="My Server" value={csName} onChange={(e) => setCsName(e.target.value)} />
+                  <input aria-label="Server Name" type="text" required={csTab !== 'modpacks'} placeholder="My Server" value={csName} onChange={(e) => setCsName(e.target.value)} />
                 </div>
 
                 {csTab === 'modpacks' && (
@@ -287,11 +288,11 @@ export default function GlobalServerModals() {
                     <div className="form-group row" style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem' }}>
                       <div style={{ flex: 1 }}>
                         <label>RAM (MB)</label>
-                        <input type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
+                        <input aria-label="RAM (MB)" inputMode="numeric" type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <label>Port</label>
-                        <input type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
+                        <input aria-label="Port" inputMode="numeric" type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
                       </div>
                     </div>
                     <ModpackBrowser
@@ -314,7 +315,7 @@ export default function GlobalServerModals() {
                   <>
                     <div className="form-group">
                       <label>Software Engine</label>
-                      <Select value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
+                      <Select aria-label="Software Engine" value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
                         <option value="paper">Paper (Recommended)</option>
                         <option value="vanilla">Vanilla</option>
                         <option value="snapshots">Vanilla Snapshots</option>
@@ -336,13 +337,13 @@ export default function GlobalServerModals() {
                     <div className="form-group">
                       <label>Minecraft Version</label>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Select style={{ flex: 1 }} value={csVersion} onChange={(e) => setCsVersion(e.target.value)}>
+                        <Select aria-label="Minecraft Version" style={{ flex: 1 }} value={csVersion} onChange={(e) => setCsVersion(e.target.value)}>
                           {versions && versions[csSoftware]?.map(v => <option key={v} value={v}>{v}</option>)}
                           {(!versions || !versions[csSoftware]?.length) && (
                             <option value="">{syncingVersions ? 'Syncing...' : 'No versions available'}</option>
                           )}
                         </Select>
-                        <button type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
+                        <button aria-label="Refresh versions" type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
                           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                           </svg>
@@ -352,11 +353,11 @@ export default function GlobalServerModals() {
                     <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
                       <div style={{ flex: 1 }}>
                         <label>RAM (MB)</label>
-                        <input type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
+                        <input aria-label="RAM (MB)" inputMode="numeric" type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <label>Port</label>
-                        <input type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
+                        <input aria-label="Port" inputMode="numeric" type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
                       </div>
                     </div>
                   </>
@@ -364,7 +365,7 @@ export default function GlobalServerModals() {
 
                 {csTab === 'bedrock' && (
                   <>
-                    <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.75rem 1rem', marginBottom: '0.75rem', fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                    <div className="detail-row" style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
                       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px', color: 'var(--accent)' }}>
                         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                       </svg>
@@ -372,7 +373,7 @@ export default function GlobalServerModals() {
                     </div>
                     <div className="form-group">
                       <label>Software Engine</label>
-                      <Select value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
+                      <Select aria-label="Software Engine" value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
                         <option value="bedrock">Vanilla</option>
                         <option value="bedrock-preview">Vanilla (Preview/Snapshots)</option>
                         <option value="pocketmine">PocketMine-MP</option>
@@ -384,13 +385,13 @@ export default function GlobalServerModals() {
                     <div className="form-group">
                       <label>Version</label>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Select style={{ flex: 1 }} value={csVersion} onChange={(e) => setCsVersion(e.target.value)}>
+                        <Select aria-label="Version" style={{ flex: 1 }} value={csVersion} onChange={(e) => setCsVersion(e.target.value)}>
                           {versions && versions[csSoftware]?.map(v => <option key={v} value={v}>{v}</option>)}
                           {(!versions || !versions[csSoftware]?.length) && (
                             <option value="">{syncingVersions ? 'Syncing...' : 'No versions available'}</option>
                           )}
                         </Select>
-                        <button type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
+                        <button aria-label="Refresh versions" type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
                           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                           </svg>
@@ -400,11 +401,11 @@ export default function GlobalServerModals() {
                     <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
                       <div style={{ flex: 1 }}>
                         <label>RAM (MB)</label>
-                        <input type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
+                        <input aria-label="RAM (MB)" inputMode="numeric" type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <label>Port <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>({csPortHint})</span></label>
-                        <input type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
+                        <label>Port <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>({csPortHint})</span></label>
+                        <input aria-label="Port ( )" inputMode="numeric" type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
                       </div>
                     </div>
                   </>
@@ -418,22 +419,22 @@ export default function GlobalServerModals() {
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Import Modal */}
       {modal === 'import' && (
-        <div className="modal-overlay active" onClick={() => { if (!impBusy) close(); }}>
+        <ModalOverlay className="modal-overlay active" onClick={() => { if (!impBusy) close(); }}>
           <div className="modal large" role="dialog" aria-modal="true" aria-label="Import existing server" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Import Existing Server</h3>
-              <button className="close-btn" onClick={close} disabled={impBusy}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={close} disabled={impBusy}>&times;</button>
             </div>
             <form onSubmit={handleImportServer}>
               <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Server Archive (.zip)</label>
-                  <div
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Server Archive (.zip)</label>
+                  <div role="button" tabIndex={0} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click(); } }}
                     style={{
                       border: '2px dashed var(--border-color)', borderRadius: 'var(--radius)',
                       padding: '1.75rem', textAlign: 'center', cursor: 'pointer',
@@ -448,35 +449,35 @@ export default function GlobalServerModals() {
                     <svg viewBox="0 0 24 24" width="32" height="32" stroke="var(--text-muted)" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 0.5rem', display: 'block' }}>
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                     </svg>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       {impFile ? impFile.name : 'Click to select a .zip file, or drag & drop here'}
                     </p>
                   </div>
-                  <input type="file" ref={fileInputRef} accept=".zip,application/zip" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.[0]) setFileImp(e.target.files[0]); }} />
+                  <input aria-label="Server Archive (.zip)" type="file" ref={fileInputRef} accept=".zip,application/zip" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.[0]) setFileImp(e.target.files[0]); }} />
                 </div>
 
-                <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.75rem 1rem', fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                <div className="detail-row" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px', color: 'var(--accent)' }}>
                     <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                   </svg>
                   <span>Only your world(s), <code>plugins</code>/<code>mods</code>, <code>config</code> and server config files (server.properties, eula.txt, ops.json, whitelist, bans, permissions.yml, etc.) are imported from the archive. The server executable is never taken from the zip — MinePanel downloads a fresh, official binary for the software and version you select below, exactly like when creating a new server.</span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1rem' }}>
+                <div className="layout-grid" style={{  }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Server Name</label>
-                    <input type="text" required placeholder="My Imported Server" value={impName} onChange={(e) => setImpName(e.target.value)} />
+                    <input aria-label="Server Name" type="text" required placeholder="My Imported Server" value={impName} onChange={(e) => setImpName(e.target.value)} />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Port</label>
-                    <input type="number" min="1024" max="65535" value={impPort} onChange={(e) => setImpPort(e.target.value)} />
+                    <input aria-label="Port" inputMode="numeric" type="number" min="1024" max="65535" value={impPort} onChange={(e) => setImpPort(e.target.value)} />
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: '1rem' }}>
+                <div className="layout-grid" style={{  }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Software</label>
-                    <Select value={impSoftware} onChange={(e) => setImpSoftware(e.target.value)}>
+                    <Select aria-label="Software" value={impSoftware} onChange={(e) => setImpSoftware(e.target.value)}>
                       <option value="paper">Paper</option>
                       <option value="vanilla">Vanilla</option>
                       <option value="snapshots">Vanilla Snapshots</option>
@@ -499,7 +500,7 @@ export default function GlobalServerModals() {
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Minecraft Version</label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <Select style={{ flex: 1 }} value={impVersion} onChange={(e) => setImpVersion(e.target.value)}>
+                      <Select aria-label="Minecraft Version" style={{ flex: 1 }} value={impVersion} onChange={(e) => setImpVersion(e.target.value)}>
                         {versions && versions[impSoftware]?.map(v => <option key={v} value={v}>{v}</option>)}
                       </Select>
                       <button type="button" className="btn outline" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
@@ -511,19 +512,19 @@ export default function GlobalServerModals() {
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>RAM (MB)</label>
-                    <input type="number" min="512" max="16384" value={impRam} onChange={(e) => setImpRam(e.target.value)} />
+                    <input aria-label="RAM (MB)" inputMode="numeric" type="number" min="512" max="16384" value={impRam} onChange={(e) => setImpRam(e.target.value)} />
                   </div>
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>Server Root Path <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
-                  <input type="text" placeholder="Leave blank if server is in zip root" value={impRoot} onChange={(e) => setImpRoot(e.target.value)} />
-                  <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If your server lives in a sub-folder inside the zip, enter that folder name.</p>
+                  <input aria-label="Server Root Path (optional)" type="text" placeholder="Leave blank if server is in zip root" value={impRoot} onChange={(e) => setImpRoot(e.target.value)} />
+                  <p style={{ margin: '0.3rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>If your server lives in a sub-folder inside the zip, enter that folder name.</p>
                 </div>
 
                 {importProgress && (
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                       <span>{importProgress.label}</span>
                       <span>{importProgress.pct}%</span>
                     </div>
@@ -541,7 +542,7 @@ export default function GlobalServerModals() {
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </>
   );

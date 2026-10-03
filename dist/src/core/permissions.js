@@ -1,7 +1,6 @@
 "use strict";
 const database_1 = require("../db/database");
 const { E, sendError } = require('./errors');
-const logger = require("./utils/logger");
 const AVAILABLE_PERMISSIONS = [
     { key: 'server.start', label: 'Start Server', group: 'Server Control' },
     { key: 'server.stop', label: 'Stop Server', group: 'Server Control' },
@@ -9,6 +8,8 @@ const AVAILABLE_PERMISSIONS = [
     { key: 'server.kill', label: 'Force Kill Server', group: 'Server Control' },
     { key: 'server.console.read', label: 'View Console', group: 'Console' },
     { key: 'server.console.write', label: 'Send Commands', group: 'Console' },
+    { key: 'server.console.chat.view', label: 'View Server Chat', group: 'Console' },
+    { key: 'server.console.chat.send', label: 'Send Chat Messages', group: 'Console' },
     { key: 'server.files.read', label: 'View Files', group: 'File Management' },
     { key: 'server.files.write', label: 'Edit Files', group: 'File Management' },
     { key: 'server.files.delete', label: 'Delete Files', group: 'File Management' },
@@ -45,9 +46,7 @@ async function getEffectivePermissions(userId, serverId) {
         try {
             JSON.parse(user.global_permissions).forEach(p => permSet.add(p));
         }
-        catch (e) {
-            logger.warn('[Permissions] Failed to parse user global_permissions for user: ' + userId);
-        }
+        catch (e) { }
     }
     if (user.rank_id) {
         const rank = await (0, database_1.dbGet)('SELECT permissions, global_permissions FROM ranks WHERE id = ?', [user.rank_id]);
@@ -56,9 +55,7 @@ async function getEffectivePermissions(userId, serverId) {
                 try {
                     JSON.parse(rank.global_permissions).forEach(p => permSet.add(p));
                 }
-                catch (e) {
-                    logger.warn('[Permissions] Failed to parse rank global_permissions for rank_id: ' + user.rank_id);
-                }
+                catch (e) { }
             }
             if (rank.permissions && serverId) {
                 try {
@@ -66,9 +63,7 @@ async function getEffectivePermissions(userId, serverId) {
                     const serverPerms = serverMap[serverId] || [];
                     serverPerms.forEach(p => permSet.add(p));
                 }
-                catch (e) {
-                    logger.warn('[Permissions] Failed to parse rank server permissions for rank_id: ' + user.rank_id);
-                }
+                catch (e) { }
             }
         }
     }

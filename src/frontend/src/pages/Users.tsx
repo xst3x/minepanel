@@ -1,3 +1,6 @@
+import Section from '../components/Section.tsx';
+import ModalOverlay from '../components/ModalOverlay.tsx';
+import PermissionMatrix from '../components/PermissionMatrix.tsx';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.ts';
@@ -340,7 +343,7 @@ const EyeToggle = ({ show, onToggle, label }) => (
       {loading ? (
         <p className="text-muted">Loading users...</p>
       ) : (
-        <div className="card" style={{ padding: 0 }}>
+        <Section className="" style={{  }}>
           <div className="list-header">
             <div>Username</div>
             <div>Rank / Role</div>
@@ -358,20 +361,26 @@ const EyeToggle = ({ show, onToggle, label }) => (
                 const isDisabled = !!u.disabled;
 
                 const rankHtml = u.rank_name ? (
-                  <span className="rank-badge" style={{ background: `${u.rank_color}55`, color: u.rank_color, borderColor: `${u.rank_color}99`, border: '1px solid', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                  <span className="rank-badge" style={{ background: `${u.rank_color}55`, color: u.rank_color, borderColor: `${u.rank_color}99`, border: '1px solid', padding: '2px 8px', borderRadius: '4px', fontSize: '0.875rem', fontWeight: 600 }}>
                     {u.rank_name}
                   </span>
                 ) : (
-                  <span className="rank-badge" style={{ background: 'rgba(255,255,255,0.12)', color: 'var(--text-muted)', border: '1px solid var(--border-hover)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem' }}>
+                  <span className="rank-badge" style={{ background: 'rgba(255,255,255,0.12)', color: 'var(--text-muted)', border: '1px solid var(--border-hover)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.875rem' }}>
                     {u.role.toUpperCase()}
                   </span>
                 );
 
                 return (
-                  <div key={u.id} className="list-item">
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.username}</div>
-                    <div>{rankHtml}</div>
-                    <div>
+                  <div key={u.id} className="list-item user-list-row">
+                    <div className="user-main">
+                      <div className="user-name-row"><strong>{u.username}</strong>{rankHtml}</div>
+                      <small className="user-created-date">
+                        {u.created_at && !Number.isNaN(Date.parse(u.created_at))
+                          ? `Joined ${new Date(u.created_at).toLocaleDateString()}`
+                          : 'Join date unavailable'}
+                      </small>
+                    </div>
+                    <div className="user-row-status">
                       {isSelf ? (
                         <label className="toggle-switch" style={{ opacity: 0.5, cursor: 'not-allowed' }} title="You cannot disable your own account">
                           <input type="checkbox" checked disabled aria-label="Account enabled" />
@@ -379,18 +388,12 @@ const EyeToggle = ({ show, onToggle, label }) => (
                         </label>
                       ) : (
                         <label className="toggle-switch" title={isDisabled ? 'Account is disabled — click to enable' : 'Account is enabled — click to disable'}>
-                          <input
-                            type="checkbox"
-                            checked={!isDisabled}
-                            onChange={() => handleToggleDisabled(u)}
-                            aria-label={`${isDisabled ? 'Enable' : 'Disable'} account ${u.username}`}
-                          />
+                          <input type="checkbox" checked={!isDisabled} onChange={() => handleToggleDisabled(u)}
+                            aria-label={`${isDisabled ? 'Enable' : 'Disable'} account ${u.username}`} />
                           <span className="toggle-slider"></span>
                         </label>
                       )}
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} className="user-created-date">
-                      {new Date(u.created_at).toLocaleDateString()}
+                      <span className="visually-hidden">{isDisabled ? 'Disabled' : 'Enabled'}</span>
                     </div>
                     {(() => {
                       // Build a single ordered action list used by both the desktop
@@ -415,7 +418,7 @@ const EyeToggle = ({ show, onToggle, label }) => (
                       return (
                         <div className="user-actions-cell">
                           {/* Desktop: full button row */}
-                          <div className="user-actions-desktop" style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          <div className="user-actions-desktop" style={{ gap: '0.3rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                             {actions.map(a => (
                               <button key={a.key} className={`btn ${a.danger ? 'danger' : 'outline'} small`} onClick={a.onClick}>
                                 {a.label}
@@ -428,7 +431,7 @@ const EyeToggle = ({ show, onToggle, label }) => (
                             <button
                               className="btn outline small fm-row-menu-btn"
                               onClick={(e) => { e.stopPropagation(); setOpenActionsMenu(u.id); }}
-                              aria-label="Actions"
+                              aria-label={`Actions for ${u.username}`}
                             >
                               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                                 <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
@@ -443,26 +446,26 @@ const EyeToggle = ({ show, onToggle, label }) => (
               })
             )}
           </div>
-        </div>
+        </Section>
       )}
 
       {/* CREATE USER MODAL */}
       {activeModal === 'create' && (
-        <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setActiveModal(null)}>
           <div className="modal" style={{ maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Create User</h3>
-              <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <div className="modal-body">
               <div className="form-group">
                 <label>Username</label>
-                <input type="text" value={createUsername} onChange={e => setCreateUsername(e.target.value)} placeholder="New username" />
+                <input aria-label="Username" type="text" value={createUsername} onChange={e => setCreateUsername(e.target.value)} placeholder="New username" />
               </div>
               <div className="form-group">
                 <label>Password</label>
                 <div style={{ position: 'relative' }}>
-                  <input type={showCreatePw ? 'text' : 'password'} value={createPassword} onChange={e => setCreatePassword(e.target.value)} placeholder="Password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
+                  <input aria-label="Password" type={showCreatePw ? 'text' : 'password'} value={createPassword} onChange={e => setCreatePassword(e.target.value)} placeholder="Password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
                   <EyeToggle show={showCreatePw} onToggle={() => setShowCreatePw(v => !v)} label="password" />
                 </div>
               </div>
@@ -472,21 +475,21 @@ const EyeToggle = ({ show, onToggle, label }) => (
               <button className="btn primary" onClick={handleCreateUser}>Create User</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* INVITE TOKEN MODAL */}
       {activeModal === 'invite' && (
-        <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setActiveModal(null)}>
           <div className="modal" style={{ maxWidth: '440px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Generate Invite Token</h3>
-              <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <div className="modal-body">
               {!generatedToken ? (
                 <>
-                  <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>Select ranks to associate with this registration link:</p>
+                  <p className="text-muted" style={{ fontSize: '0.875rem', marginBottom: '0.75rem' }}>Select ranks to associate with this registration link:</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '1.25rem' }}>
                     {inviteRanks.map(r => {
                       const isSelected = selectedInviteRanks.includes(r.id);
@@ -510,12 +513,12 @@ const EyeToggle = ({ show, onToggle, label }) => (
                   </div>
                 </>
               ) : (
-                <div style={{ padding: '1rem', background: 'var(--bg-input)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Invite Token:</p>
+                <div className="detail-row" style={{  }}>
+                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Invite Token:</p>
                   <code style={{ fontSize: '0.9rem', wordBreak: 'break-all', display: 'block', color: 'var(--accent)', letterSpacing: '0.04em' }}>
                     {generatedToken}
                   </code>
-                  <p style={{ margin: '0.75rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  <p style={{ margin: '0.75rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     Share this token with the user. They enter it on the login page under "Create account".
                   </p>
                 </div>
@@ -538,29 +541,29 @@ const EyeToggle = ({ show, onToggle, label }) => (
               )}
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* CHANGE NAME SELF MODAL */}
       {activeModal === 'change-name-self' && (
-        <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setActiveModal(null)}>
           <div className="modal" style={{ maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Change Username</h3>
-              <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <div className="modal-body">
               <div className="form-group">
                 <label>Current Username</label>
-                <input type="text" value={cnsCurrent} disabled />
+                <input aria-label="Current Username" type="text" value={cnsCurrent} disabled />
               </div>
               <div className="form-group">
                 <label>New Username</label>
-                <input type="text" value={cnsNew} onChange={e => setCnsNew(e.target.value)} placeholder="New username" />
+                <input aria-label="New Username" type="text" value={cnsNew} onChange={e => setCnsNew(e.target.value)} placeholder="New username" />
               </div>
               <div className="form-group">
                 <label>Confirm New Username</label>
-                <input type="text" value={cnsConfirm} onChange={e => setCnsConfirm(e.target.value)} placeholder="Confirm username" />
+                <input aria-label="Confirm New Username" type="text" value={cnsConfirm} onChange={e => setCnsConfirm(e.target.value)} placeholder="Confirm username" />
               </div>
             </div>
             <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -568,36 +571,36 @@ const EyeToggle = ({ show, onToggle, label }) => (
               <button className="btn primary" onClick={handleCnsConfirm}>Confirm</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* CHANGE PASSWORD SELF MODAL */}
       {activeModal === 'change-password-self' && (
-        <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setActiveModal(null)}>
           <div className="modal" style={{ maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Change Password</h3>
-              <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <div className="modal-body">
               <div className="form-group">
                 <label>Current Password</label>
                 <div style={{ position: 'relative' }}>
-                  <input type={showCpsCurrent ? 'text' : 'password'} value={cpsCurrent} onChange={e => setCpsCurrent(e.target.value)} placeholder="Current password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
+                  <input aria-label="Current Password" type={showCpsCurrent ? 'text' : 'password'} value={cpsCurrent} onChange={e => setCpsCurrent(e.target.value)} placeholder="Current password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
                   <EyeToggle show={showCpsCurrent} onToggle={() => setShowCpsCurrent(v => !v)} label="current password" />
                 </div>
               </div>
               <div className="form-group">
                 <label>New Password</label>
                 <div style={{ position: 'relative' }}>
-                  <input type={showCpsNew ? 'text' : 'password'} value={cpsNew} onChange={e => setCpsNew(e.target.value)} placeholder="New password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
+                  <input aria-label="New Password" type={showCpsNew ? 'text' : 'password'} value={cpsNew} onChange={e => setCpsNew(e.target.value)} placeholder="New password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
                   <EyeToggle show={showCpsNew} onToggle={() => setShowCpsNew(v => !v)} label="new password" />
                 </div>
               </div>
               <div className="form-group">
                 <label>Confirm New Password</label>
                 <div style={{ position: 'relative' }}>
-                  <input type={showCpsConfirm ? 'text' : 'password'} value={cpsConfirm} onChange={e => setCpsConfirm(e.target.value)} placeholder="Confirm new password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
+                  <input aria-label="Confirm New Password" type={showCpsConfirm ? 'text' : 'password'} value={cpsConfirm} onChange={e => setCpsConfirm(e.target.value)} placeholder="Confirm new password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
                   <EyeToggle show={showCpsConfirm} onToggle={() => setShowCpsConfirm(v => !v)} label="confirmed password" />
                 </div>
               </div>
@@ -607,26 +610,26 @@ const EyeToggle = ({ show, onToggle, label }) => (
               <button className="btn primary" onClick={handleCpsConfirm}>Confirm</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* CHANGE NAME ADMIN MODAL */}
       {activeModal === 'change-name-admin' && (
-        <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setActiveModal(null)}>
           <div className="modal" style={{ maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Edit Username (Admin)</h3>
-              <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <div className="modal-body">
-              <p className="text-muted" style={{ fontSize: '0.85rem' }}>Editing user: <strong>{selectedUser?.username}</strong></p>
+              <p className="text-muted" style={{ fontSize: '0.875rem' }}>Editing user: <strong>{selectedUser?.username}</strong></p>
               <div className="form-group">
                 <label>New Username</label>
-                <input type="text" value={cnaNew} onChange={e => setCnaNew(e.target.value)} placeholder="New username" />
+                <input aria-label="New Username" type="text" value={cnaNew} onChange={e => setCnaNew(e.target.value)} placeholder="New username" />
               </div>
               <div className="form-group">
                 <label>Confirm New Username</label>
-                <input type="text" value={cnaConfirm} onChange={e => setCnaConfirm(e.target.value)} placeholder="Confirm username" />
+                <input aria-label="Confirm New Username" type="text" value={cnaConfirm} onChange={e => setCnaConfirm(e.target.value)} placeholder="Confirm username" />
               </div>
             </div>
             <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -634,30 +637,30 @@ const EyeToggle = ({ show, onToggle, label }) => (
               <button className="btn primary" onClick={handleCnaConfirm}>Confirm</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* RESET PASSWORD ADMIN MODAL */}
       {activeModal === 'reset-password-admin' && (
-        <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setActiveModal(null)}>
           <div className="modal" style={{ maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Reset Password (Admin)</h3>
-              <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <div className="modal-body">
-              <p className="text-muted" style={{ fontSize: '0.85rem' }}>Resetting password for: <strong>{selectedUser?.username}</strong></p>
+              <p className="text-muted" style={{ fontSize: '0.875rem' }}>Resetting password for: <strong>{selectedUser?.username}</strong></p>
               <div className="form-group">
                 <label>New Password</label>
                 <div style={{ position: 'relative' }}>
-                  <input type={showRpaNew ? 'text' : 'password'} value={rpaNew} onChange={e => setRpaNew(e.target.value)} placeholder="New password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
+                  <input aria-label="New Password" type={showRpaNew ? 'text' : 'password'} value={rpaNew} onChange={e => setRpaNew(e.target.value)} placeholder="New password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
                   <EyeToggle show={showRpaNew} onToggle={() => setShowRpaNew(v => !v)} label="new password" />
                 </div>
               </div>
               <div className="form-group">
                 <label>Confirm Password</label>
                 <div style={{ position: 'relative' }}>
-                  <input type={showRpaConfirm ? 'text' : 'password'} value={rpaConfirm} onChange={e => setRpaConfirm(e.target.value)} placeholder="Confirm password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
+                  <input aria-label="Confirm Password" type={showRpaConfirm ? 'text' : 'password'} value={rpaConfirm} onChange={e => setRpaConfirm(e.target.value)} placeholder="Confirm password" style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
                   <EyeToggle show={showRpaConfirm} onToggle={() => setShowRpaConfirm(v => !v)} label="confirmed password" />
                 </div>
               </div>
@@ -667,23 +670,23 @@ const EyeToggle = ({ show, onToggle, label }) => (
               <button className="btn primary" onClick={handleRpaConfirm}>Reset Password</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* PERMISSIONS MATRIX MODAL */}
       {activeModal === 'edit-perms' && (
-        <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
-          <div className="modal large" style={{ maxWidth: '900px' }} onClick={e => e.stopPropagation()}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setActiveModal(null)}>
+          <div className="modal large permissions-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Permissions Matrix — {selectedUser?.username}</h3>
-              <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
-            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+            <div className="modal-body">
               
               {/* Ranks selection section */}
               <h4 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Select User Rank</h4>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '1.5rem' }}>
-                <div
+                <div role="button" tabIndex={0} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click(); } }}
                   onClick={() => setSelectedRankId(null)}
                   style={{
                     padding: '8px 12px',
@@ -698,12 +701,12 @@ const EyeToggle = ({ show, onToggle, label }) => (
                   }}
                 >
                   <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#777' }} />
-                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>No Rank</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>No Rank</span>
                 </div>
                 {ranksList.map(r => {
                   const isSelected = selectedRankId === r.id;
                   return (
-                    <div
+                    <div role="button" tabIndex={0} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click(); } }}
                       key={r.id}
                       onClick={() => setSelectedRankId(r.id)}
                       style={{
@@ -720,106 +723,39 @@ const EyeToggle = ({ show, onToggle, label }) => (
                       }}
                     >
                       <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: r.color }} />
-                      <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{r.name}</span>
+                      <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{r.name}</span>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Permission Matrix Grid — wrapped for horizontal scroll (many servers → many columns) */}
               <h4 style={{ marginBottom: '0.75rem' }}>Detailed Permissions</h4>
-              <div style={{ overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: servers.length > 2 ? '520px' : undefined }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    <th style={{ padding: '8px' }}>Permission</th>
-                    <th style={{ padding: '8px' }}>Global</th>
-                    {servers.map(s => (
-                      <th key={s.id} style={{ padding: '8px' }}>{s.name}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    const rows = [];
-                    let lastGroup = '';
-                    
-                    const inheritedGlobal = getInheritedGlobal();
-                    const isGlobalAdmin = inheritedGlobal.includes('*') || inheritedGlobal.includes('root');
-
-                    allPerms.forEach(p => {
-                      if (p.group !== lastGroup) {
-                        lastGroup = p.group;
-                        rows.push(
-                          <tr key={`group-${p.group}`} style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
-                            <td colSpan={servers.length + 2} style={{ padding: '6px 8px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--accent)' }}>
-                              {p.group}
-                            </td>
-                          </tr>
-                        );
-                      }
-
-                      // Check global inheritance
-                      const isGlobalInherited = isGlobalAdmin || inheritedGlobal.includes(p.key);
-                      const isGlobalChecked = isGlobalInherited || localGlobalPerms.includes(p.key);
-
-                      rows.push(
-                        <tr key={p.key} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '8px' }}>
-                            <div style={{ fontWeight: '600' }}>{p.label}</div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.key}</div>
-                          </td>
-                          
-                          {/* Global Checkbox */}
-                          <td style={{ padding: '8px' }}>
-                            <input
-                              type="checkbox"
-                              checked={isGlobalChecked}
-                              disabled={isGlobalInherited}
-                              onChange={(e) => toggleGlobalPerm(p.key, e.target.checked)}
-                              style={{ opacity: isGlobalInherited ? 0.5 : 1 }}
-                            />
-                          </td>
-
-                          {/* Server-specific override checkboxes */}
-                          {servers.map(s => {
-                            const isGlobalOverride = isGlobalChecked;
-                            const isServerInherited = isGlobalOverride || getInheritedServer(s.id).includes(p.key) || getInheritedServer(s.id).includes('*');
-                            const isServerChecked = isServerInherited || (localServerPerms[s.id] || []).includes(p.key);
-
-                            const isDisabledColumn = p.globalOnly || p.key === 'account.manage' || p.key === 'panel.settings';
-
-                            return (
-                              <td key={s.id} style={{ padding: '8px' }}>
-                                {isDisabledColumn ? (
-                                  <span style={{ color: 'var(--text-muted)', opacity: 0.3 }}></span>
-                                ) : (
-                                  <input
-                                    type="checkbox"
-                                    checked={isServerChecked}
-                                    disabled={isServerInherited}
-                                    onChange={(e) => toggleServerPerm(s.id, p.key, e.target.checked)}
-                                    style={{ opacity: isServerInherited ? 0.5 : 1 }}
-                                  />
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    });
-                    return rows;
-                  })()}
-                </tbody>
-              </table>
-              </div>
+              <PermissionMatrix
+                permissions={allPerms}
+                servers={servers}
+                getState={(permission, scope) => {
+                  const globalInherited = getInheritedGlobal();
+                  const inherited = globalInherited.includes('*') || globalInherited.includes('root') || globalInherited.includes(permission.key);
+                  const globalChecked = inherited || localGlobalPerms.includes(permission.key);
+                  if (scope === 'global') return { checked: globalChecked, disabled: inherited };
+                  const serverInherited = globalChecked || getInheritedServer(scope).includes(permission.key) || getInheritedServer(scope).includes('*');
+                  return {
+                    checked: serverInherited || (localServerPerms[scope] || []).includes(permission.key),
+                    disabled: serverInherited,
+                    unavailable: permission.globalOnly || permission.key === 'account.manage' || permission.key === 'panel.settings'
+                  };
+                }}
+                onToggle={(permission, scope, checked) => scope === 'global'
+                  ? toggleGlobalPerm(permission.key, checked)
+                  : toggleServerPerm(scope, permission.key, checked)}
+              />
             </div>
             <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1rem', flexWrap: 'wrap' }}>
               <button className="btn outline" onClick={() => setActiveModal(null)}>Cancel</button>
               <button className="btn primary" onClick={handleSavePerms}>Save Changes</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* ── Per-user actions bottom sheet ─────────────────────────────────── */}
@@ -843,7 +779,7 @@ const EyeToggle = ({ show, onToggle, label }) => (
         }
 
         return (
-          <div className="fm-sheet-overlay" onClick={() => setOpenActionsMenu(null)}>
+          <ModalOverlay className="fm-sheet-overlay" onClick={() => setOpenActionsMenu(null)}>
             <div className="fm-sheet" onClick={e => e.stopPropagation()}>
               <div className="fm-sheet-handle" />
               <div className="fm-sheet-title">{targetUser.username}</div>
@@ -860,7 +796,7 @@ const EyeToggle = ({ show, onToggle, label }) => (
                 <span>Cancel</span>
               </button>
             </div>
-          </div>
+          </ModalOverlay>
         );
       })()}
 

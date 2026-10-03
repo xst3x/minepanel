@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../paths");
 const express = require("express");
 const fs = require("fs");
 const fsp = require('fs').promises;
@@ -7,7 +8,7 @@ const authModule = require("../core/auth");
 const { authenticateToken } = authModule;
 const logger = require("../core/utils/logger");
 const router = express.Router();
-const DOCS_DIR = path.resolve(__dirname, '../docs');
+const DOCS_DIR = path.join(paths_1.PROJECT_ROOT, 'src', 'docs');
 /**
  * Default category display order. Lower number = appears first in sidebar.
  * Can be overridden per-file via frontmatter: category_order: <number>

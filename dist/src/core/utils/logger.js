@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../../paths");
 /**
  * src/core/utils/logger.js
  * Centralized Winston logger for MinePanel.
@@ -11,7 +12,7 @@ const winston_1 = require("winston");
 const path = require("path");
 const fs = require("fs");
 // Ensure logs directory exists
-const logsDir = path.resolve(__dirname, '../../../logs');
+const logsDir = path.join(paths_1.PROJECT_ROOT, 'logs');
 if (!fs.existsSync(logsDir)) {
     fs.mkdirSync(logsDir, { recursive: true });
 }

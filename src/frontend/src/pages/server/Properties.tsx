@@ -1,3 +1,6 @@
+import CustomColorButton from '../../components/CustomColorButton.tsx';
+import Section from '../../components/Section.tsx';
+import ModalOverlay from '../../components/ModalOverlay.tsx';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
@@ -82,8 +85,8 @@ export default function ServerProperties() {
   const [motdVal, setMotdVal] = useState('');
   const [motdPreviewHtml, setMotdPreviewHtml] = useState('');
   const [showSpecialChars, setShowSpecialChars] = useState(false);
-  const [pickedCustomColor, setPickedCustomColor] = useState('');
   const [showColorWell, setShowColorWell] = useState(false);
+  const [pickedCustomColor, setPickedCustomColor] = useState('');
   const motdTextareaRef = useRef(null);
 
 
@@ -375,7 +378,7 @@ export default function ServerProperties() {
         );
       } else if (!isNaN(v) && v !== '') {
         inputEl = (
-          <input
+          <input inputMode="numeric"
             type="number"
             value={v}
             onChange={(e) => handlePropChange(k, e.target.value)}
@@ -395,7 +398,7 @@ export default function ServerProperties() {
 
       return (
         <div className="prop-item" key={k}>
-          <span className="prop-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>{k}</span>
+          <span className="prop-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem' }}>{k}</span>
           <div className="prop-input">{inputEl}</div>
         </div>
       );
@@ -410,7 +413,7 @@ export default function ServerProperties() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       
       {/* Server Icon Card */}
-      <div className="card">
+      <Section className="">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0 }}>Server Icon</h3>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -441,7 +444,7 @@ export default function ServerProperties() {
             flexShrink: 0
           }}>
             {iconUrl ? (
-              <img
+              <img loading="lazy"
                 src={iconUrl}
                 alt="Server Icon"
                 style={{ width: '64px', height: '64px', imageRendering: 'pixelated' }}
@@ -455,18 +458,18 @@ export default function ServerProperties() {
             )}
           </div>
           <div>
-            <p style={{ margin: '0 0 0.25rem', fontSize: '0.85rem', color: 'var(--text)' }}>
+            <p style={{ margin: '0 0 0.25rem', fontSize: '0.875rem', color: 'var(--text)' }}>
               Displayed in the Minecraft server list and in the panel sidebar.
             </p>
-            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Upload any image or pick a Minecraft item &mdash; both are saved as a 64&times;64 px PNG.
             </p>
           </div>
         </div>
-      </div>
+      </Section>
 
       {/* Properties Editor Card */}
-      <div className="card">
+      <Section className="">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <h3 style={{ margin: 0 }}>Server Properties</h3>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -521,7 +524,7 @@ export default function ServerProperties() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '9px',
+                            fontSize: '0.875rem',
                             fontWeight: 'bold',
                             color: ['0','1','2','3','4','5','8'].includes(c.code) ? '#fff' : '#000',
                             transition: 'transform 0.1s ease'
@@ -533,49 +536,19 @@ export default function ServerProperties() {
                         </button>
                       ))}
                       
-                      {/* Custom color button */}
-                      <button
-                        type="button"
-                        title="Custom Color"
-                        aria-label="Open custom color picker"
-                        onClick={() => {
-                          setShowColorWell(true);
-                        }}
-                        style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          background: pickedCustomColor || 'linear-gradient(135deg, #ff2400, #e81d1d, #e8b01d, #1de840, #1ddde8, #2b1de8, #dd1de8)',
-                          border: '1px solid rgba(255,255,255,0.2)',
-                          cursor: 'pointer',
-                          padding: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          color: '#fff',
-                          textShadow: '0px 0px 2px rgba(0,0,0,0.8)',
-                          transition: 'transform 0.1s ease',
-                          flexShrink: 0
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                      >
-                        +
-                      </button>
+                      <CustomColorButton label="Open custom color picker" onClick={() => setShowColorWell(true)} />
                     </div>
 
                     <div style={{ width: '1px', height: '16px', background: 'var(--border)', margin: '0 4px' }} />
 
                     {/* Compact style buttons */}
                     {MC_FORMATS.map(f => (
-                      <button
+                      <button aria-label={f.title}
                         key={f.code}
                         type="button"
                         title={f.title}
                         className="btn outline small"
-                        style={{ padding: '2px 8px', fontSize: '0.75rem', height: '24px', minWidth: '24px' }}
+                        style={{ padding: '2px 8px', fontSize: '0.875rem', height: '24px' }}
                         dangerouslySetInnerHTML={{ __html: f.label }}
                         onClick={() => insertTextAtCursor(`&${f.code}`)}
                       />
@@ -586,7 +559,7 @@ export default function ServerProperties() {
                     <button
                       type="button"
                       className="btn outline small"
-                      style={{ padding: '2px 8px', fontSize: '0.75rem', height: '24px' }}
+                      style={{ padding: '2px 8px', fontSize: '0.875rem', height: '24px' }}
                       onClick={() => setMotdVal(prev => prev.replace(/&[0-9a-fk-or]/gi, ''))}
                     >
                       Clear Codes
@@ -594,7 +567,7 @@ export default function ServerProperties() {
                     <button
                       type="button"
                       className="btn outline small"
-                      style={{ padding: '2px 8px', fontSize: '0.75rem', height: '24px' }}
+                      style={{ padding: '2px 8px', fontSize: '0.875rem', height: '24px' }}
                       onClick={() => setMotdVal(properties.motd || '')}
                     >
                       Reset
@@ -602,7 +575,7 @@ export default function ServerProperties() {
                     <button
                       type="button"
                       className={`btn ${showSpecialChars ? 'primary' : 'outline'} small`}
-                      style={{ padding: '2px 8px', fontSize: '0.75rem', height: '24px' }}
+                      style={{ padding: '2px 8px', fontSize: '0.875rem', height: '24px' }}
                       onClick={() => setShowSpecialChars(!showSpecialChars)}
                     >
                       Chars {showSpecialChars ? '▲' : '▼'}
@@ -611,14 +584,7 @@ export default function ServerProperties() {
 
                   {/* Special Chars Panel */}
                   {showSpecialChars && (
-                    <div style={{
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius)',
-                      padding: '6px',
-                      maxHeight: '100px',
-                      overflowY: 'auto'
-                    }}>
+                    <div className="detail-row" style={{ maxHeight: '100px', overflowY: 'auto' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
                         {SPECIAL_CHARS.map(ch => (
                           <button
@@ -633,7 +599,7 @@ export default function ServerProperties() {
                               justifyContent: 'center',
                               cursor: 'pointer',
                               borderRadius: 'var(--radius-sm)',
-                              fontSize: '0.85rem',
+                              fontSize: '0.875rem',
                               background: 'none',
                               border: '1px solid transparent',
                               color: 'var(--text)',
@@ -649,7 +615,7 @@ export default function ServerProperties() {
 
                   {/* Input Textarea with character counter inside wrapper */}
                   <div style={{ position: 'relative' }}>
-                    <textarea
+                    <textarea aria-label="e.g. &aWelcome to &6My Server!"
                       ref={motdTextareaRef}
                       rows={2}
                       spellCheck="false"
@@ -664,7 +630,7 @@ export default function ServerProperties() {
                         borderRadius: 'var(--radius)',
                         color: 'var(--text)',
                         fontFamily: 'var(--font-mono)',
-                        fontSize: '0.85rem',
+                        fontSize: '0.875rem',
                         resize: 'vertical',
                         outline: 'none',
                         lineHeight: 1.4
@@ -674,7 +640,7 @@ export default function ServerProperties() {
                       position: 'absolute',
                       bottom: '6px',
                       right: '12px',
-                      fontSize: '0.7rem',
+                      fontSize: '0.875rem',
                       color: 'var(--text-secondary)',
                       fontFamily: 'var(--font-mono)',
                       pointerEvents: 'none'
@@ -684,13 +650,13 @@ export default function ServerProperties() {
                   </div>
 
                   {/* Compact Live Preview inspired by Minecraft list */}
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em', marginTop: '4px' }}>
                     MULTIPLAYER PREVIEW
                   </div>
                   <div className="motd-live-preview-box">
                     <div className="motd-preview-icon-container">
                       {iconUrl ? (
-                        <img
+                        <img loading="lazy"
                           src={iconUrl}
                           alt="Server Icon"
                           className="motd-preview-icon-img"
@@ -732,8 +698,8 @@ export default function ServerProperties() {
             {activeCat === 'gameplay' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
                 <span className="prop-label" style={{ fontWeight: 600 }}>Custom Color</span>
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  Pick a custom color for your server branding or panel theme (stored locally).
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  Pick a custom color to insert into your MOTD.
                 </p>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                   <div
@@ -747,12 +713,7 @@ export default function ServerProperties() {
                       flexShrink: 0
                     }}
                   />
-                  <button
-                    className="btn primary"
-                    onClick={() => setShowColorWell(true)}
-                  >
-                    Open Color Picker
-                  </button>
+                  <CustomColorButton label="Pick a custom MOTD color" onClick={() => setShowColorWell(true)} />
                   {pickedCustomColor && (
                     <button
                       className="btn outline"
@@ -763,7 +724,7 @@ export default function ServerProperties() {
                   )}
                 </div>
                 {pickedCustomColor && (
-                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                     {pickedCustomColor.toUpperCase()}
                   </p>
                 )}
@@ -786,7 +747,7 @@ export default function ServerProperties() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
                   <div>
                     <span className="prop-label" style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>World Generator Type (level-type)</span>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Select the generator style for this world. Data-driven to support future types.</span>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Select the generator style for this world. Data-driven to support future types.</span>
                   </div>
 
                   {/* Compact selector grid */}
@@ -832,9 +793,9 @@ export default function ServerProperties() {
 
                   {/* Conditional Text Input for Custom Generator Key */}
                   {(!isKnown || activeType === 'custom') && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', padding: '12px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Custom Generator Key</span>
-                      <input
+                    <div className="detail-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Custom Generator Key</span>
+                      <input aria-label="e.g. minecraft:flat"
                         type="text"
                         value={activeType === 'custom' ? '' : activeType}
                         onChange={(e) => handlePropChange('level-type', e.target.value)}
@@ -846,10 +807,10 @@ export default function ServerProperties() {
 
                   {/* Conditional UI: generator-settings */}
                   {(activeType === 'minecraft:flat' || !isKnown) && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', padding: '12px', background: 'var(--bg-input)', border: '1px dashed var(--border)', borderRadius: 'var(--radius)' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Flat Generator Layer Configurations (generator-settings)</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Configure flat layers or structures (e.g. layers of dirt, stone, bedrock).</span>
-                      <input
+                    <div className="detail-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Flat Generator Layer Configurations (generator-settings)</span>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Configure flat layers or structures (e.g. layers of dirt, stone, bedrock).</span>
+                      <input aria-label="e.g. 3;minecraft:bedrock,2*minecraft:dirt,minecraft:grass_block;1;village"
                         type="text"
                         value={properties['generator-settings'] || ''}
                         onChange={(e) => handlePropChange('generator-settings', e.target.value)}
@@ -862,9 +823,9 @@ export default function ServerProperties() {
                   {/* World Seed */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
                     <span className="prop-label" style={{ fontWeight: 600 }}>World Seed (level-seed)</span>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>A seed for reproducible world generation. Leave blank for random.</span>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>A seed for reproducible world generation. Leave blank for random.</span>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <input
+                      <input aria-label="Random seed"
                         type="text"
                         value={properties['level-seed'] || ''}
                         onChange={(e) => handlePropChange('level-seed', e.target.value)}
@@ -889,7 +850,7 @@ export default function ServerProperties() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
                     <div>
                       <span className="prop-label" style={{ fontWeight: 600, display: 'block' }}>Generate Structures</span>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Generate villages, dungeons, and mineshafts.</span>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Generate villages, dungeons, and mineshafts.</span>
                     </div>
                     <label className="toggle-switch">
                       <input
@@ -907,7 +868,7 @@ export default function ServerProperties() {
             })()}
 
             {/* Properties List Grid */}
-            <div className="props-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '1.25rem' }}>
+            <div className="props-grid layout-grid" style={{  }}>
               {renderVisualProperties()}
             </div>
           </>
@@ -925,7 +886,7 @@ export default function ServerProperties() {
                 background: 'var(--bg-input)',
                 color: 'var(--text)',
                 fontFamily: 'var(--font-mono)',
-                fontSize: '13px',
+                fontSize: '0.875rem',
                 padding: '12px',
                 border: 'none',
                 resize: 'none',
@@ -935,22 +896,22 @@ export default function ServerProperties() {
             />
           </div>
         )}
-      </div>
+      </Section>
 
       {/* Preset Item Picker Modal */}
       {showItemPicker && (
-        <div className="modal-overlay active" onClick={() => setShowItemPicker(false)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setShowItemPicker(false)}>
           <div className="modal" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Choose Icon Item</h3>
-              <button className="close-btn" onClick={() => setShowItemPicker(false)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setShowItemPicker(false)}>&times;</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '350px', overflowY: 'auto' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
                 {pickerItems.map(item => {
                   const resolvedId = window.serverIconHelper?.resolveItemId(item) || item;
                   return (
-                    <button
+                    <button aria-label={window.serverIconHelper?.formatItemLabel(resolvedId) || item}
                       key={item}
                       className="mc-slot has-item"
                       title={window.serverIconHelper?.formatItemLabel(resolvedId) || item}
@@ -967,7 +928,7 @@ export default function ServerProperties() {
                         cursor: 'pointer'
                       }}
                     >
-                      <span style={{ fontSize: '10px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', width: '100%' }}>
+                      <span style={{ fontSize: '0.875rem', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', width: '100%' }}>
                         {resolvedId.substring(0, 5)}
                       </span>
                     </button>
@@ -976,7 +937,7 @@ export default function ServerProperties() {
               </div>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
       {/* Color Well Modal */}
       {showColorWell && (

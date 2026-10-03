@@ -1,0 +1,969 @@
+
+[2026-10-03 23:32:25] [[32MINFO[39M] [HTTP] Running in HTTP mode (use Nginx + Let's Encrypt for production HTTPS)
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v17 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v17 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v19 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v19 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:25] [[33MWARN[39M] [Migrations] v23 skipped — column already exists (idempotent).
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] v23 applied successfully
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:25] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:25] [[32MINFO[39M] Database initialized successfully.
+[2026-10-03 23:32:25] [[32MINFO[39M] [StatsCollector] Starting — collecting every 30s, pruning every 1h.
+[2026-10-03 23:32:25] [[32MINFO[39M] [VersionManager] Fetching fresh versions...
+[2026-10-03 23:32:25] [[32MINFO[39M] Server directory migration complete.
+[2026-10-03 23:32:25] [[32MINFO[39M] FTP service is disabled in settings.
+[2026-10-03 23:32:25] [[32MINFO[39M] [Discord] Found 0 enabled bot(s).
+[2026-10-03 23:32:25] [[32MINFO[39M] [UpdateScheduler] Starting (tick every 60s)
+PASS tests/datapacks.test.ts
+[2026-10-03 23:32:26] [[32MINFO[39M] [Automation] Python automation engine starting...
+[2026-10-03 23:32:26] [[32MINFO[39M] [Automation] Python automation engine stopped.
+PASS tests/automationEngine.test.ts
+PASS tests/minecraftLog.test.ts
+[2026-10-03 23:32:26] [[32MINFO[39M] [HTTP] Running in HTTP mode (use Nginx + Let's Encrypt for production HTTPS)
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v17 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v17 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v19 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v19 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:26] [[33MWARN[39M] [Migrations] v23 skipped — column already exists (idempotent).
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] v23 applied successfully
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:26] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:26] [[32MINFO[39M] Database initialized successfully.
+[2026-10-03 23:32:26] [[32MINFO[39M] [StatsCollector] Starting — collecting every 30s, pruning every 1h.
+[2026-10-03 23:32:26] [[32MINFO[39M] [VersionManager] Loaded incomplete/default versions list. Will fetch updates.
+[2026-10-03 23:32:26] [[32MINFO[39M] [VersionManager] Fetching fresh versions...
+[2026-10-03 23:32:27] [[32MINFO[39M] Server directory migration complete.
+[2026-10-03 23:32:27] [[32MINFO[39M] FTP service is disabled in settings.
+[2026-10-03 23:32:27] [[32MINFO[39M] [Discord] Found 0 enabled bot(s).
+[2026-10-03 23:32:27] [[32MINFO[39M] [UpdateScheduler] Starting (tick every 60s)
+[2026-10-03 23:32:27] [[32MINFO[39M] [Automation] Rule "WelcomeNotifier" created (server 999) by user 500
+PASS tests/automation.test.ts
+[2026-10-03 23:32:28] [[32MINFO[39M] [HTTP] Running in HTTP mode (use Nginx + Let's Encrypt for production HTTPS)
+[2026-10-03 23:32:28] [[32MINFO[39M] [Automation Script Log] Server 999: Manually running script
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v17 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v17 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v19 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v19 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:28] [[33MWARN[39M] [Migrations] v23 skipped — column already exists (idempotent).
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] v23 applied successfully
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:28] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:28] [[32MINFO[39M] Database initialized successfully.
+[2026-10-03 23:32:28] [[32MINFO[39M] [StatsCollector] Starting — collecting every 30s, pruning every 1h.
+[2026-10-03 23:32:28] [[32MINFO[39M] [VersionManager] Loaded incomplete/default versions list. Will fetch updates.
+[2026-10-03 23:32:28] [[32MINFO[39M] [VersionManager] Fetching fresh versions...
+[2026-10-03 23:32:28] [[32MINFO[39M] Server directory migration complete.
+[2026-10-03 23:32:28] [[32MINFO[39M] FTP service is disabled in settings.
+[2026-10-03 23:32:28] [[32MINFO[39M] [Discord] Found 0 enabled bot(s).
+[2026-10-03 23:32:28] [[32MINFO[39M] [UpdateScheduler] Starting (tick every 60s)
+PASS tests/security.test.ts
+[2026-10-03 23:32:28] [[33MWARN[39M] [fsRetry] test-retry failed (attempt 1/5, code: EPERM), retrying in 5ms...
+[2026-10-03 23:32:28] [[33MWARN[39M] [fsRetry] test-retry failed (attempt 2/5, code: EPERM), retrying in 5ms...
+[2026-10-03 23:32:28] [[33MWARN[39M] [fsRetry] test-fail failed (attempt 1/3, code: EBUSY), retrying in 5ms...
+[2026-10-03 23:32:28] [[33MWARN[39M] [fsRetry] test-fail failed (attempt 2/3, code: EBUSY), retrying in 5ms...
+PASS tests/panel.test.ts
+[2026-10-03 23:32:29] [[32MINFO[39M] [HTTP] Running in HTTP mode (use Nginx + Let's Encrypt for production HTTPS)
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v17 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v17 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v19 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v19 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:29] [[33MWARN[39M] [Migrations] v23 skipped — column already exists (idempotent).
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] v23 applied successfully
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:29] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:29] [[32MINFO[39M] Database initialized successfully.
+[2026-10-03 23:32:29] [[32MINFO[39M] [StatsCollector] Starting — collecting every 30s, pruning every 1h.
+[2026-10-03 23:32:29] [[32MINFO[39M] [VersionManager] Loaded incomplete/default versions list. Will fetch updates.
+[2026-10-03 23:32:29] [[32MINFO[39M] [VersionManager] Fetching fresh versions...
+[2026-10-03 23:32:29] [[32MINFO[39M] Server directory migration complete.
+[2026-10-03 23:32:29] [[32MINFO[39M] FTP service is disabled in settings.
+[2026-10-03 23:32:29] [[32MINFO[39M] [Discord] Found 0 enabled bot(s).
+[2026-10-03 23:32:29] [[32MINFO[39M] [UpdateScheduler] Starting (tick every 60s)
+PASS tests/files.test.ts
+[2026-10-03 23:32:30] [[32MINFO[39M] [HTTP] Running in HTTP mode (use Nginx + Let's Encrypt for production HTTPS)
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v17 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v17 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v19 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v19 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:30] [[33MWARN[39M] [Migrations] v23 skipped — column already exists (idempotent).
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] v23 applied successfully
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:30] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:30] [[32MINFO[39M] Database initialized successfully.
+[2026-10-03 23:32:30] [[32MINFO[39M] [StatsCollector] Starting — collecting every 30s, pruning every 1h.
+[2026-10-03 23:32:30] [[32MINFO[39M] [VersionManager] Loaded incomplete/default versions list. Will fetch updates.
+[2026-10-03 23:32:30] [[32MINFO[39M] [VersionManager] Fetching fresh versions...
+[2026-10-03 23:32:30] [[32MINFO[39M] Server directory migration complete.
+[2026-10-03 23:32:30] [[32MINFO[39M] FTP service is disabled in settings.
+[2026-10-03 23:32:30] [[32MINFO[39M] [Discord] Found 0 enabled bot(s).
+[2026-10-03 23:32:30] [[32MINFO[39M] [UpdateScheduler] Starting (tick every 60s)
+PASS tests/auth.test.ts
+[2026-10-03 23:32:31] [[32MINFO[39M] [HTTP] Running in HTTP mode (use Nginx + Let's Encrypt for production HTTPS)
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v17 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v17 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:31] [[33MWARN[39M] [Migrations] v19 skipped — column already exists (idempotent).
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v19 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:31] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v23 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v23 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:32] [[32MINFO[39M] Database initialized successfully.
+[2026-10-03 23:32:32] [[32MINFO[39M] [StatsCollector] Starting — collecting every 30s, pruning every 1h.
+[2026-10-03 23:32:32] [[32MINFO[39M] [VersionManager] Loaded incomplete/default versions list. Will fetch updates.
+[2026-10-03 23:32:32] [[32MINFO[39M] [VersionManager] Fetching fresh versions...
+[2026-10-03 23:32:32] [[32MINFO[39M] Server directory migration complete.
+[2026-10-03 23:32:32] [[32MINFO[39M] FTP service is disabled in settings.
+[2026-10-03 23:32:32] [[32MINFO[39M] [Discord] Found 0 enabled bot(s).
+[2026-10-03 23:32:32] [[32MINFO[39M] [UpdateScheduler] Starting (tick every 60s)
+[2026-10-03 23:32:32] [[32MINFO[39M] Server 1 (test-server) setup complete.
+PASS tests/server.test.ts
+[2026-10-03 23:32:32] [[32MINFO[39M] [HTTP] Running in HTTP mode (use Nginx + Let's Encrypt for production HTTPS)
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v17 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v17 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v19 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v19 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:32] [[33MWARN[39M] [Migrations] v23 skipped — column already exists (idempotent).
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] v23 applied successfully
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:32] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:32] [[31MERROR[39M] Error: Unexpected fatal db failure
+    at Object.<anonymous> (C:\Users\stefa\AppData\Local\Temp\minepanel-jest-wZkiql\installation\tests\errors.test.ts:95:22)
+    at Promise.then.completed (C:\Users\stefa\Desktop\minepanel files\MinePanel\node_modules\jest-circus\build\utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (C:\Users\stefa\Desktop\minepanel files\MinePanel\node_modules\jest-circus\build\utils.js:231:10)
+    at _callCircusTest (C:\Users\stefa\Desktop\minepanel files\MinePanel\node_modules\jest-circus\build\run.js:316:40)
+    at _runTest (C:\Users\stefa\Desktop\minepanel files\MinePanel\node_modules\jest-circus\build\run.js:252:3)
+    at _runTestsForDescribeBlock (C:\Users\stefa\Desktop\minepanel files\MinePanel\node_modules\jest-circus\build\run.js:126:9)
+    at _runTestsForDescribeBlock (C:\Users\stefa\Desktop\minepanel files\MinePanel\node_modules\jest-circus\build\run.js:121:9)
+    at run (C:\Users\stefa\Desktop\minepanel files\MinePanel\node_modules\jest-circus\build\run.js:71:3)
+    at runAndTransformResultsToJestFormat (C:\Users\stefa\Desktop\minepanel files\MinePanel\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+    at jestAdapter (C:\Users\stefa\Desktop\minepanel files\MinePanel\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+    at runTestInternal (C:\Users\stefa\Desktop\minepanel files\MinePanel\node_modules\jest-runner\build\runTest.js:367:16)
+    at runTest (C:\Users\stefa\Desktop\minepanel files\MinePanel\node_modules\jest-runner\build\runTest.js:444:34)
+[2026-10-03 23:32:32] [[32MINFO[39M] Database initialized successfully.
+[2026-10-03 23:32:32] [[32MINFO[39M] [StatsCollector] Starting — collecting every 30s, pruning every 1h.
+[2026-10-03 23:32:32] [[32MINFO[39M] Server directory migration complete.
+[2026-10-03 23:32:32] [[32MINFO[39M] FTP service is disabled in settings.
+[2026-10-03 23:32:32] [[32MINFO[39M] [Discord] Found 0 enabled bot(s).
+[2026-10-03 23:32:32] [[32MINFO[39M] [UpdateScheduler] Starting (tick every 60s)
+PASS tests/errors.test.ts
+PASS tests/magma.test.ts
+[2026-10-03 23:32:35] [[32MINFO[39M] [HTTP] Running in HTTP mode (use Nginx + Let's Encrypt for production HTTPS)
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v17 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v17 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v19 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v19 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:35] [[33MWARN[39M] [Migrations] v23 skipped — column already exists (idempotent).
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] v23 applied successfully
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:35] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:35] [[32MINFO[39M] Database initialized successfully.
+[2026-10-03 23:32:35] [[32MINFO[39M] [StatsCollector] Starting — collecting every 30s, pruning every 1h.
+[2026-10-03 23:32:35] [[32MINFO[39M] [VersionManager] Loaded incomplete/default versions list. Will fetch updates.
+[2026-10-03 23:32:35] [[32MINFO[39M] [VersionManager] Fetching fresh versions...
+[2026-10-03 23:32:35] [[32MINFO[39M] Server directory migration complete.
+[2026-10-03 23:32:35] [[32MINFO[39M] FTP service is disabled in settings.
+[2026-10-03 23:32:35] [[32MINFO[39M] [Discord] Found 0 enabled bot(s).
+[2026-10-03 23:32:35] [[32MINFO[39M] [UpdateScheduler] Starting (tick every 60s)
+PASS tests/backups.test.ts
+PASS tests/bedrockVersionService.test.ts
+[2026-10-03 23:32:36] [[32MINFO[39M] [HTTP] Running in HTTP mode (use Nginx + Let's Encrypt for production HTTPS)
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v1: Initial schema — users, servers, permissions, ranks, discord, tokens
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v1 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v2: Add server_stats table for telemetry (RAM, CPU, TPS, Players)
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v2 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v3: Add throttle_config column to servers for RAM/CPU throttle settings
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v3 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v4: Add threshold_rules column to servers for multi-threshold escalation system
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v4 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v5: Add statistics_config retention settings
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v5 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v6: Add audit_log table for security event tracking
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v6 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v7: Add disk_bytes column to server_stats for storage tracking
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v7 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v8: Add autostart and autostart_on_crash to servers
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v8 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v9: Add totp_secret, totp_enabled to users; add valid_tokens_from for JWT revocation
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v9 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v10: Add totp_backup_codes column to users for 2FA account recovery
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v10 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v11: Add avatar_url to users table
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v11 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v12: Add totp_verified to users table
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v12 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v13: Add execution_mode and docker_container_id to servers table
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v13 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v14: Add extra_ports column to servers table
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v14 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v15: Add auto update settings columns to servers table
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v15 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v16: Add automation_rules table
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v16 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v17: Add nodes_json and edges_json to automation_rules
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v17 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v17 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v18: Add script column to automation_rules and automation_enabled to servers
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v18 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v19: Add sort_order column to ranks for custom ordering
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v19 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v19 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v20: Add modpack_title, modpack_version, modpack_project_id columns to servers
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v20 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v21: Add custom_start_command column to servers
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v21 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v22: Create server_api_keys table
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v22 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] Applying v23: Add allowed_ips column for API key IP allowlisting
+[2026-10-03 23:32:36] [[33MWARN[39M] [Migrations] v23 skipped — column already exists (idempotent).
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] v23 applied successfully
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:36] [[32MINFO[39M] [Migrations] 23 migration(s) applied.
+[2026-10-03 23:32:36] [[32MINFO[39M] Database initialized successfully.
+[2026-10-03 23:32:36] [[32MINFO[39M] [StatsCollector] Starting — collecting every 30s, pruning every 1h.
+[2026-10-03 23:32:36] [[32MINFO[39M] [VersionManager] Loaded incomplete/default versions list. Will fetch updates.
+[2026-10-03 23:32:36] [[32MINFO[39M] [VersionManager] Fetching fresh versions...
+[2026-10-03 23:32:36] [[32MINFO[39M] Server directory migration complete.
+[2026-10-03 23:32:36] [[32MINFO[39M] FTP service is disabled in settings.
+[2026-10-03 23:32:36] [[32MINFO[39M] [Discord] Found 0 enabled bot(s).
+[2026-10-03 23:32:36] [[32MINFO[39M] [UpdateScheduler] Starting (tick every 60s)
+PASS tests/validation.test.ts
+
+Test Suites: 14 passed, 14 total
+Tests:       101 passed, 101 total
+Snapshots:   0 total
+Time:        15.062 s
+Test results written to: ..\..\..\..\..\Desktop\minepanel files\MinePanel\scratch\dist-migration\jest-results.json
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

@@ -1,0 +1,95 @@
+/* One surface per item. Content sections are always unboxed, at every width. */
+@layer surfaces {
+  .content-section {
+    min-width: 0; max-width: 100%; margin-bottom: 24px; padding: 0 0 24px;
+    border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
+    background: transparent; box-shadow: none;
+  }
+  .content-section:last-child { margin-bottom: 0; }
+  .content-section h3 { margin-bottom: 16px; font-size: 1.125rem; line-height: 1.4; letter-spacing: -.02em; }
+  .content-section .content-section { border: 0; }
+  .detail-row { min-width: 0; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .layout-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .server-header-card { background: transparent; border: 0; box-shadow: none; padding: 0 0 16px; border-radius: 0; gap: 16px; animation: none; }
+  .server-view-sticky { border-bottom: 0; }
+  .sh-icon, .ov-stat-icon { background: transparent; border: 0; border-radius: 0; }
+  .server-header-card .sh-icon { width: 40px; height: 40px; flex-basis: 40px; }
+  .sub-nav, .server-view-sticky .sub-nav {
+    padding: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; box-shadow: none;
+    background: transparent; animation: none;
+  }
+  .sub-nav-item, .sub-nav-item.active { border: 0; border-bottom: 2px solid transparent; border-radius: 0; box-shadow: none; background: transparent; }
+  .sub-nav-item.active { border-bottom-color: var(--accent); }
+  .server-card, .plugin-card, .rank-card {
+    background: transparent; border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
+    padding: 16px 0; box-shadow: none; animation: none;
+  }
+  .server-card:hover, .plugin-card:hover, .rank-card:hover { transform: none; box-shadow: none; background: var(--accent-subtle); }
+  /* Stat cards stay boxed: a subtle surface that sits just above the page
+     background in dark mode and just below it in light mode (--bg-subtle). */
+  .ov-stat-card { background: var(--bg-subtle); }
+  .servers-grid, .plugins-grid { gap: 0; }
+  .server-card h4 { font-size: 1.125rem; }
+  .server-card p { margin-bottom: 12px; font-size: 14px; }
+  .ov-stat-card { align-items: center; gap: 12px; overflow: visible; }
+  .ov-stat-info { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .ov-stat-label { font-size: 14px; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .ov-stat-val { font-size: 1rem; white-space: normal; overflow: visible; overflow-wrap: anywhere; text-align: right; }
+  .ov-stat-bar-wrap { height: 2px; }
+  .ov-chart-wrap { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-subtle); }
+  .ov-chart-overlay { background: var(--bg-subtle); z-index: 2; }
+  .ov-chart-title { font-size: 16px; }
+  .ov-chart-sub { font-size: 14px; }
+  .ov-legend-btn { border-radius: 8px; background: transparent; padding: 8px; }
+  .ov-legend-btn.off { opacity: .7; }
+  .ov-legend-dot { box-shadow: none; }
+  .ov-player-row, .ov-backup-row, .ov-activity-item, .installed-plugin-item,
+  .plugin-readme, .plugin-versions, .plugin-version-item, .prop-item, .discord-server-link-item {
+    background: transparent; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; box-shadow: none; padding: 12px 0;
+  }
+  .plugin-header, .plugin-detail-hero, .plugin-detail-stats { background: transparent; box-shadow: none; border-radius: 0; }
+  .plugin-detail-hero { border: 0; padding-inline: 0; }
+  .plugin-readme, .plugin-versions { padding: 0; }
+  .plugin-version-item { margin-bottom: 0; }
+  .plugin-desc { font-size: 14px; line-height: 1.6; }
+  .plugin-title { white-space: normal; }
+  .prop-item { align-items: stretch; }
+  .props-grid .prop-item { min-width: 0; }
+  .docs-sidebar { background: transparent; border: 0; border-radius: 0; padding: 0; }
+  .doc-content { background: transparent; }
+  .auth-box { background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+  .auth-brand { justify-content: flex-start; }
+  .auth-box .subtitle { text-align: left; font-size: 14px; }
+  .btn, .btn:hover, .btn:active { transform: none; }
+  .btn.primary, .btn.primary:hover, .btn.outline:hover { box-shadow: none; }
+  .page-header > div { flex: 1 1 auto; }
+  .page-header .btn.primary { flex: 1 1 auto; }
+  @media (min-width: 48rem) {
+    .layout-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .servers-grid, .plugins-grid { gap: 24px; }
+    .server-card, .plugin-card, .rank-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+    .ov-stats-row { gap: 24px; }
+    .ov-stat-card { padding: 16px 0; }
+    .ov-stat-info { flex-direction: column; align-items: flex-start; }
+    .ov-stat-val { text-align: left; font-size: 1.125rem; }
+    .page-header > div { flex: 0 1 auto; }
+  }
+}
+@layer surfaces {
+  .rank-card { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; border-left: 4px solid transparent; padding-left: 8px; }
+  .rank-card > .rank-main { flex: 1 1 auto; min-width: 0; }
+  .rank-card.reorderable { cursor: grab; }
+  .rank-card.drag-over { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .file-manager { background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+  .file-manager .list-body, .file-manager .fm-toolbar, .file-manager .fm-item { background: transparent; }
+  .file-manager .fm-toolbar { padding: 12px 0; }
+  .file-manager .fm-item { padding: 12px 0; }
+  .server-tab-body .list-body, .server-tab-body .compact-list-row { background: transparent; }
+  #view-users .list-header { display: none; }
+}
+
+/* overflow-y:auto on .modal-body also clips horizontally, which cut off the 3px focus glow
+   on inputs at the left/right edges. Pad the body and pull it back so layout is unchanged. */
+@layer surfaces {
+  .modal-body { margin-inline: -6px; padding-inline: 6px; }
+}

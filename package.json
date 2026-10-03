@@ -2,21 +2,22 @@
   "name": "minepanel",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/minepanel_main.js",
   "private": true,
   "workspaces": [
     "src/frontend"
   ],
   "scripts": {
     "compile": "npx tsc",
-    "start": "node minepanel_main.js",
-    "dev": "nodemon src/minepanel.js",
-    "test": "jest --runInBand --detectOpenHandles",
-    "db": "node src/db/db-cli.js",
-    "db:status": "node src/db/db-cli.js status",
-    "db:migrate": "node src/db/db-cli.js migrate",
-    "db:integrity": "node src/db/db-cli.js integrity",
-    "db:backup": "node src/db/db-cli.js backup"
+    "start": "node dist/minepanel_main.js",
+    "dev": "npx tsc && nodemon --watch src --ext ts --exec \"npx tsc && node dist/minepanel_main.js\"",
+    "test": "npm run compile && jest --config jest.backend.config.cjs --runInBand --detectOpenHandles",
+    "test:dist": "npm run compile && node --test tests/dist-layout.test.cjs",
+    "db": "node dist/src/db/db-cli.js",
+    "db:status": "node dist/src/db/db-cli.js status",
+    "db:migrate": "node dist/src/db/db-cli.js migrate",
+    "db:integrity": "node dist/src/db/db-cli.js integrity",
+    "db:backup": "node dist/src/db/db-cli.js backup"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",

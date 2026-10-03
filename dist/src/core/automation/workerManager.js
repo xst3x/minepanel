@@ -1,3 +1,5 @@
+"use strict";
+const paths_1 = require("../../paths");
 // src/core/automation/workerManager.js
 'use strict';
 const { spawn } = require('child_process');
@@ -5,8 +7,8 @@ const path = require("path");
 const EventEmitter = require("events");
 const logger = require("../utils/logger");
 const processManager = require("../processManager");
-const VALIDATOR_PATH = path.join(__dirname, 'validator.py');
-const RUNNER_PATH = path.join(__dirname, 'sandbox_runner.py');
+const VALIDATOR_PATH = path.join(paths_1.PROJECT_ROOT, 'src', 'core', 'automation', 'validator.py');
+const RUNNER_PATH = path.join(paths_1.PROJECT_ROOT, 'src', 'core', 'automation', 'sandbox_runner.py');
 class WorkerManager extends EventEmitter {
     constructor() {
         super();

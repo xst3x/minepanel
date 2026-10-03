@@ -121,7 +121,7 @@ class AutomationEngine extends EventEmitter {
                 }
             }
             else {
-                this.isAutomationActive(serverId).catch(err => { logger.error('[Automation] isAutomationActive error: ' + (err.message || err)); });
+                this.isAutomationActive(serverId).catch(() => { });
             }
             const pending = (this.lineBuffers.get(sid) || '') + chunk;
             const parts = pending.split('\n');

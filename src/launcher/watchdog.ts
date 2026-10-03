@@ -1,3 +1,4 @@
+import { SETTINGS_FILE } from '../paths';
 import * as http from 'http';
 import * as https from 'https';
 import * as path from 'path';
@@ -38,9 +39,7 @@ let isHttps = false;
 let onWatchdogFailure: (() => void) | null = null;
 
 export function getWatchdogSettings(): WatchdogSettings {
-    const settingsPath = process.env.DATA_DIR
-        ? path.join(process.env.DATA_DIR, 'settings.json')
-        : path.resolve(__dirname, '../../settings.json');
+    const settingsPath = SETTINGS_FILE;
     try {
         if (fs.existsSync(settingsPath)) {
             const raw = fs.readFileSync(settingsPath, 'utf8');

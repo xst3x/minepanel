@@ -37,6 +37,7 @@ exports.pmEvents = void 0;
 exports.getChildProcess = getChildProcess;
 exports.startBackend = startBackend;
 exports.stopBackend = stopBackend;
+const paths_1 = require("../paths");
 const child_process_1 = require("child_process");
 const path = __importStar(require("path"));
 const logger = __importStar(require("./logger"));
@@ -54,6 +55,7 @@ function startBackend(port, token) {
         logger.info('ProcessManager', `Starting backend child process...`);
         // Spawn with IPC channel enabled
         child = (0, child_process_1.spawn)(process.execPath, [backendScript], {
+            cwd: paths_1.PROJECT_ROOT,
             stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
             env: {
                 ...process.env,

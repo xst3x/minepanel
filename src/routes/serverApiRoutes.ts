@@ -1,3 +1,4 @@
+import { PROJECT_ROOT } from '../paths';
 // ── Per-Server External API Router ─────────────────────────────────────
 // Mounted at /serverapi/:serverId/*
 // All routes are protected by API key authentication middleware.
@@ -1649,7 +1650,7 @@ router.get('/health', async (req: any, res: any) => {
     data: {
       status: 'operational',
       timestamp: new Date().toISOString(),
-      version: require('../../package.json').version,
+      version: require(require('path').join(PROJECT_ROOT, 'package.json')).version,
     }
   })
 })

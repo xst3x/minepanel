@@ -74,9 +74,7 @@ const downloadFile = (url, dest) => new Promise((resolve, reject) => {
             try {
                 fs.unlinkSync(dest);
             }
-            catch (e) {
-                logger.warn('[PluginRoutes] Failed to cleanup partial download: ' + (e.message || e));
-            }
+            catch (_) { }
             return downloadFile(response.headers.location, dest).then(resolve).catch(reject);
         }
         if (response.statusCode !== 200) {
@@ -84,9 +82,7 @@ const downloadFile = (url, dest) => new Promise((resolve, reject) => {
             try {
                 fs.unlinkSync(dest);
             }
-            catch (e) {
-                logger.warn('[PluginRoutes] Failed to cleanup failed download: ' + (e.message || e));
-            }
+            catch (_) { }
             return reject(new Error(`Download failed: ${response.statusCode}`));
         }
         response.pipe(fileStream);
@@ -94,9 +90,7 @@ const downloadFile = (url, dest) => new Promise((resolve, reject) => {
     }).on('error', (err) => { fileStream.close(); try {
         fs.unlinkSync(dest);
     }
-    catch (e) {
-        logger.warn('[PluginRoutes] Failed to cleanup errored download: ' + (e.message || e));
-    } reject(err); });
+    catch (_) { } reject(err); });
 });
 // ─── Compatibility helpers ────────────────────────────────────────────────────
 const getModrinthLoader = (software) => {
@@ -145,9 +139,7 @@ const getLevelName = (server) => {
             }
         }
     }
-    catch (e) {
-        logger.warn('[PluginRoutes] Failed to read level-name from server.properties: ' + (e.message || e));
-    }
+    catch (_) { }
     return 'world';
 };
 const getInstalledDatapacks = async (server) => {
@@ -172,9 +164,7 @@ const getInstalledDatapacks = async (server) => {
             size = stats.size;
             modifiedAt = stats.mtime;
         }
-        catch (e) {
-            logger.warn('[PluginRoutes] Failed to stat datapack file: ' + (e.message || e));
-        }
+        catch (_) { }
         const item = {
             name: entry.name,
             size,
@@ -188,9 +178,7 @@ const getInstalledDatapacks = async (server) => {
                 const metaContent = fs.readFileSync(metaPath, 'utf8');
                 item.modrinth = JSON.parse(metaContent);
             }
-            catch (e) {
-                logger.warn('[PluginRoutes] Failed to parse datapack metadata: ' + (e.message || e));
-            }
+            catch (_) { }
         }
         items.push(item);
     }
@@ -466,9 +454,7 @@ router.get('/hangar/project/:owner/:slug', authenticateToken, async (req, res) =
         try {
             body = await fetchText(`https://hangar.papermc.io/api/v1/pages/main/${encodeURIComponent(owner)}/${encodeURIComponent(slug)}`);
         }
-        catch (e) {
-            logger.warn('[PluginRoutes] Failed to fetch Hangar page body: ' + (e.message || e));
-        }
+        catch (_) { }
         res.json({ ...normalized, body, source: 'hangar' });
     }
     catch (e) {
@@ -632,9 +618,7 @@ router.post('/datapacks/install', authenticateToken, checkPermission('server.plu
                         fs.unlinkSync(metaFile);
                     }
                 }
-                catch (e) {
-                    logger.warn('[PluginRoutes] Failed to parse metadata: ' + (e.message || e));
-                }
+                catch (_) { }
             }
         }
         // Also check if a folder with the slug name exists (legacy extracted format)

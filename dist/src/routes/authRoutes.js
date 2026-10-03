@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../paths");
 const express = require("express");
 const databaseModule = require("../db/database");
 const { User, Rank, Server, AccountCreationToken, UserServerPermission, UserServerRank } = databaseModule;
@@ -15,7 +16,6 @@ const { validatePasswordStrength } = passwordValidatorModule;
 const logger = require("../core/utils/logger");
 const audit = require("../core/utils/auditLog");
 const fs = require("fs");
-const path = require("path");
 const sequelize_1 = require("sequelize");
 let _settingsCache = null;
 let _settingsCacheTime = 0;
@@ -24,15 +24,13 @@ const getSettings = () => {
     if (_settingsCache && (now - _settingsCacheTime < 30000))
         return _settingsCache;
     try {
-        if (fs.existsSync(path.resolve(__dirname, '../../settings.json'))) {
-            _settingsCache = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../settings.json'), 'utf8'));
+        if (fs.existsSync(paths_1.SETTINGS_FILE)) {
+            _settingsCache = JSON.parse(fs.readFileSync(paths_1.SETTINGS_FILE, 'utf8'));
             _settingsCacheTime = now;
             return _settingsCache;
         }
     }
-    catch (e) {
-        logger.warn('[AuthRoutes] Failed to read settings.json: ' + (e.message || e));
-    }
+    catch (_) { }
     _settingsCache = {};
     _settingsCacheTime = now;
     return _settingsCache;

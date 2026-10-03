@@ -1,5 +1,5 @@
 // src/worker.js
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+require('./paths');
 import processManager = require('./core/processManager')
 import logger = require('./core/utils/logger')
 

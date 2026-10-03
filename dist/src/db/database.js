@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuditLog = exports.Webhook = exports.UserCustomAccent = exports.DiscordIntegration = exports.DiscordBotServer = exports.DiscordBot = exports.AccountCreationToken = exports.Setting = exports.UserServerRank = exports.UserServerPermission = exports.Rank = exports.ServerStats = exports.Server = exports.User = exports.sequelize = exports.PREMADE_RANKS = exports.listBackups = exports.backupDatabase = exports.checkIntegrity = exports.initDb = exports.dbAll = exports.dbGet = exports.dbRun = exports.db = void 0;
+const paths_1 = require("../paths");
 const sqlite3 = require('sqlite3').verbose();
 const path = require("path");
 const fs = require("fs");
@@ -47,9 +48,7 @@ User.hasMany(UserCustomAccent, { foreignKey: 'user_id', as: 'customAccents', onD
 UserCustomAccent.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 DiscordBot.belongsToMany(Server, { through: DiscordBotServer, foreignKey: 'bot_id', otherKey: 'server_id', as: 'servers' });
 Server.belongsToMany(DiscordBot, { through: DiscordBotServer, foreignKey: 'server_id', otherKey: 'bot_id', as: 'discordBots' });
-const dbDir = process.env.DATA_DIR
-    ? require('path').join(process.env.DATA_DIR, 'db')
-    : path.join(__dirname, '../../data');
+const dbDir = paths_1.DB_DIR;
 if (process.env.NODE_ENV !== 'test' && !fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
 }
@@ -189,7 +188,7 @@ const PREMADE_RANKS = [
 ];
 exports.PREMADE_RANKS = PREMADE_RANKS;
 const { runMigrations } = require('./migrationRunner');
-const ADMIN_CREDS_FILE = path.join(__dirname, '../../ADMIN_CREDENTIALS.txt');
+const ADMIN_CREDS_FILE = path.join(paths_1.PROJECT_ROOT, 'ADMIN_CREDENTIALS.txt');
 const ensureAdminAccount = async () => {
     // ── Guard: do nothing if any user already exists (idempotent across restarts) ──
     const userCount = await dbGet('SELECT COUNT(*) as count FROM users');

@@ -1,3 +1,4 @@
+import Section from '../../components/Section.tsx';
 import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
@@ -125,10 +126,10 @@ export default function ServerFtp() {
   const displayHost = (currentHost === 'localhost' || currentHost === '127.0.0.1') ? '127.0.0.1' : currentHost;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '1.5rem' }}>
+    <div className="layout-grid" style={{  }}>
       
       {/* Connection Info Card */}
-      <div className="card">
+      <Section className="">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0 }}>Connection Info</h3>
           {ftpInfo && (
@@ -166,7 +167,7 @@ export default function ServerFtp() {
                       {revealPass && plainPassword && !plainPassword.startsWith('(') && (
                         <button
                           className="btn outline small"
-                          style={{ padding: '2px 8px', fontSize: '0.72rem' }}
+                          style={{ padding: '2px 8px', fontSize: '0.875rem' }}
                           onClick={() => {
                             navigator.clipboard.writeText(plainPassword);
                             toast('Password copied to clipboard.', 'success');
@@ -175,9 +176,9 @@ export default function ServerFtp() {
                           Copy
                         </button>
                       )}
-                      <button
+                      <button aria-label={revealPass ? 'Hide password (auto-hides after 30s)' : 'Reveal password'}
                         className="btn outline small"
-                        style={{ padding: '2px 8px', fontSize: '0.72rem' }}
+                        style={{ padding: '2px 8px', fontSize: '0.875rem' }}
                         onClick={handleRevealPassword}
                         disabled={actionLoading}
                         title={revealPass ? 'Hide password (auto-hides after 30s)' : 'Reveal password'}
@@ -198,20 +199,20 @@ export default function ServerFtp() {
                 {ftpInfo?.running ? 'Stop FTP' : 'Start FTP'}
               </button>
             )}
-            <p className="text-muted" style={{ fontSize: '0.78rem', marginTop: '0.75rem' }}>
+            <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '0.75rem' }}>
               FTP is sandboxed to this server's directory only.
             </p>
           </>
         )}
-      </div>
+      </Section>
 
       {/* Configure FTP Card */}
       {hasPerm('server.ftp.manage') && (
-        <div className="card">
+        <Section className="">
           <h3 style={{ marginBottom: '1rem' }}>Configure FTP</h3>
           <div className="form-group">
             <label>Username</label>
-            <input
+            <input aria-label="Username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -222,7 +223,7 @@ export default function ServerFtp() {
           <div className="form-group">
             <label>Password <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(leave blank to keep current)</span></label>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <input
+              <input aria-label="Password (leave blank to keep current)"
                 type={showConfigPass ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -240,7 +241,7 @@ export default function ServerFtp() {
           </div>
           <div className="form-group">
             <label>FTP Port <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(per-server, not global)</span></label>
-            <input
+            <input aria-label="FTP Port (per-server, not global)" inputMode="numeric"
               type="number"
               value={port}
               onChange={(e) => setPort(e.target.value)}
@@ -257,26 +258,26 @@ export default function ServerFtp() {
           >
             Save &amp; Apply
           </button>
-        </div>
+        </Section>
       )}
 
       {/* Help Card */}
-      <div className="card">
+      <Section className="">
         <h3 style={{ marginBottom: '0.75rem' }}>How to connect</h3>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
           This panel uses <strong>SFTP</strong> (SSH File Transfer Protocol) — not plain FTP. Use FileZilla, WinSCP, or any SFTP-capable client.
         </p>
-        <ol style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', paddingLeft: '1.25rem', lineHeight: 1.9, margin: '0 0 0.75rem' }}>
+        <ol style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', paddingLeft: '1.25rem', lineHeight: 1.9, margin: '0 0 0.75rem' }}>
           <li>Set credentials &amp; port, click <strong>Save &amp; Apply</strong></li>
           <li>Click <strong>Start FTP</strong> to start the SFTP daemon</li>
           <li><strong>FileZilla:</strong> Site Manager &rarr; Protocol: <em>SFTP — SSH File Transfer Protocol</em></li>
           <li><strong>WinSCP:</strong> New Session &rarr; File Protocol: <em>SFTP</em></li>
           <li>Enter Host / Port / Username / Password from the Connection Info card</li>
         </ol>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Each server has its own independent SFTP port. Access is sandboxed to that server's directory.
         </p>
-      </div>
+      </Section>
 
     </div>
   );

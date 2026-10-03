@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 // src/worker.js
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+require('./paths');
 const processManager = require("./core/processManager");
 const logger = require("./core/utils/logger");
 logger.info(`[Worker] Started worker process on PID ${process.pid}`);
@@ -9,7 +9,8 @@ if (!process.send) {
     logger.error('[Worker] Fatal: Worker process was not spawned with IPC enabled.');
     process.exit(1);
 }
-// Periodically gather and send stats for all online servers
+// Periodically gather and send stats for all online servers.
+// 500ms cadence — the dashboard chart appends live points on this tick.
 const statsInterval = setInterval(async () => {
     for (const [serverId, child] of processManager.processes.entries()) {
         try {
@@ -24,7 +25,7 @@ const statsInterval = setInterval(async () => {
             // Ignore stats errors
         }
     }
-}, 2000);
+}, 500);
 // Setup IPC handlers
 process.on('message', async (message) => {
     if (!message || typeof message !== 'object')

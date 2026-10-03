@@ -460,7 +460,8 @@ def _gen_ssl_cert(cert_dir: Path):
 def install_backend(install_dir: Path):
     step("Installing backend dependencies")
     _run(["npm", "install", "--prefer-offline"], cwd=install_dir)
-    ok("Backend packages installed.")
+    _run(["npm", "run", "compile"], cwd=install_dir)
+    ok("Backend packages installed and compiled to dist/.")
 
 
 def install_frontend(install_dir: Path):
@@ -484,7 +485,7 @@ def setup_service(install_dir: Path):
 
 def _setup_systemd(install_dir: Path):
     node_bin = _which("node") or "/usr/bin/node"
-    entry    = install_dir / "minepanel_main.js"
+    entry    = install_dir / "dist" / "minepanel_main.js"
     svc_name = "minepanel"
     svc_file = Path(f"/etc/systemd/system/{svc_name}.service")
     tmp_file = Path("/tmp/minepanel.service")
@@ -527,7 +528,7 @@ def _setup_windows(install_dir: Path):
         so the user sees output immediately, and can close it normally with Ctrl+C.
     """
     node_bin = _which("node") or "node"
-    entry    = install_dir / "minepanel_main.js"
+    entry    = install_dir / "dist" / "minepanel_main.js"
 
     # ── Write Start.bat ───────────────────────────────────────────────────────
     start_bat = install_dir / "Start.bat"

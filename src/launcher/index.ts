@@ -1,3 +1,4 @@
+import { SETTINGS_FILE } from '../paths';
 import * as crypto from 'crypto';
 import * as logger from './logger';
 import * as pm from './processManager';
@@ -66,9 +67,7 @@ function getBackendPort(): number {
 }
 
 function isBackendHttps(): boolean {
-    const settingsPath = process.env.DATA_DIR
-        ? require('path').join(process.env.DATA_DIR, 'settings.json')
-        : require('path').resolve(__dirname, '../../settings.json');
+    const settingsPath = SETTINGS_FILE;
     try {
         if (require('fs').existsSync(settingsPath)) {
             const raw = require('fs').readFileSync(settingsPath, 'utf8');

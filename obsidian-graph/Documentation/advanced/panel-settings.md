@@ -32,22 +32,22 @@ Flags passed directly to the Node process at startup. They override no `.env` va
 
 ```bash
 # Normal startup — only errors and startup messages are logged
-node src/minepanel.js
+node dist/src/minepanel.js
 
 # Debug mode — all HTTP requests are logged to stdout
-node src/minepanel.js --show-requests
+node dist/src/minepanel.js --show-requests
 ```
 
 ### With PM2
 
 ```bash
-pm2 start src/minepanel.js --name minepanel -- --show-requests
+pm2 start dist/src/minepanel.js --name minepanel -- --show-requests
 ```
 
 ### With systemd
 
 ```ini
-ExecStart=/usr/bin/node src/minepanel.js --show-requests
+ExecStart=/usr/bin/node dist/src/minepanel.js --show-requests
 ```
 
 > **Tip:** Leave `--show-requests` off in production. Use it temporarily when tracing an issue, then restart without it.
@@ -113,7 +113,7 @@ After=network.target
 Type=simple
 User=minepanel
 WorkingDirectory=/opt/minepanel
-ExecStart=/usr/bin/node src/index.js
+ExecStart=/usr/bin/node dist/src/index.js
 Restart=on-failure
 RestartSec=5
 
@@ -125,7 +125,7 @@ WantedBy=multi-user.target
 
 ```bash
 npm install -g pm2
-pm2 start src/index.js --name minepanel
+pm2 start dist/src/index.js --name minepanel
 pm2 save && pm2 startup
 ```
 

@@ -88,6 +88,27 @@ describe('Files API Sandbox & Operations', () => {
         expect(res.body.content).toBe('Hello World Sandbox');
     });
 
+    test('GET /api/servers/:id/files/info computes file and folder details on demand', async () => {
+        const serverDir = path.resolve(__dirname, '../servers/Test_Server');
+        const folder = path.join(serverDir, 'info-folder');
+        fs.mkdirSync(path.join(folder, 'child'), { recursive: true });
+        fs.writeFileSync(path.join(folder, 'child', 'note.txt'), 'hello');
+        const headers = { Authorization: `Bearer ${token}` };
+
+        const file = await request(app).get('/api/servers/1/files/info').set(headers).query({ path: 'info-folder/child/note.txt' });
+        expect(file.status).toBe(200);
+        expect(file.body).toMatchObject({ name: 'note.txt', isDirectory: false, size: 5, extension: 'txt' });
+        expect(file.body.createdAt).toBeTruthy();
+        expect(file.body.modifiedAt).toBeTruthy();
+
+        const directory = await request(app).get('/api/servers/1/files/info').set(headers).query({ path: 'info-folder' });
+        expect(directory.status).toBe(200);
+        expect(directory.body).toMatchObject({ name: 'info-folder', isDirectory: true, size: 5, folderCount: 1, fileCount: 1 });
+
+        const denied = await request(app).get('/api/servers/1/files/info').set(headers).query({ path: '../../package.json' });
+        expect(denied.status).toBe(403);
+    });
+
     test('Path traversal attempts are blocked (HTTP 403 / FILE_ACCESS_DENIED)', async () => {
         const res = await request(app)
             .get('/api/servers/1/files/read')

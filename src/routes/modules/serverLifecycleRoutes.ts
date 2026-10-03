@@ -7,7 +7,7 @@ import permissionsModule = require('../../core/permissions')
 const { checkPermission } = permissionsModule;
 import errorsModule = require('../../core/errors')
 const { E, sendError } = errorsModule;
-const { getServer, getServerDir } = require('../../core/serverHelper')
+const { getServer, getServerDir, isPortInUse } = require('../../core/serverHelper')
 import processManager = require('../../core/processManager')
 import javaManager = require('../../core/javaManager')
 import path = require('path')
@@ -38,6 +38,21 @@ router.post('/:serverId/start', authenticateToken, checkPermission('server.start
         }
         if (isPocketMine && !fs.existsSync(startInfo.jarFile)) {
             return sendError(res, E.BAD_REQUEST, 400, 'PocketMine-MP.phar not found. May still be downloading.');
+        }
+
+        // Fail fast with a clear reason when the game port is already taken by
+        // another process, instead of letting the server fail to bind later and
+        // surfacing a generic "internal error" to the user.
+        if (server.port && processManager.getStatus(serverId.toString()) !== 'online') {
+            const protocol = isBedrock ? 'udp' : 'tcp';
+            if (await isPortInUse(server.port, protocol)) {
+                return sendError(
+                    res,
+                    E.SERVER_PORT_IN_USE,
+                    409,
+                    `Port ${server.port} is already in use by another process. Stop that process or change this server's port.`
+                );
+            }
         }
 
         if (!processManager.acquireLock(serverId)) {

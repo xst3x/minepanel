@@ -1,3 +1,4 @@
+import { PROJECT_ROOT } from '../../paths';
 // src/core/utils/envHelper.js
 import fs = require('fs')
 import path = require('path')
@@ -9,7 +10,7 @@ const crypto = require('crypto')
  * @param {number} newPort - The new port number to save.
  */
 function updateEnvPort(newPort) {
-    const envPath = path.resolve(__dirname, '../../../.env');
+    const envPath = path.join(PROJECT_ROOT, '.env');
     const tempPath = envPath + '.tmp';
     
     let content = '';
@@ -43,7 +44,7 @@ function updateEnvPort(newPort) {
 function sanitizeSecrets() {
     if (process.env.NODE_ENV === 'test') return;
 
-    const envPath = path.resolve(__dirname, '../../../.env');
+    const envPath = path.join(PROJECT_ROOT, '.env');
     const tempPath = envPath + '.tmp';
     
     if (!fs.existsSync(envPath)) return;

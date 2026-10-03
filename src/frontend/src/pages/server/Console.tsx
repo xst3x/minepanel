@@ -84,9 +84,7 @@ export default function ServerConsole() {
     stick.current = true;
     const el = tab === 'console' ? outputRef.current : chatRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-    if (tab === 'chat' && canChatSend) chatInputRef.current?.focus();
-    if (tab === 'console' && canWrite) inputRef.current?.focus();
-  }, [tab, canChatSend, canWrite]);
+  }, [tab]);
 
   // Follow new content only while pinned to the bottom.
   useEffect(() => {

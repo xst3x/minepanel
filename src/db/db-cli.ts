@@ -12,11 +12,13 @@
 
 'use strict';
 
+import { DB_DIR } from '../paths';
+
 const path = require('path')
 const sqlite3 = require('sqlite3').verbose();
 import fs = require('fs')
 
-const dbDir = path.join(__dirname, 'data');
+const dbDir = DB_DIR;
 const dbPath = path.join(dbDir, 'minepanel.db');
 
 if (!fs.existsSync(dbPath)) {
@@ -37,8 +39,8 @@ const dbAll = (sql, params = []) => new Promise<any>((resolve, reject) => {
     db.all(sql, params, (err, rows) => { err ? reject(err) : resolve(rows || []); });
 });
 
-const { runMigrations, rollbackTo, getMigrationStatus } = require('./src/db/migrationRunner')
-import { checkIntegrity, backupDatabase, listBackups } from '../db/database'
+const { runMigrations, rollbackTo, getMigrationStatus } = require('./migrationRunner')
+import { checkIntegrity, backupDatabase, listBackups } from './database'
 
 const cmd = process.argv[2];
 
@@ -63,7 +65,7 @@ async function main() {
 
         case 'migrate': {
             console.log('\nRunning pending migrations...\n');
-            await runMigrations(dbRun, dbGet);
+            await runMigrations(dbRun, dbGet, dbAll);
             console.log('\nDone.\n');
             break;
         }

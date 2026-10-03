@@ -1,3 +1,4 @@
+import { DB_DIR } from '../paths';
 import { Sequelize } from 'sequelize'
 import path = require('path')
 import fs = require('fs')
@@ -5,9 +6,7 @@ import logger = require('../core/utils/logger')
 
 // Must mirror the path logic in database.js exactly so both connections
 // (Sequelize ORM + raw sqlite3) target the same physical file.
-const dbDir = process.env.DATA_DIR
-    ? path.join(process.env.DATA_DIR, 'db')
-    : path.join(__dirname, '../../data');
+const dbDir = DB_DIR;
 if (process.env.NODE_ENV !== 'test' && !fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
 }

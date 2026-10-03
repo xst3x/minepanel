@@ -1,3 +1,4 @@
+import { SETTINGS_FILE } from '../paths';
 import express = require('express')
 import databaseModule = require('../db/database')
 const { User, Rank, Server, AccountCreationToken, UserServerPermission, UserServerRank } = databaseModule;
@@ -24,8 +25,8 @@ const getSettings = () => {
     const now = Date.now();
     if (_settingsCache && (now - _settingsCacheTime < 30000)) return _settingsCache;
     try {
-        if (fs.existsSync(path.resolve(__dirname, '../../settings.json'))) {
-            _settingsCache = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../settings.json'), 'utf8'));
+        if (fs.existsSync(SETTINGS_FILE)) {
+            _settingsCache = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
             _settingsCacheTime = now;
             return _settingsCache;
         }

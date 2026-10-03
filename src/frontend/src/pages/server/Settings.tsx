@@ -1,3 +1,5 @@
+import Section from '../../components/Section.tsx';
+import ModalOverlay from '../../components/ModalOverlay.tsx';
 import { useState, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
@@ -415,17 +417,17 @@ export default function ServerSettings() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
       {/* Engine & Version Switcher — hidden for modpack servers (spec item 5) */}
-      <div className="card">
+      <Section className="">
         <h3>Server Engine &amp; Version</h3>
         <p className="text-muted" style={{ marginBottom: '0.75rem' }}>
           {serverInfo?.modpack_title
             ? 'This server runs a curated Modpack environment. Engine and version switching is locked to prevent corruption.'
             : 'Switch server engine software or upgrade/downgrade version. The server must be stopped first.'}
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '1rem' }}>
+        <div className="layout-grid" style={{  }}>
           <div className="form-group">
             <label>Current Engine</label>
-            <input
+            <input aria-label="Current Engine"
               type="text"
               value={
                 serverInfo?.modpack_title
@@ -437,19 +439,13 @@ export default function ServerSettings() {
           </div>
           <div className="form-group">
             <label>Current Version</label>
-            <input type="text" value={serverInfo?.modpack_title ? (serverInfo?.version || '') : (serverInfo?.version || '')} readOnly disabled />
+            <input aria-label="Current Version" type="text" value={serverInfo?.modpack_title ? (serverInfo?.version || '') : (serverInfo?.version || '')} readOnly disabled />
           </div>
         </div>
 
         {/* Modpack lockout banner */}
         {serverInfo?.modpack_title && (
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: '0.65rem',
-            background: 'color-mix(in srgb, var(--bg-surface) 80%, var(--warning) 20%)',
-            border: '1px solid var(--warning)', borderRadius: 'var(--radius)',
-            padding: '0.75rem 1rem', fontSize: '0.82rem', color: 'var(--warning)',
-            marginTop: '0.75rem',
-          }}>
+          <div className="detail-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', fontSize: '0.875rem', color: 'var(--warning)', marginTop: '0.75rem' }}>
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
@@ -458,10 +454,10 @@ export default function ServerSettings() {
         )}
 
         {hasPerm('server.properties.write') && !serverInfo?.modpack_title && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '1rem', marginTop: '1rem', alignItems: 'flex-end' }}>
+          <div className="layout-grid" style={{ marginTop: '1rem', alignItems: 'flex-end' }}>
             <div className="form-group" style={{ margin: 0 }}>
               <label>New Engine Software</label>
-              <Select
+              <Select aria-label="New Engine Software"
                 value={newSoftware}
                 onChange={(e) => { setNewSoftware(e.target.value); setNewVersion(''); }}
               >
@@ -473,7 +469,7 @@ export default function ServerSettings() {
             <div className="form-group" style={{ margin: 0 }}>
               <label>New Minecraft Version</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <Select
+                <Select aria-label="New Minecraft Version"
                   value={newVersion}
                   onChange={(e) => setNewVersion(e.target.value)}
                   style={{ flex: 1 }}
@@ -483,7 +479,7 @@ export default function ServerSettings() {
                     <option key={v} value={v}>{v}</option>
                   ))}
                 </Select>
-                <button
+                <button aria-label="Refresh versions from APIs"
                   type="button"
                   className="btn outline"
                   onClick={handleRefreshVersions}
@@ -503,10 +499,10 @@ export default function ServerSettings() {
             </div>
           </div>
         )}
-      </div>
+      </Section>
 
       {/* Server Details & Resources */}
-      <div className="card">
+      <Section className="">
         <h3>Server Details &amp; Resources</h3>
         <p className="text-muted" style={{ marginBottom: '1rem' }}>
           General server options and hardware budget configurations.
@@ -516,37 +512,37 @@ export default function ServerSettings() {
           <p className="text-muted">Loading settings</p>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+            <div className="layout-grid" style={{ marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label>Server Name</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="My Minecraft Server" />
+                <input aria-label="Server Name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="My Minecraft Server" />
               </div>
               <div className="form-group">
                 <label>Allocated RAM (MB)</label>
-                <input type="number" value={ram} onChange={(e) => setRam(e.target.value)} placeholder="2048" min="512" max="16384" />
+                <input aria-label="Allocated RAM (MB)" inputMode="numeric" type="number" value={ram} onChange={(e) => setRam(e.target.value)} placeholder="2048" min="512" max="16384" />
               </div>
               <div className="form-group">
                 <label>Custom Server Port</label>
-                <input type="number" value={port} onChange={(e) => setPort(e.target.value)} placeholder="25565" min="1024" max="65535" />
+                <input aria-label="Custom Server Port" inputMode="numeric" type="number" value={port} onChange={(e) => setPort(e.target.value)} placeholder="25565" min="1024" max="65535" />
               </div>
               {serverInfo?.software?.toLowerCase() !== 'bedrock' && (
                 <div className="form-group">
                   <label>Java Path / Binary</label>
-                  <input type="text" value={javaPath} onChange={(e) => setJavaPath(e.target.value)} placeholder="java" />
+                  <input aria-label="Java Path / Binary" type="text" value={javaPath} onChange={(e) => setJavaPath(e.target.value)} placeholder="java" />
                 </div>
               )}
             </div>
 
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
               <h4 style={{ margin: '0 0 0.75rem' }}>Retention &amp; Lifecycle</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+              <div className="layout-grid" style={{ marginBottom: '1.25rem' }}>
                 <div className="form-group">
                   <label>Log Retention (Days)</label>
-                  <input type="number" value={logRetention} onChange={(e) => setLogRetention(e.target.value)} placeholder="7" min="0" />
+                  <input aria-label="Log Retention (Days)" inputMode="numeric" type="number" value={logRetention} onChange={(e) => setLogRetention(e.target.value)} placeholder="7" min="0" />
                 </div>
                 <div className="form-group">
                   <label>Backup Retention (Days)</label>
-                  <input type="number" value={backupRetention} onChange={(e) => setBackupRetention(e.target.value)} placeholder="30" min="0" />
+                  <input aria-label="Backup Retention (Days)" inputMode="numeric" type="number" value={backupRetention} onChange={(e) => setBackupRetention(e.target.value)} placeholder="30" min="0" />
                 </div>
               </div>
 
@@ -554,7 +550,7 @@ export default function ServerSettings() {
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', gap: '1rem' }}>
                   <div>
                     <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Autostart on boot</div>
-                    <div className="text-muted" style={{ fontSize: '0.79rem', marginTop: '0.15rem' }}>Automatically start this server when the panel boots up.</div>
+                    <div className="text-muted" style={{ fontSize: '0.875rem', marginTop: '0.15rem' }}>Automatically start this server when the panel boots up.</div>
                   </div>
                   <span className="toggle-switch">
                     <input type="checkbox" checked={autostart} onChange={(e) => setAutostart(e.target.checked)} aria-label="Autostart on boot" />
@@ -565,7 +561,7 @@ export default function ServerSettings() {
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', gap: '1rem' }}>
                   <div>
                     <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Autostart on crash</div>
-                    <div className="text-muted" style={{ fontSize: '0.79rem', marginTop: '0.15rem' }}>
+                    <div className="text-muted" style={{ fontSize: '0.875rem', marginTop: '0.15rem' }}>
                       Automatically restart this server if it crashes (non-zero exit code). Does not trigger on manual stops/kills.
                     </div>
                   </div>
@@ -586,16 +582,16 @@ export default function ServerSettings() {
             )}
           </>
         )}
-      </div>
+      </Section>
 
       {/* ── Auto-Update Settings — hidden for modpack servers (spec item 5) ── */}
       {!serverInfo?.modpack_title && (
-      <div className="card">
+      <Section className="">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
           <h3 style={{ margin: 0 }}>Auto-Update Settings</h3>
           {upd._updateState?.status && upd._updateState.status !== 'idle' && (
             <span style={{
-              fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
+              fontSize: '0.875rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
               padding: '0.2rem 0.6rem', borderRadius: '999px',
               background: upd._updateState.status === 'error' ? 'color-mix(in srgb, var(--bg-surface) 80%, var(--danger) 20%)' : 'color-mix(in srgb, var(--bg-surface) 80%, var(--accent) 20%)',
               color: upd._updateState.status === 'error' ? 'var(--danger)' : 'var(--accent)',
@@ -605,25 +601,20 @@ export default function ServerSettings() {
             </span>
           )}
         </div>
-        <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '1.25rem' }}>
+        <p className="text-muted" style={{ fontSize: '0.875rem', marginBottom: '1.25rem' }}>
           Automatically check and install software updates on a schedule. Always creates a backup before applying.
         </p>
 
         {/* Update available banner */}
         {updCheckResult?.available && (
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem',
-            background: 'color-mix(in srgb, var(--bg-surface) 80%, var(--accent) 20%)',
-            border: '1px solid var(--accent)', borderRadius: 'var(--radius)', padding: '0.75rem 1rem',
-            marginBottom: '1rem', fontSize: '0.85rem',
-          }}>
+          <div className="detail-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontWeight: 600 }}>
               <IconShield />
-              Update available: <code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{updCheckResult.currentVersion}</code>
+              Update available: <code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem' }}>{updCheckResult.currentVersion}</code>
               &nbsp;→&nbsp;
-              <code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{updCheckResult.latestVersion}</code>
+              <code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem' }}>{updCheckResult.latestVersion}</code>
               {!updCheckResult.compatible && (
-                <span style={{ color: 'var(--warning)', fontSize: '0.75rem', fontWeight: 400, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <span style={{ color: 'var(--warning)', fontSize: '0.875rem', fontWeight: 400, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                   <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                   Incompatible – {updCheckResult.compatibilityReason}
                 </span>
@@ -633,7 +624,7 @@ export default function ServerSettings() {
               className="btn primary"
               onClick={handleRunUpdate}
               disabled={updRunning}
-              style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              style={{ fontSize: '0.875rem', padding: '0.3rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
             >
               <IconPlay /> {updRunning ? 'Updating…' : 'Apply Update'}
             </button>
@@ -669,7 +660,7 @@ export default function ServerSettings() {
             <label key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: locked ? 'default' : 'pointer', gap: '1rem' }}>
               <div>
                 <div style={{ fontWeight: 500, color: warn ? 'var(--warning)' : 'var(--text-primary)', fontSize: '0.88rem' }}>{label}</div>
-                <div className="text-muted" style={{ fontSize: '0.78rem', marginTop: '0.12rem' }}>{desc}</div>
+                <div className="text-muted" style={{ fontSize: '0.875rem', marginTop: '0.12rem' }}>{desc}</div>
               </div>
               <span className="toggle-switch">
                 <input
@@ -686,10 +677,10 @@ export default function ServerSettings() {
         </div>
 
         {/* Interval picker */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+        <div className="layout-grid" style={{ marginBottom: '1.25rem' }}>
           <div className="form-group" style={{ margin: 0 }}>
             <label>Check interval (hours)</label>
-            <input
+            <input aria-label="Check interval (hours)" inputMode="numeric"
               type="number"
               min="1" max="168"
               value={upd.update_interval_hours}
@@ -698,7 +689,7 @@ export default function ServerSettings() {
           </div>
           <div className="form-group" style={{ margin: 0 }}>
             <label>Last check</label>
-            <input
+            <input aria-label="Last check"
               type="text"
               readOnly
               value={upd.last_update_check ? new Date(upd.last_update_check).toLocaleString() : 'Never'}
@@ -707,7 +698,7 @@ export default function ServerSettings() {
           </div>
           <div className="form-group" style={{ margin: 0 }}>
             <label>Last update applied</label>
-            <input
+            <input aria-label="Last update applied"
               type="text"
               readOnly
               value={upd.last_update_run ? new Date(upd.last_update_run).toLocaleString() : 'Never'}
@@ -718,11 +709,11 @@ export default function ServerSettings() {
 
         {/* Ignored plugins */}
         <div style={{ marginBottom: '1.25rem' }}>
-          <label style={{ display: 'block', fontWeight: 500, fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+          <label style={{ display: 'block', fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.5rem' }}>
             Ignored plugins (skip content updates for these)
           </label>
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <input
+            <input aria-label="Ignored plugins (skip content updates for these)"
               type="text"
               placeholder="e.g. essentialsx"
               value={ignoredInput}
@@ -730,7 +721,7 @@ export default function ServerSettings() {
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addIgnoredPlugin(); } }}
               style={{ flex: 1, height: '36px' }}
             />
-            <button className="btn outline" onClick={addIgnoredPlugin} style={{ height: '36px', padding: '0 0.75rem', fontSize: '0.82rem' }}>
+            <button className="btn outline" onClick={addIgnoredPlugin} style={{ height: '36px', padding: '0 0.75rem', fontSize: '0.875rem' }}>
               Add
             </button>
           </div>
@@ -740,7 +731,7 @@ export default function ServerSettings() {
                 <span key={p} style={{
                   display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
                   background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-                  borderRadius: '999px', padding: '0.15rem 0.6rem', fontSize: '0.78rem', fontFamily: 'var(--font-mono)',
+                  borderRadius: '999px', padding: '0.15rem 0.6rem', fontSize: '0.875rem', fontFamily: 'var(--font-mono)',
                 }}>
                   {p}
                   <button
@@ -761,7 +752,7 @@ export default function ServerSettings() {
             className="btn outline"
             onClick={handleCheckUpdate}
             disabled={updChecking}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.83rem' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem' }}
           >
             <IconRefresh /> {updChecking ? 'Checking…' : 'Check Now'}
           </button>
@@ -770,7 +761,7 @@ export default function ServerSettings() {
             className="btn outline"
             onClick={handleRunUpdate}
             disabled={updRunning}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.83rem' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem' }}
           >
             <IconPlay /> {updRunning ? 'Updating…' : 'Update Now'}
           </button>
@@ -778,7 +769,7 @@ export default function ServerSettings() {
             id="update-rollback-btn"
             className="btn outline"
             onClick={handleRollback}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.83rem', color: 'var(--warning)', borderColor: 'var(--warning)' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', color: 'var(--warning)', borderColor: 'var(--warning)' }}
           >
             <IconUndo /> Rollback
           </button>
@@ -788,20 +779,20 @@ export default function ServerSettings() {
               className="btn primary"
               onClick={handleSaveUpdateSettings}
               disabled={updSaving}
-              style={{ marginLeft: 'auto', fontSize: '0.83rem' }}
+              style={{ marginLeft: 'auto', fontSize: '0.875rem' }}
             >
               {updSaving ? 'Saving…' : 'Save Update Settings'}
             </button>
           )}
         </div>
-      </div>
+      </Section>
       )} {/* end !modpack_title auto-update guard */}
 
       {/* ── Server Start Command (Java servers only, not Bedrock) ── */}
       {!currentIsBedrock && hasPerm('server.properties.write') && (
-        <div className="card">
+        <Section className="">
           <h3>Server Start Command</h3>
-          <p className="text-muted" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
+          <p className="text-muted" style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
             MinePanel auto-generates the start command from your software, RAM, and Java settings.
             You can override it here with a fully custom command — useful for adding JVM flags, GC tuning, or custom jar arguments.
             Leave blank to revert to the auto-generated command.
@@ -811,15 +802,9 @@ export default function ServerSettings() {
           <div className="form-group" style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               Auto-generated command
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>(read-only preview)</span>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 400 }}>(read-only preview)</span>
             </label>
-            <div style={{
-              fontFamily: 'var(--font-mono)', fontSize: '0.78rem',
-              background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)', padding: '0.6rem 0.75rem',
-              color: 'var(--text-muted)', wordBreak: 'break-all', lineHeight: 1.6,
-              userSelect: 'all',
-            }}>
+            <div className="detail-row" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', color: 'var(--text-muted)', wordBreak: 'break-all', lineHeight: 1.6, userSelect: 'all' }}>
               {startCmdAuto || <span style={{ fontStyle: 'italic' }}>Loading…</span>}
             </div>
           </div>
@@ -830,25 +815,25 @@ export default function ServerSettings() {
               Custom start command
               {startCmd.trim() && (
                 <span style={{
-                  fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em',
+                  fontSize: '0.875rem', fontWeight: 700, letterSpacing: '0.06em',
                   padding: '0.1rem 0.45rem', borderRadius: '999px',
                   background: 'color-mix(in srgb, var(--bg-surface) 80%, var(--accent) 20%)',
                   color: 'var(--accent)', border: '1px solid var(--accent)',
                 }}>ACTIVE</span>
               )}
             </label>
-            <textarea
+            <textarea aria-label="Custom start command"
               rows={3}
               placeholder={startCmdAuto}
               value={startCmd}
               onChange={e => { setStartCmd(e.target.value); setStartCmdDirty(true); }}
               style={{
                 width: '100%', boxSizing: 'border-box',
-                fontFamily: 'var(--font-mono)', fontSize: '0.82rem',
+                fontFamily: 'var(--font-mono)', fontSize: '0.875rem',
                 resize: 'vertical', minHeight: '72px',
               }}
             />
-            <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <p style={{ margin: '0.3rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Start with <code style={{ fontFamily: 'var(--font-mono)' }}>java</code> or your Java binary path.
               The server will be stopped before changes take effect.
             </p>
@@ -866,45 +851,45 @@ export default function ServerSettings() {
               <button
                 className="btn outline"
                 onClick={() => { setStartCmd(''); setStartCmdDirty(true); }}
-                style={{ fontSize: '0.82rem' }}
+                style={{ fontSize: '0.875rem' }}
               >
                 Reset to Auto
               </button>
             )}
           </div>
-        </div>
+        </Section>
       )}
 
       {/* Danger Zone */}
 
       {hasPerm('account.manage') && (
-        <div className="card" style={{ border: '1px solid var(--danger)', background: 'color-mix(in srgb, var(--bg-surface) 85%, var(--danger) 25%)' }}>
+        <Section className="" style={{  }}>
           <h3 style={{ color: 'var(--text-primary)', marginTop: 0 }}>Delete Server</h3>
-          <p style={{ marginBottom: '1rem', fontSize: '13px', color: 'var(--text-secondary)' }}>
+          <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
             Permanently delete this server, including all files, databases, and configurations. This action cannot be undone.
           </p>
           <button className="btn danger" onClick={handleDeleteServer}>Delete Server</button>
-        </div>
+        </Section>
       )}
 
       {/* Switch Software Warning Modal */}
       {showSwitchModal && (
-        <div className="modal-overlay active" onClick={() => setShowSwitchModal(false)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setShowSwitchModal(false)}>
           <div className="modal" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 style={{ color: 'var(--warning)' }}>Compatibility Warnings</h3>
-              <button className="close-btn" onClick={() => setShowSwitchModal(false)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setShowSwitchModal(false)}>&times;</button>
             </div>
             <div className="modal-body">
               <p style={{ fontSize: '0.875rem', marginBottom: '1rem' }}>
                 Switching the engine or changing version has potential issues:
               </p>
-              <div style={{ background: 'var(--bg-input)', padding: '0.75rem', borderRadius: 'var(--radius)', fontSize: '0.85rem', maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border)', marginBottom: '1rem' }}>
+              <div className="detail-row" style={{ fontSize: '0.875rem', maxHeight: '150px', overflowY: 'auto', marginBottom: '1rem' }}>
                 {switchWarnings.map((warning, i) => (
                   <div key={i} style={{ marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>&bull; {warning}</div>
                 ))}
               </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 Are you sure you want to proceed? Ensure you have a full backup before continuing!
               </p>
             </div>
@@ -913,7 +898,7 @@ export default function ServerSettings() {
               <button className="btn primary" onClick={executeSwitchSoftware}>Proceed Switch</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import { PROCESS_DATA_DIR } from '../paths';
 /**
  * Persistence utilities for saving/loading running servers from disk.
  * Extracted from processManager.js — single responsibility.
@@ -6,7 +7,7 @@ import fs = require('fs')
 import path = require('path')
 
 /** @type {string} */
-const dataDir = process.env.DATA_DIR || path.join(__dirname, '../../../data');
+const dataDir = PROCESS_DATA_DIR;
 const runningServersFile = path.join(dataDir, 'running_servers.json');
 
 /**

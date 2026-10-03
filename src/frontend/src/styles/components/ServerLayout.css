@@ -1,3 +1,4 @@
+@layer components {
 .back-btn {
 background: none;
     border: none;
@@ -14,12 +15,10 @@ background: none;
     border-radius: var(--radius);
     transition: var(--transition);
 }
-
 .back-btn:hover {
 color: var(--accent);
     background: var(--accent-subtle);
 }
-
 .server-header-card {
 background: var(--bg-card-solid, var(--bg-surface));
     position: relative;
@@ -35,13 +34,11 @@ background: var(--bg-card-solid, var(--bg-surface));
     gap: 1.25rem;
     box-shadow: var(--shadow-sm);
 }
-
 .sh-info {
 display: flex;
     align-items: center;
     gap: 1rem;
 }
-
 .sh-icon {
 width: 48px;
     height: 48px;
@@ -53,13 +50,11 @@ width: 48px;
     justify-content: center;
     color: var(--accent);
 }
-
 .sh-info h2 {
 font-size: 1.35rem;
     font-weight: 700;
     letter-spacing: -0.03em;
 }
-
 .sh-meta {
 color: var(--text-secondary);
     font-size: 0.85rem;
@@ -70,59 +65,44 @@ color: var(--text-secondary);
     flex-wrap: wrap;
     min-width: 0;
 }
-
 .sh-meta .status-badge {
 flex-shrink: 0;
 }
-
 .sh-actions {
 display: flex;
     align-items: center;
     gap: 0.5rem;
-    flex-wrap: wrap;
 }
-
 #btn-stop {
-background: var(--red) !important;
-    color: #ffffff !important;
-    border: none !important;
-    box-shadow: none !important;
+background: var(--red);
+    color: #ffffff;
+    border: none;
+    box-shadow: none;
 }
-
 #btn-stop:hover {
-filter: brightness(1.12) !important;
+filter: brightness(1.12);
 }
-
 .sub-nav {
 display: flex;
-    flex-wrap: nowrap;
     background: var(--bg-surface);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     margin-bottom: 1.5rem;
-    overflow-x: auto;
-    scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
     padding: 5px 6px;
     gap: 2px;
     box-shadow: var(--shadow-sm);
 }
-
 .sub-nav::-webkit-scrollbar {
 height: 3px;
 }
-
 .sub-nav::-webkit-scrollbar-track {
 background: transparent;
 }
-
 .sub-nav::-webkit-scrollbar-thumb {
 background: var(--border);
     border-radius: 2px;
 }
-
 .sub-nav-item {
 background: none;
     border: none;
@@ -132,20 +112,16 @@ background: none;
     font-size: 13px;
     font-weight: 600;
     border-radius: var(--radius);
-    white-space: nowrap;
     font-family: var(--font-ui);
     transition: var(--transition);
-    flex-shrink: 0;
     display: inline-flex;
     align-items: center;
     gap: 6px;
 }
-
 .sub-nav-item:hover {
 color: var(--text-primary);
     background: var(--bg-elevated);
 }
-
 .sub-nav-item.active {
 color: var(--accent);
     background: var(--accent-subtle);
@@ -153,44 +129,34 @@ color: var(--accent);
     box-shadow: 0 0 10px var(--accent-glow);
     animation: tabActivate 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .tab-pane {
 display: none;
 }
-
 .tab-pane.active {
 display: block;
     animation: fadeIn 0.18s ease-out;
 }
-
 .sh-actions {
 flex-wrap: wrap;
 }
-
 .server-header-card {
 animation: mp-fadeSlideDown 0.3s ease both;
 }
-
 .sub-nav {
 animation: mp-fadeSlideDown 0.28s 0.05s ease both;
 }
-
 .server-view {
 display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 100%;
-    max-width: none;
-    width: 100%;
     padding: 0;
     margin: 0;
     animation: fadeIn 0.22s ease-out;
 }
-
 .server-tab-body {
 width: 100%;
 }
-
 .server-view-sticky {
 flex-shrink: 0;
     position: sticky;
@@ -200,22 +166,18 @@ flex-shrink: 0;
     border-bottom: 1px solid var(--border);
     padding: 1.25rem 2rem 0;
 }
-
 .server-view-sticky .back-btn {
 margin: 0 0 0.75rem 0;
 }
-
 .server-view-sticky .server-header-card {
 margin: 0 0 1rem 0;
 }
-
 .server-view-sticky .sub-nav {
 margin: 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     border-bottom: none;
     animation: none;
 }
-
 .server-tab-body {
 flex: 1;
     overflow-y: auto;
@@ -223,26 +185,22 @@ flex: 1;
     padding: 1.5rem 2rem 2rem;
     min-height: 0;
 }
-
 .server-view {
-box-sizing: border-box !important;
-    /* Cap very wide screens; min() never exceeds the parent container.
-       mobile.css re-enables full-bleed (max-width: none) on mobile. */
-    max-width: min(1440px, 100%) !important;
-    width: 100% !important;
-    overflow-x: hidden !important;
+box-sizing: border-box;
+    max-width: min(1440px, 100%);
+    width: 100%;
+    overflow-x: hidden;
 }
-
 .sub-nav {
-flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    scrollbar-width: thin !important;
+flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    min-width: 0;
+    max-width: 100%;
+    scrollbar-width: thin;
 }
-
 .sub-nav-item {
-flex-shrink: 0 !important;
-    white-space: nowrap !important;
+flex-shrink: 0;
+    white-space: nowrap;
+}
 }

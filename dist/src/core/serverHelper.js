@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../paths");
 const database_1 = require("../db/database");
 const path = require("path");
 const fs = require("fs");
@@ -7,11 +8,8 @@ const archiver_1 = require("archiver");
 const WebhookManager = require("./webhookManager");
 // archiver v8 replaced archiver('zip', opts) factory with new ZipArchive(opts)
 function archiver(_fmt, opts) { return new archiver_1.ZipArchive(opts); }
-const SERVERS_DIR = process.env.DATA_DIR
-    ? require('path').join(process.env.DATA_DIR, 'servers')
-    : path.resolve(__dirname, '../../servers');
-if (!fs.existsSync(SERVERS_DIR)) {
-    fs.mkdirSync(SERVERS_DIR, { recursive: true });
+if (!fs.existsSync(paths_1.SERVERS_DIR)) {
+    fs.mkdirSync(paths_1.SERVERS_DIR, { recursive: true });
 }
 function sanitizeDirName(name) {
     return name.toLowerCase()
@@ -37,7 +35,7 @@ async function getServer(serverId) {
     return (0, database_1.dbGet)('SELECT * FROM servers WHERE id = ?', [serverId]);
 }
 function getServerDir(server) {
-    return path.join(SERVERS_DIR, server.directory_name || server.id.toString());
+    return path.join(paths_1.SERVERS_DIR, server.directory_name || server.id.toString());
 }
 function createBackup(serverDir, label = 'backup', includes = 'all') {
     const startTime = Date.now();
@@ -131,8 +129,8 @@ async function migrateServerDirectories() {
     for (const server of servers) {
         const baseName = sanitizeDirName(server.name);
         const dirName = await ensureUniqueDirName(baseName, server.id);
-        const oldDir = path.join(SERVERS_DIR, server.id.toString());
-        const newDir = path.join(SERVERS_DIR, dirName);
+        const oldDir = path.join(paths_1.SERVERS_DIR, server.id.toString());
+        const newDir = path.join(paths_1.SERVERS_DIR, dirName);
         if (fs.existsSync(oldDir) && oldDir !== newDir) {
             try {
                 fs.renameSync(oldDir, newDir);
@@ -187,6 +185,40 @@ async function isPortAvailable(port, protocol = 'tcp') {
         return false;
     }
 }
+// OS-level check: is this port currently bound by any process?
+// Unlike isPortAvailable, this ignores the server DB — used to give a clear
+// "port already in use" message when starting a specific server.
+async function isPortInUse(port, protocol = 'tcp') {
+    return new Promise((resolve) => {
+        try {
+            if (protocol === 'udp') {
+                const dgram = require('dgram');
+                const socket = dgram.createSocket('udp4');
+                socket.once('error', () => { try {
+                    socket.close();
+                }
+                catch (_) { } resolve(true); });
+                socket.once('listening', () => { try {
+                    socket.close();
+                }
+                catch (_) { } resolve(false); });
+                socket.bind(port);
+            }
+            else {
+                const probe = net.createServer();
+                probe.once('error', () => resolve(true));
+                probe.once('listening', () => { try {
+                    probe.close();
+                }
+                catch (_) { } resolve(false); });
+                probe.listen(port, '0.0.0.0');
+            }
+        }
+        catch (e) {
+            resolve(false);
+        }
+    });
+}
 // Find available port starting from basePort
 async function findAvailablePort(basePort = 25565, software = 'paper', maxAttempts = 100) {
     // Java servers use TCP, Bedrock uses UDP
@@ -200,7 +232,7 @@ async function findAvailablePort(basePort = 25565, software = 'paper', maxAttemp
     throw new Error(`No available ports found starting from ${basePort}`);
 }
 module.exports = {
-    SERVERS_DIR,
+    SERVERS_DIR: paths_1.SERVERS_DIR,
     sanitizeDirName,
     ensureUniqueDirName,
     getServer,
@@ -208,6 +240,7 @@ module.exports = {
     createBackup,
     migrateServerDirectories,
     findAvailablePort,
-    isPortAvailable
+    isPortAvailable,
+    isPortInUse
 };
 //# sourceMappingURL=serverHelper.js.map

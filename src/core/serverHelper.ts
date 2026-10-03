@@ -1,3 +1,4 @@
+import { SERVERS_DIR } from '../paths';
 import { dbRun, dbGet, dbAll } from '../db/database'
 import path = require('path')
 import fs = require('fs')
@@ -7,9 +8,7 @@ import WebhookManager = require('./webhookManager')
 // archiver v8 replaced archiver('zip', opts) factory with new ZipArchive(opts)
 function archiver(_fmt, opts) { return new _ZipArchive(opts); }
 
-const SERVERS_DIR = process.env.DATA_DIR
-    ? require('path').join(process.env.DATA_DIR, 'servers')
-    : path.resolve(__dirname, '../../servers');
+
 
 if (!fs.existsSync(SERVERS_DIR)) {
     fs.mkdirSync(SERVERS_DIR, { recursive: true });
@@ -191,6 +190,30 @@ async function isPortAvailable(port, protocol = 'tcp') {
     }
 }
 
+// OS-level check: is this port currently bound by any process?
+// Unlike isPortAvailable, this ignores the server DB — used to give a clear
+// "port already in use" message when starting a specific server.
+async function isPortInUse(port, protocol = 'tcp') {
+    return new Promise<boolean>((resolve) => {
+        try {
+            if (protocol === 'udp') {
+                const dgram = require('dgram')
+                const socket = dgram.createSocket('udp4');
+                socket.once('error', () => { try { socket.close(); } catch (_) { } resolve(true); });
+                socket.once('listening', () => { try { socket.close(); } catch (_) { } resolve(false); });
+                socket.bind(port);
+            } else {
+                const probe = net.createServer();
+                probe.once('error', () => resolve(true));
+                probe.once('listening', () => { try { probe.close(); } catch (_) { } resolve(false); });
+                probe.listen(port, '0.0.0.0');
+            }
+        } catch (e) {
+            resolve(false);
+        }
+    });
+}
+
 // Find available port starting from basePort
 async function findAvailablePort(basePort = 25565, software = 'paper', maxAttempts = 100) {
     // Java servers use TCP, Bedrock uses UDP
@@ -214,5 +237,6 @@ export = {
     createBackup, 
     migrateServerDirectories,
     findAvailablePort,
-    isPortAvailable
+    isPortAvailable,
+    isPortInUse
 };

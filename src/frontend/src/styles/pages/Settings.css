@@ -1,32 +1,33 @@
+@layer components {
+.settings-save-row {
+    display: flex;
+    justify-content: flex-end;
+    margin: -0.75rem 0 1.5rem;
+}
 .effect-badge {
 transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: default;
 }
-
 .effect-badge:hover {
-background: rgba(255, 255, 255, 0.06) !important;
+background: rgba(255, 255, 255, 0.06);
     transform: translateY(-1.5px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
-
 .accent-appearance-card {
 min-width: 260px;
 }
-
 .accent-picker {
 display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 1.1rem 0.5rem;
     margin-bottom: 1.1rem;
 }
-
 .accent-swatch-item {
 display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.4rem;
 }
-
 .accent-circle {
 width: 38px;
     height: 38px;
@@ -37,12 +38,8 @@ width: 38px;
     padding: 0;
     position: relative;
     flex-shrink: 0;
-    transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1),
-                box-shadow 0.18s ease,
-                border-color 0.18s ease;
     box-shadow: 0 2px 6px rgba(0,0,0,0.35);
 }
-
 .accent-circle::after {
 content: '';
     position: absolute;
@@ -51,18 +48,15 @@ content: '';
     border: 2px solid transparent;
     transition: border-color 0.18s ease;
 }
-
 .accent-circle:hover {
 transform: scale(1.18);
     box-shadow: 0 4px 14px rgba(0,0,0,0.45);
 }
-
 .accent-circle.active {
 border-color: #fff;
     transform: scale(1.12);
     box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px #fff, 0 4px 14px rgba(0,0,0,0.4);
 }
-
 .accent-label {
 font-size: 0.65rem;
     color: var(--text-muted);
@@ -74,19 +68,16 @@ font-size: 0.65rem;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-
 .accent-selected-label {
 font-size: 0.8rem;
     color: var(--text-secondary);
     margin-top: 0.1rem;
 }
-
 .accent-selected-label span {
 color: var(--accent);
     font-weight: 600;
     transition: color 0.2s ease;
 }
-
 .accent-custom-btn {
 width: 38px;
     height: 38px;
@@ -102,13 +93,11 @@ width: 38px;
     flex-shrink: 0;
     padding: 0;
 }
-
 .accent-custom-btn:hover {
 border-color: var(--accent);
     color: var(--accent);
     transform: scale(1.1);
 }
-
 .accent-delete-btn {
 position: absolute;
     top: -4px;
@@ -129,29 +118,24 @@ position: absolute;
     transition: opacity 0.15s, background 0.15s, color 0.15s;
     line-height: 1;
 }
-
 .accent-swatch-item:hover .accent-delete-btn {
 opacity: 1;
 }
-
 .accent-delete-btn:hover {
 background: var(--red, #ef4444);
     color: #fff;
     border-color: var(--red, #ef4444);
 }
-
 .color-well-overlay {
 position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(6px);
     z-index: 200;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
 }
-
 .color-well-modal {
 background: var(--bg-surface);
     border: 1px solid var(--border);
@@ -165,13 +149,11 @@ background: var(--bg-surface);
     flex-direction: column;
     gap: 1.1rem;
 }
-
 .color-well-modal h3 {
 font-size: 1rem;
     font-weight: 700;
     margin: 0;
 }
-
 .color-well-wheel-wrap {
 position: relative;
     width: 200px;
@@ -182,13 +164,11 @@ position: relative;
     cursor: crosshair;
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
-
 .color-well-wheel-wrap canvas {
 display: block;
     width: 200px;
     height: 200px;
 }
-
 .color-well-cursor {
 position: absolute;
     width: 14px;
@@ -201,7 +181,6 @@ position: absolute;
     top: 50%;
     left: 50%;
 }
-
 .color-well-preview {
 width: 44px;
     height: 44px;
@@ -210,37 +189,31 @@ width: 44px;
     flex-shrink: 0;
     transition: background 0.1s;
 }
-
 .cw-preview-row {
 display: flex;
     gap: 0.75rem;
     align-items: center;
 }
-
 .cw-preview-row .color-well-name-input {
 flex: 1;
 }
-
 .cw-brightness-row {
 display: flex;
     align-items: center;
     gap: 0.6rem;
 }
-
 .cw-slider-label {
 font-size: 11.5px;
     color: var(--text-muted);
     white-space: nowrap;
     min-width: 60px;
 }
-
 .cw-brightness-val {
 font-size: 11.5px;
     color: var(--text-muted);
     min-width: 32px;
     text-align: right;
 }
-
 .cw-brightness-track {
 flex: 1;
     border-radius: 999px;
@@ -250,7 +223,6 @@ flex: 1;
     display: flex;
     align-items: center;
 }
-
 .cw-brightness-track input[type=range] {
 -webkit-appearance: none;
     appearance: none;
@@ -262,7 +234,6 @@ flex: 1;
     cursor: pointer;
     margin: 0;
 }
-
 .cw-brightness-track input[type=range]::-webkit-slider-thumb {
 -webkit-appearance: none;
     width: 16px;
@@ -273,7 +244,6 @@ flex: 1;
     box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     cursor: pointer;
 }
-
 .cw-brightness-track input[type=range]::-moz-range-thumb {
 width: 16px;
     height: 16px;
@@ -283,27 +253,22 @@ width: 16px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     cursor: pointer;
 }
-
 .cw-rgb-row {
 display: flex;
     gap: 0.5rem;
     align-items: flex-end;
 }
-
 .cw-rgb-field, .cw-hex-field {
 display: flex;
     flex-direction: column;
     gap: 4px;
 }
-
 .cw-rgb-field {
 flex: 1;
 }
-
 .cw-hex-field {
 flex: 1.6;
 }
-
 .cw-rgb-field label, .cw-hex-field label {
 font-size: 10.5px;
     font-weight: 600;
@@ -311,7 +276,6 @@ font-size: 10.5px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
-
 .cw-rgb-field input, .cw-hex-field input {
 width: 100%;
     padding: 6px 8px;
@@ -325,20 +289,16 @@ width: 100%;
     text-align: center;
     box-sizing: border-box;
 }
-
 .cw-rgb-field input:focus, .cw-hex-field input:focus {
 border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-glow);
 }
-
 .cw-rgb-field input::-webkit-inner-spin-button {
 -webkit-appearance: none; margin: 0;
 }
-
 .cw-rgb-field input[type=number] {
 -moz-appearance: textfield;
 }
-
 .color-well-name-input {
 padding: 9px 14px;
     background: var(--bg-input);
@@ -351,18 +311,16 @@ padding: 9px 14px;
     width: 100%;
     box-sizing: border-box;
 }
-
 .color-well-name-input:focus {
 border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-glow);
 }
-
 .color-well-footer {
 display: flex;
     gap: 0.75rem;
     justify-content: flex-end;
 }
-
 .accent-circle {
 transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
 }

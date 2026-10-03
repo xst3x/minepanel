@@ -38,9 +38,9 @@ exports.getWatchdogSettings = getWatchdogSettings;
 exports.initWatchdog = initWatchdog;
 exports.reloadWatchdogSettings = reloadWatchdogSettings;
 exports.stopWatchdogTimer = stopWatchdogTimer;
+const paths_1 = require("../paths");
 const http = __importStar(require("http"));
 const https = __importStar(require("https"));
-const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 const logger = __importStar(require("./logger"));
 exports.DEFAULT_SETTINGS = {
@@ -63,9 +63,7 @@ let backendPort = 8082;
 let isHttps = false;
 let onWatchdogFailure = null;
 function getWatchdogSettings() {
-    const settingsPath = process.env.DATA_DIR
-        ? path.join(process.env.DATA_DIR, 'settings.json')
-        : path.resolve(__dirname, '../../settings.json');
+    const settingsPath = paths_1.SETTINGS_FILE;
     try {
         if (fs.existsSync(settingsPath)) {
             const raw = fs.readFileSync(settingsPath, 'utf8');

@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../paths");
 // ── Per-Server External API Router ─────────────────────────────────────
 // Mounted at /serverapi/:serverId/*
 // All routes are protected by API key authentication middleware.
@@ -1604,7 +1605,7 @@ router.get('/health', async (req, res) => {
         data: {
             status: 'operational',
             timestamp: new Date().toISOString(),
-            version: require('../../package.json').version,
+            version: require(require('path').join(paths_1.PROJECT_ROOT, 'package.json')).version,
         }
     });
 });

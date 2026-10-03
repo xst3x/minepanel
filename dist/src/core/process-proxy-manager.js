@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../paths");
 /**
  * Proxy Process Manager — communicates with the worker process via IPC.
  * Used in the API process.
@@ -7,7 +8,6 @@
 const child_process_1 = require("child_process");
 const EventEmitter = require("events");
 const path = require("path");
-const logger = require("./utils/logger");
 class ProxyProcessManager extends EventEmitter {
     constructor() {
         super();
@@ -72,6 +72,7 @@ class ProxyProcessManager extends EventEmitter {
         logger.info(`[API] Forking worker process from ${workerPath}`);
         this.worker = (0, child_process_1.fork)(workerPath, [], {
             env: { ...process.env, MINEPANEL_PROCESS: 'worker' },
+            cwd: paths_1.PROJECT_ROOT,
             stdio: 'inherit'
         });
         this.worker.on('message', (message) => {
@@ -186,7 +187,7 @@ class ProxyProcessManager extends EventEmitter {
         });
     }
     stop(serverId) {
-        this.sendIpcRequest('stop-server', serverId.toString()).catch(err => { logger.error('[ProcessProxy] Stop IPC error: ' + (err.message || err)); });
+        this.sendIpcRequest('stop-server', serverId.toString()).catch(() => { });
     }
     gracefulStop(serverId, timeoutMs = 15000) {
         return this.sendIpcRequest('graceful-stop', serverId.toString(), { timeoutMs });
@@ -197,7 +198,7 @@ class ProxyProcessManager extends EventEmitter {
         });
     }
     kill(serverId) {
-        this.sendIpcRequest('kill-server', serverId.toString()).catch(err => { logger.error('[ProcessProxy] Kill IPC error: ' + (err.message || err)); });
+        this.sendIpcRequest('kill-server', serverId.toString()).catch(() => { });
     }
     sendCommand(serverId, command) {
         if (!this.worker)

@@ -1,3 +1,5 @@
+import Section from '../../components/Section.tsx';
+import ModalOverlay from '../../components/ModalOverlay.tsx';
 import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
@@ -142,15 +144,15 @@ function IpListEditor({ ips, onChange }: { ips: string[]; onChange: (ips: string
  return (
  <div>
  <div style={{ display: 'flex', gap: '4px', marginBottom: '0.4rem' }}>
- <input
+ <input aria-label="e.g. 192.168.1.0/24 or 10.0.0.1"
  type="text"
  value={input}
  onChange={e => setInput(e.target.value)}
  onKeyDown={e => { if (e.key === 'Enter') addIp(); }}
  placeholder="e.g. 192.168.1.0/24 or 10.0.0.1"
- style={{ flex: 1, padding: '6px 8px', fontSize: '12px', fontFamily: 'var(--font-mono)' }}
+ style={{ flex: 1, padding: '6px 8px', fontSize: '0.875rem', fontFamily: 'var(--font-mono)' }}
  />
- <button className="btn outline small" onClick={addIp} style={{ fontSize: '11px' }}>Add</button>
+ <button className="btn outline small" onClick={addIp} style={{ fontSize: '0.875rem' }}>Add</button>
  </div>
  {ips.length > 0 ? (
  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -162,7 +164,7 @@ function IpListEditor({ ips, onChange }: { ips: string[]; onChange: (ips: string
  ))}
  </div>
  ) : (
- <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+ <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
  No IP restrictions — key can be used from any IP address.
  </p>
  )}
@@ -273,11 +275,11 @@ export default function ServerApiKeys() {
  return (
  <div className="api-keys-page" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
  {/* Header */}
- <div className="card">
+ <Section className="">
  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
  <div>
  <h3 style={{ margin: 0 }}>API Keys</h3>
- <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+ <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
  Create and manage API keys for external applications, bots, and automation tools.
  </p>
  </div>
@@ -290,18 +292,18 @@ export default function ServerApiKeys() {
  </button>
  </div>
  </div>
- </div>
+ </Section>
 
  {/* Docs Panel */}
  {showDocs && (
- <div className="card">
+ <Section className="">
  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
  <h4 style={{ margin: 0 }}>API Documentation & Examples</h4>
  <a href="/serverapi/docs/ui" target="_blank" rel="noopener noreferrer" className="btn outline small">
  Open Swagger UI 
  </a>
  </div>
- <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+ <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
  Base URL: <code>/serverapi/:serverId/</code> — Authenticate with <code>Authorization: Bearer &lt;key&gt;</code>
  </p>
 
@@ -331,36 +333,36 @@ export default function ServerApiKeys() {
  }
  language={activeExample}
  />
- </div>
+ </Section>
  )}
 
  {/* Created Key Banner */}
  {createdKey && (
- <div className="card" style={{ border: '2px solid var(--success)', background: 'color-mix(in srgb, var(--success) 8%, transparent)' }}>
+ <Section className="" style={{  }}>
  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
  <div>
  <h4 style={{ margin: '0 0 0.25rem', color: 'var(--success)' }}> API Key Created</h4>
- <p style={{ fontSize: '0.82rem', color: 'var(--text)', margin: '0 0 0.5rem' }}>
+ <p style={{ fontSize: '0.875rem', color: 'var(--text)', margin: '0 0 0.5rem' }}>
  Save this key now — it will <strong>never</strong> be shown again!
  </p>
- <div className="api-key-reveal" onClick={() => { navigator.clipboard.writeText(createdKey); toast('API key copied!', 'success'); }}>
+ <div role="button" tabIndex={0} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click(); } }} className="api-key-reveal" onClick={() => { navigator.clipboard.writeText(createdKey); toast('API key copied!', 'success'); }}>
  <code className="api-key-value">{createdKey}</code>
  <span className="api-key-copy-hint">Click to copy</span>
  </div>
  </div>
  <button className="btn outline small" onClick={() => { setCreatedKey(null); }}>Dismiss</button>
  </div>
- </div>
+ </Section>
  )}
 
  {/* Key List */}
- <div className="card" style={{ padding: 0 }}>
+ <Section className="" style={{  }}>
  {loading ? (
  <p className="text-muted" style={{ padding: '2rem', textAlign: 'center' }}>Loading API keys...</p>
  ) : keys.length === 0 ? (
  <div style={{ padding: '2rem', textAlign: 'center' }}>
  <p className="text-muted" style={{ margin: '0 0 0.5rem' }}>No API keys yet.</p>
- <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
+ <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
  Create a key to get started with the Server API.
  </p>
  </div>
@@ -385,7 +387,7 @@ export default function ServerApiKeys() {
  type="text"
  value={editName}
  onChange={e => setEditName(e.target.value)}
- style={{ width: '100px', padding: '4px 6px', fontSize: '12px' }}
+ style={{ width: '100px', padding: '4px 6px', fontSize: '0.875rem' }}
  autoFocus
  />
  </div>
@@ -398,7 +400,7 @@ export default function ServerApiKeys() {
  const opts = Array.from(e.target.selectedOptions, o => o.value);
  setEditScopes(opts);
  }}
- style={{ fontSize: '10px', height: '60px', width: '120px' }}
+ style={{ fontSize: '0.875rem', height: '60px', width: '120px' }}
  >
  {Object.keys(SCOPE_LABELS).map(s => (
  <option key={s} value={s}>{s}</option>
@@ -412,8 +414,8 @@ export default function ServerApiKeys() {
  <div></div>
  <div></div>
  <div style={{ display: 'flex', gap: '4px' }}>
- <button className="btn primary small" onClick={() => handleUpdate(key.id)} style={{ fontSize: '11px' }}>Save</button>
- <button className="btn outline small" onClick={() => setEditingKey(null)} style={{ fontSize: '11px' }}>Cancel</button>
+ <button className="btn primary small" onClick={() => handleUpdate(key.id)} style={{ fontSize: '0.875rem' }}>Save</button>
+ <button className="btn outline small" onClick={() => setEditingKey(null)} style={{ fontSize: '0.875rem' }}>Cancel</button>
  </div>
  </>
  ) : (
@@ -432,7 +434,7 @@ export default function ServerApiKeys() {
  <span key={ip} className="ip-badge"><code>{ip}</code></span>
  ))
  ) : (
- <span className="text-muted" style={{ fontSize: '0.75rem' }}>Any</span>
+ <span className="text-muted" style={{ fontSize: '0.875rem' }}>Any</span>
  )}
  {key.allowed_ips && key.allowed_ips.length > 2 && (
  <span className="scope-badge scope-more">+{key.allowed_ips.length - 2}</span>
@@ -449,7 +451,7 @@ export default function ServerApiKeys() {
  {key.is_revoked ? 'Revoked' : 'Active'}
  </div>
  <div className="api-key-actions">
- <button
+ <button aria-label="Edit name, scopes & IP restrictions"
  className="btn outline small"
  title="Edit name, scopes & IP restrictions"
  onClick={() => {
@@ -458,16 +460,16 @@ export default function ServerApiKeys() {
  setEditScopes(key.scopes);
  setEditIps(key.allowed_ips || []);
  }}
- style={{ fontSize: '11px', padding: '2px 6px' }}
+ style={{ fontSize: '0.875rem', padding: '2px 6px' }}
  >
  
  </button>
  {!key.is_revoked && (
- <button
+ <button aria-label="Revoke key"
  className="btn danger small"
  title="Revoke key"
  onClick={() => handleRevoke(key.id, key.name)}
- style={{ fontSize: '11px', padding: '2px 6px' }}
+ style={{ fontSize: '0.875rem', padding: '2px 6px' }}
  >
  
  </button>
@@ -479,20 +481,20 @@ export default function ServerApiKeys() {
  ))}
  </div>
  )}
- </div>
+ </Section>
 
  {/* Create Key Modal */}
  {showCreate && (
- <div className="modal-overlay active" onClick={() => { if (!creating) setShowCreate(false); }}>
+ <ModalOverlay className="modal-overlay active" onClick={() => { if (!creating) setShowCreate(false); }}>
  <div className="modal" style={{ maxWidth: '520px' }} onClick={e => e.stopPropagation()}>
  <div className="modal-header">
  <h3>Create API Key</h3>
- <button className="close-btn" onClick={() => { if (!creating) setShowCreate(false); }}>&times;</button>
+ <button aria-label="Close dialog" className="close-btn" onClick={() => { if (!creating) setShowCreate(false); }}>&times;</button>
  </div>
  <div className="modal-body">
  <div style={{ marginBottom: '1rem' }}>
- <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Key Name</label>
- <input
+ <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Key Name</label>
+ <input aria-label="Key Name"
  type="text"
  value={newKeyName}
  onChange={e => setNewKeyName(e.target.value)}
@@ -503,8 +505,8 @@ export default function ServerApiKeys() {
  </div>
 
  <div style={{ marginBottom: '1rem' }}>
- <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Expiration (optional)</label>
- <input
+ <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Expiration (optional)</label>
+ <input aria-label="Expiration (optional)"
  type="date"
  value={newKeyExpiry}
  onChange={e => setNewKeyExpiry(e.target.value)}
@@ -513,31 +515,31 @@ export default function ServerApiKeys() {
  </div>
 
  <div style={{ marginBottom: '1rem' }}>
- <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
+ <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
  IP Allowlist (optional)
  </label>
- <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 0.4rem' }}>
+ <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0 0 0.4rem' }}>
  Restrict this key to specific IPs or CIDR ranges. Leave empty to allow all IPs.
  </p>
  <IpListEditor ips={newKeyIps} onChange={setNewKeyIps} />
  </div>
 
  <div>
- <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Scopes / Permissions</label>
+ <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Scopes / Permissions</label>
  {Object.entries(SCOPE_GROUPS).map(([group, scopes]) => (
  <div key={group} style={{ marginBottom: '0.5rem' }}>
- <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{group}</div>
+ <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{group}</div>
  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
  {scopes.map(scope => {
  const isSelected = newKeyScopes.includes(scope) || (scope === 'server.everything' && newKeyScopes.includes('server.everything'));
  return (
- <button
+ <button aria-label={SCOPE_LABELS[scope]}
  key={scope}
  type="button"
  className={`btn ${isSelected ? 'primary' : 'outline'} small`}
  onClick={() => toggleScope(scope, newKeyScopes, setNewKeyScopes)}
  title={SCOPE_LABELS[scope]}
- style={{ fontSize: '10px', padding: '3px 8px' }}
+ style={{ fontSize: '0.875rem', padding: '3px 8px' }}
  >
  {scope}
  </button>
@@ -555,7 +557,7 @@ export default function ServerApiKeys() {
  </button>
  </div>
  </div>
- </div>
+ </ModalOverlay>
  )}
  </div>
  );

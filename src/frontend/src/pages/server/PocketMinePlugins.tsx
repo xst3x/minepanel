@@ -1,3 +1,4 @@
+import Section from '../../components/Section.tsx';
 /**
  * PocketMinePlugins.tsx
  * ──────────────────────
@@ -162,7 +163,7 @@ export default function PocketMinePlugins({ serverId }) {
     <div className="plugins-section">
 
       {/* ── Installed ──────────────────────────────────────────────────────── */}
-      <div className="card">
+      <Section className="">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0 }}>Installed PocketMine Plugins</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -171,7 +172,7 @@ export default function PocketMinePlugins({ serverId }) {
               borderRadius: 'var(--radius)',
               background: 'var(--accent-subtle)',
               color: 'var(--accent)',
-              fontSize: '0.75rem',
+              fontSize: '0.875rem',
               fontWeight: 700,
               letterSpacing: '0.04em',
             }}>
@@ -203,10 +204,10 @@ export default function PocketMinePlugins({ serverId }) {
             ))
           )}
         </div>
-      </div>
+      </Section>
 
       {/* ── Discover ───────────────────────────────────────────────────────── */}
-      <div className="card">
+      <Section className="">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
           <h3 style={{ margin: 0, flex: 1 }}>
             Discover PocketMine Plugins
@@ -215,7 +216,7 @@ export default function PocketMinePlugins({ serverId }) {
             href="https://poggit.pmmp.io"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textDecoration: 'none' }}
+            style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textDecoration: 'none' }}
           >
             Powered by Poggit ↗
           </a>
@@ -225,7 +226,7 @@ export default function PocketMinePlugins({ serverId }) {
         {view === 'browser' && (
           <>
             <div className="plugins-header">
-              <input
+              <input aria-label="Search PocketMine plugins on Poggit..."
                 type="text"
                 ref={searchInputRef}
                 placeholder="Search PocketMine plugins on Poggit..."
@@ -236,7 +237,7 @@ export default function PocketMinePlugins({ serverId }) {
             </div>
 
             {resultBar && (
-              <div style={{ margin: '0.5rem 0 1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <div style={{ margin: '0.5rem 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 {resultBar}
               </div>
             )}
@@ -260,7 +261,7 @@ export default function PocketMinePlugins({ serverId }) {
                     >
                       <div className="plugin-header">
                         {plugin.icon ? (
-                          <img
+                          <img loading="lazy"
                             src={plugin.icon}
                             className="plugin-icon"
                             alt=""
@@ -322,7 +323,7 @@ export default function PocketMinePlugins({ serverId }) {
                 </button>
                 <div className="plugin-page-status">
                   Page{' '}
-                  <input
+                  <input inputMode="numeric"
                     type="number"
                     min={1}
                     max={totalPages}
@@ -373,7 +374,7 @@ export default function PocketMinePlugins({ serverId }) {
                 <div className="plugin-detail-toolbar">
                   <button className="btn outline small" onClick={() => setView('browser')}>← Back</button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ color: 'var(--accent)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                    <span style={{ color: 'var(--accent)', fontSize: '0.875rem', fontWeight: 700, textTransform: 'uppercase' }}>
                       Poggit
                     </span>
                     {detail.poggitUrl && (
@@ -390,7 +391,7 @@ export default function PocketMinePlugins({ serverId }) {
                 {/* Hero */}
                 <div className="plugin-detail-hero">
                   {detail.icon ? (
-                    <img
+                    <img loading="lazy"
                       src={detail.icon}
                       className="plugin-detail-icon"
                       alt=""
@@ -508,7 +509,7 @@ export default function PocketMinePlugins({ serverId }) {
             )}
           </div>
         )}
-      </div>
+      </Section>
     </div>
   );
 }

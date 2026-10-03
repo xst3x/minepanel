@@ -1,3 +1,4 @@
+import { PROJECT_ROOT } from '../../paths';
 // src/core/automation/workerManager.js
 'use strict';
 
@@ -7,8 +8,8 @@ import EventEmitter = require('events')
 import logger = require('../utils/logger')
 import processManager = require('../processManager')
 
-const VALIDATOR_PATH = path.join(__dirname, 'validator.py');
-const RUNNER_PATH = path.join(__dirname, 'sandbox_runner.py');
+const VALIDATOR_PATH = path.join(PROJECT_ROOT, 'src', 'core', 'automation', 'validator.py');
+const RUNNER_PATH = path.join(PROJECT_ROOT, 'src', 'core', 'automation', 'sandbox_runner.py');
 
 class WorkerManager extends EventEmitter {
     activeWorkers: Set<string>;

@@ -1,3 +1,4 @@
+import Section from '../../components/Section.tsx';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
@@ -473,10 +474,10 @@ export default function ServerOverview() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
       {/* ── Server Status — stat cards + performance chart ── */}
-      <div className="card" style={{ width: '100%', boxSizing: 'border-box' }}>
+      <Section className="" style={{ width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0 }}>Server Status</h3>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
             live
             <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: status === 'online' ? '#22c55e' : 'var(--text-muted)', marginLeft: 6, verticalAlign: 'middle', boxShadow: status === 'online' ? '0 0 6px rgba(34,197,94,0.7)' : 'none' }} />
           </span>
@@ -486,7 +487,7 @@ export default function ServerOverview() {
         <div className="ov-stats-row" style={{ marginBottom: '1.25rem' }}>
           {statCards.map(({ label, value, cls, icon }) => (
             <div key={label} className={`ov-stat-card ${cls}`}>
-              <div className="ov-stat-icon" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+              <div className="ov-stat-icon">
                 {icon}
               </div>
               <div className="ov-stat-info">
@@ -511,7 +512,7 @@ export default function ServerOverview() {
             </span>
           </div>
           <div className="ov-range-select">
-            <Select value={range} onChange={(e) => setRange(e.target.value)}>
+            <Select aria-label="Performance chart time range" value={range} onChange={(e) => setRange(e.target.value)}>
               {RANGES.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
             </Select>
           </div>
@@ -539,7 +540,7 @@ export default function ServerOverview() {
         {/* Toggleable legend */}
         <div className="ov-chart-legend">
           {legendItems.map(({ key, label, color, value }) => (
-            <button
+            <button aria-label={enabled[key] ? `Hide ${label}` : `Show ${label}`}
               key={key}
               className={`ov-legend-btn ${enabled[key] ? '' : 'off'}`}
               onClick={() => toggleMetric(key)}
@@ -552,7 +553,7 @@ export default function ServerOverview() {
             </button>
           ))}
         </div>
-      </div>
+      </Section>
     </div>
   );
 }

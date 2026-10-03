@@ -36,7 +36,7 @@ export default function ModpackIcon({ url, alt = '', className = 'plugin-icon', 
     : url;
 
   return (
-    <img
+    <img loading="lazy"
       src={proxied}
       className={className}
       alt={alt}

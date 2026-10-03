@@ -1,3 +1,4 @@
+@layer components {
 .log-select {
 width: 100%; 
     padding: 10px 14px; 
@@ -10,7 +11,6 @@ width: 100%;
     outline: none; 
     transition: var(--transition);
 }
-
 .logs-toolbar {
 display: flex;
     justify-content: space-between;
@@ -19,13 +19,11 @@ display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
 }
-
 .logs-toolbar-left, .logs-toolbar-right {
 display: flex;
     align-items: center;
     gap: 0.5rem;
 }
-
 .log-viewer {
 background: hsl(0, 0%, 5%);
     border: 1px solid var(--border);
@@ -33,7 +31,6 @@ background: hsl(0, 0%, 5%);
     max-height: 520px;
     overflow: auto;
 }
-
 .log-viewer pre {
 padding: 1.25rem;
     font-family: var(--font-mono);
@@ -43,4 +40,5 @@ padding: 1.25rem;
     margin: 0;
     white-space: pre-wrap;
     word-wrap: break-word;
+}
 }

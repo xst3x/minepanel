@@ -1,3 +1,5 @@
+"use strict";
+const paths_1 = require("../paths");
 // src/core/ftpServer.js
 // Per-server SFTP (SSH File Transfer Protocol) using the ssh2 library.
 // Each server gets its own SFTP daemon on its configured port.
@@ -37,7 +39,7 @@ function getHostKey() {
     if (HOST_KEY)
         return HOST_KEY;
     // Try to load from data dir so the key survives restarts (avoids host-key warnings)
-    const keyPath = path.join(__dirname, '../../data/sftp_host_key');
+    const keyPath = path.join(paths_1.PROJECT_ROOT, 'data', 'sftp_host_key');
     try {
         if (fs.existsSync(keyPath)) {
             const candidate = fs.readFileSync(keyPath);
@@ -53,9 +55,7 @@ function getHostKey() {
             catch (_) { }
         }
     }
-    catch (e) {
-        logger.warn('[FTP] Failed to read host key: ' + (e.message || e));
-    }
+    catch (_) { }
     // Generate a new RSA key pair (ssh2 requires openssh or pkcs1/pem format, NOT pkcs8)
     const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
     HOST_KEY = privateKey.export({ type: 'pkcs1', format: 'pem' });
@@ -63,9 +63,7 @@ function getHostKey() {
         fs.mkdirSync(path.dirname(keyPath), { recursive: true });
         fs.writeFileSync(keyPath, HOST_KEY, { mode: 0o600 });
     }
-    catch (e) {
-        logger.warn('[FTP] Failed to write host key: ' + (e.message || e));
-    }
+    catch (_) { }
     return HOST_KEY;
 }
 // ── SFTP session handler ──────────────────────────────────────────────────────
@@ -199,9 +197,7 @@ function createSftpSession(root) {
                         const st = fs.statSync(full);
                         entries.push({ filename: name, longname: lsLine(name, st), attrs: statToAttrs(st) });
                     }
-                    catch (e) {
-                        logger.warn('[FTP] Failed to stat file: ' + (e.message || e));
-                    }
+                    catch (_) { }
                 }
                 sftp.name(reqId, entries);
             };

@@ -10,14 +10,14 @@ export default function RequireAuth({ children }) {
         role="status"
         aria-label="Loading"
         style={{
-          minHeight: '100vh',
+          minHeight: "100dvh",
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '0.9rem',
           color: 'var(--text-muted)',
-          fontSize: '0.85rem',
+          fontSize: '0.875rem',
         }}
       >
         <span

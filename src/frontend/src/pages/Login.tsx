@@ -1,8 +1,8 @@
+import BrandLogo from '../components/BrandLogo.tsx';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.tsx';
 import { api } from '../lib/api.ts';
-import BgCanvas from '../components/BgCanvas.tsx';
 import '../styles/pages/Login.css';
 
 // ── Screens: 'login' | 'forgot_username' | 'forgot_2fa' | 'forgot_no2fa' | 'forgot_done'
@@ -10,7 +10,8 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const loc = useLocation();
-  const dest = loc.state?.from?.pathname || '/panel';
+  const addAccount = !!loc.state?.addAccount;
+  const dest = addAccount ? '/accounts' : (loc.state?.from?.pathname || '/panel');
 
   // Login state
   const [username, setUsername] = useState('');
@@ -140,7 +141,8 @@ export default function Login() {
       style={{
         position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)',
         background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 8,
-        borderRadius: 'var(--radius-sm)', display: 'inline-flex'
+        borderRadius: 'var(--radius-sm)', display: 'inline-flex',
+        alignItems: 'center', justifyContent: 'center'
       }}
     >
       {show ? (
@@ -158,7 +160,6 @@ export default function Login() {
 
   return (
     <div id="app">
-      <BgCanvas />
       <div id="auth-view" className="view active">
         <div className="auth-blob blob-top-left" />
         <div className="auth-blob blob-bottom-right" />
@@ -169,18 +170,15 @@ export default function Login() {
 
             {/* Brand */}
             <div className="auth-brand">
-              <svg viewBox="0 0 24 24" width="24" height="24" stroke="var(--accent)" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                <path d="M2 17l10 5 10-5"/>
-                <path d="M2 12l10 5 10-5"/>
-                <path d="M2 7v10"/><path d="M12 12v10"/><path d="M22 7v10"/>
-              </svg>
+              <BrandLogo size={28} />
               <h1>MinePanel</h1>
             </div>
 
             {/* ── LOGIN SCREEN ── */}
             {screen === 'login' && (<>
-              <p className="subtitle">Enter your credentials to login to MinePanel</p>
+              <p className="subtitle">
+                {addAccount ? 'Sign in to add another account to this device' : 'Enter your credentials to login to MinePanel'}
+              </p>
               <form onSubmit={submit}>
                 <div className="input-group">
                   <label htmlFor="username">Username</label>
@@ -197,7 +195,7 @@ export default function Login() {
                       autoComplete="current-password"
                       value={password} onChange={e => setPassword(e.target.value)}
                       placeholder="Enter your password"
-                      style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }} />
+                      style={{ width: '100%', paddingRight: '3.25rem', boxSizing: 'border-box' }} />
                     {eyeBtn(showPassword, () => setShowPassword(v => !v), 'password')}
                   </div>
                 </div>
@@ -211,7 +209,7 @@ export default function Login() {
                   </div>
                 )}
 
-                {err && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{err}</div>}
+                {err && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '0.875rem' }}>{err}</div>}
 
                 <button type="submit" disabled={busy} className="btn primary full-width" style={{ marginBottom: '0.75rem' }}>
                   {busy ? 'Signing in…' : 'Login'}
@@ -219,11 +217,11 @@ export default function Login() {
 
                 <div style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '1.25rem' }}>
                   <button type="button" onClick={() => { setScreen('forgot_username'); setFpErr(''); }}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12.5px', cursor: 'pointer', textDecoration: 'underline' }}>
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'underline' }}>
                     Forgot password?
                   </button>
                   <button type="button" onClick={() => { setScreen('register'); setRegErr(''); }}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12.5px', cursor: 'pointer', textDecoration: 'underline' }}>
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'underline' }}>
                     Create account
                   </button>
                 </div>
@@ -242,7 +240,7 @@ export default function Login() {
                 </div>
                 <div className="input-group">
                   <label htmlFor="reg-username">Username</label>
-                  <input id="reg-username" type="text" required autoComplete="off"
+                  <input id="reg-username" type="text" required autoComplete="username"
                     value={regUsername} onChange={e => setRegUsername(e.target.value)}
                     placeholder="Choose a username" />
                 </div>
@@ -269,14 +267,14 @@ export default function Login() {
                   </div>
                 </div>
 
-                {regErr && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{regErr}</div>}
+                {regErr && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '0.875rem' }}>{regErr}</div>}
 
                 <button type="submit" disabled={regBusy} className="btn primary full-width" style={{ marginBottom: '0.75rem' }}>
                   {regBusy ? 'Creating account…' : 'Create Account'}
                 </button>
                 <div style={{ textAlign: 'center' }}>
                   <button type="button" onClick={() => setScreen('login')}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12.5px', cursor: 'pointer', textDecoration: 'underline' }}>
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'underline' }}>
                     Back to login
                   </button>
                 </div>
@@ -294,14 +292,14 @@ export default function Login() {
                     placeholder="Enter your username" autoFocus />
                 </div>
 
-                {fpErr && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{fpErr}</div>}
+                {fpErr && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '0.875rem' }}>{fpErr}</div>}
 
                 <button type="submit" disabled={fpBusy} className="btn primary full-width" style={{ marginBottom: '0.75rem' }}>
                   {fpBusy ? 'Checking…' : 'Continue'}
                 </button>
                 <div style={{ textAlign: 'center' }}>
                   <button type="button" onClick={resetForgot}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12.5px', cursor: 'pointer', textDecoration: 'underline' }}>
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'underline' }}>
                     Back to login
                   </button>
                 </div>
@@ -331,14 +329,14 @@ export default function Login() {
                   </div>
                 </div>
 
-                {fpErr && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '.85rem' }}>{fpErr}</div>}
+                {fpErr && <div className="form-error" role="alert" style={{ color: 'var(--red)', marginBottom: '.75rem', fontSize: '0.875rem' }}>{fpErr}</div>}
 
                 <button type="submit" disabled={fpBusy} className="btn primary full-width" style={{ marginBottom: '0.75rem' }}>
                   {fpBusy ? 'Resetting…' : 'Reset Password'}
                 </button>
                 <div style={{ textAlign: 'center' }}>
                   <button type="button" onClick={resetForgot}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12.5px', cursor: 'pointer', textDecoration: 'underline' }}>
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'underline' }}>
                     Back to login
                   </button>
                 </div>
@@ -348,12 +346,7 @@ export default function Login() {
             {/* ── FORGOT: no 2FA → can't self-reset ── */}
             {screen === 'forgot_no2fa' && (<>
               <p className="subtitle" style={{ marginBottom: '1.25rem' }}>Password reset unavailable</p>
-              <div style={{
-                background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)', padding: '1rem 1.1rem',
-                fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.6,
-                marginBottom: '1.25rem'
-              }}>
+              <div className="detail-row" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1.25rem' }}>
                 <p style={{ margin: '0 0 0.6rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                   Your account doesn't have 2FA enabled.
                 </p>
@@ -384,7 +377,7 @@ export default function Login() {
                   </svg>
                 </div>
                 <p style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)', margin: '0 0 0.35rem' }}>Password reset!</p>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', margin: 0 }}>
                   You can now log in with your new password.
                 </p>
               </div>

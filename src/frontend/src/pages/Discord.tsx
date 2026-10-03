@@ -1,3 +1,5 @@
+import Section from '../components/Section.tsx';
+import ModalOverlay from '../components/ModalOverlay.tsx';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.ts';
@@ -180,15 +182,15 @@ export default function Discord() {
       {loading ? (
         <p className="text-muted">Loading Discord bots...</p>
       ) : bots.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+        <Section className="" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
           <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" fill="none" strokeWidth="1.25" style={{ opacity: 0.3, marginBottom: '1rem', display: 'block', marginInline: 'auto' }}>
             <path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026c.36-.687.772-1.341 1.225-1.962a.077.077 0 0 0-.041-.104 13.175 13.175 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028z" />
           </svg>
           <p style={{ margin: 0, fontSize: '0.95rem' }}>No Discord bots configured yet.</p>
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem' }}>Click <strong>Add Bot</strong> to connect your first Discord bot.</p>
-        </div>
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem' }}>Click <strong>Add Bot</strong> to connect your first Discord bot.</p>
+        </Section>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))', gap: '1.5rem' }}>
+        <div className="layout-grid" style={{  }}>
           {bots.map(bot => {
             const onlineColor = bot.online ? '#22c55e' : '#ef4444';
             const onlineLabel = bot.online ? 'Online' : 'Offline';
@@ -196,10 +198,10 @@ export default function Discord() {
             const serverCount = (bot.serverIds || []).length;
 
             return (
-              <div key={bot.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <Section key={bot.id} className="" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <img
+                    <img loading="lazy"
                       src={bot.avatar || ''}
                       alt=""
                       style={{ width: '52px', height: '52px', borderRadius: '50%', border: '2px solid var(--border-color)', background: 'var(--bg-input)' }}
@@ -216,7 +218,7 @@ export default function Discord() {
                     <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {bot.username || 'Unknown Bot'}
                     </div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                       Guild: <code style={{ fontFamily: 'var(--font-mono)' }}>{bot.guildId}</code>
                     </div>
                   </div>
@@ -225,7 +227,7 @@ export default function Discord() {
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.82rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.875rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" strokeWidth="1.75">
                       <ellipse cx="12" cy="5" rx="9" ry="3" />
@@ -253,7 +255,7 @@ export default function Discord() {
                       />
                       <span className="toggle-slider"></span>
                     </label>
-                    <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{bot.enabled ? 'Running' : 'Stopped'}</span>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{bot.enabled ? 'Running' : 'Stopped'}</span>
                   </label>
                   <button className="btn outline small" onClick={() => handleOpenEdit(bot)}>
                     Edit
@@ -262,7 +264,7 @@ export default function Discord() {
                     Delete
                   </button>
                 </div>
-              </div>
+              </Section>
             );
           })}
         </div>
@@ -270,18 +272,18 @@ export default function Discord() {
 
       {/* BOT EDITOR MODAL */}
       {showEditor && (
-        <div className="modal-overlay active" onClick={() => setShowEditor(false)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setShowEditor(false)}>
           <div className="modal" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editingBot ? 'Edit Discord Bot' : 'Add Discord Bot'}</h3>
-              <button className="close-btn" onClick={() => setShowEditor(false)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setShowEditor(false)}>&times;</button>
             </div>
             
-            <div className="modal-body" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+            <div className="modal-body" style={{ maxHeight: "65dvh", overflowY: 'auto' }}>
               <div className="form-group">
                 <label>Bot Token</label>
                 <div className="form-row-mobile-stack">
-                  <input
+                  <input aria-label="Bot Token"
                     type="password"
                     value={botToken}
                     onChange={(e) => setBotToken(e.target.value)}
@@ -295,8 +297,8 @@ export default function Discord() {
               </div>
 
               {validatedBot && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem', background: 'var(--bg-input)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginBottom: '1rem' }}>
-                  <img
+                <div className="detail-row" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                  <img loading="lazy"
                     src={validatedBot.avatar || ''}
                     alt=""
                     style={{ width: '40px', height: '40px', borderRadius: '50%' }}
@@ -308,14 +310,14 @@ export default function Discord() {
                     <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text)' }}>
                       {validatedBot.username}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Verified Bot Details</div>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Verified Bot Details</div>
                   </div>
                 </div>
               )}
 
               <div className="form-group">
                 <label>Guild (Server) ID</label>
-                <input
+                <input aria-label="Guild (Server) ID"
                   type="text"
                   value={guildId}
                   onChange={(e) => setGuildId(e.target.value)}
@@ -327,7 +329,7 @@ export default function Discord() {
                 <label>Link to Minecraft Servers</label>
                 <div className="discord-server-link-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', padding: '0.25rem' }}>
                   {servers.length === 0 ? (
-                    <p className="text-muted" style={{ fontSize: '0.85rem' }}>No Minecraft servers found. Create one first.</p>
+                    <p className="text-muted" style={{ fontSize: '0.875rem' }}>No Minecraft servers found. Create one first.</p>
                   ) : (
                     servers.map(sv => {
                       const isChecked = selectedServerIds.includes(sv.id);
@@ -341,7 +343,7 @@ export default function Discord() {
                             />
                             <span className="discord-server-link-name" style={{ color: 'var(--text)' }}>{sv.name}</span>
                           </div>
-                          <span className="discord-server-link-meta" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sv.software} {sv.version}</span>
+                          <span className="discord-server-link-meta" style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{sv.software} {sv.version}</span>
                         </label>
                       );
                     })
@@ -357,7 +359,7 @@ export default function Discord() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
     </div>

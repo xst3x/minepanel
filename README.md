@@ -208,6 +208,7 @@ python3 setup.py
 git clone https://github.com/yourusername/MinePanel.git
 cd MinePanel
 npm install
+npm run compile
 cp .env.example .env   # set SECRET_KEY and other values
 npm start
 ```

@@ -12,7 +12,16 @@ COPY src/frontend/ ./
 RUN npm run build
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 2 — Production image
+# Stage 2 — Compile backend
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:22-alpine AS backend-builder
+WORKDIR /build
+COPY package*.json tsconfig.json minepanel_main.ts ./
+COPY src/ ./src/
+RUN npm install && npm run compile
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 3 — Production image
 # ─────────────────────────────────────────────────────────────────────────────
 FROM node:22-alpine AS production
 
@@ -33,7 +42,7 @@ RUN npm install --omit=dev && npm rebuild
 
 # Copy backend source
 COPY src/ ./src/
-COPY minepanel_main.js ./
+COPY --from=backend-builder /build/dist ./dist
 
 # Overwrite the auto-built public dir with our Vite build from Stage 1
 COPY --from=frontend-builder /build/public ./src/public
@@ -54,4 +63,4 @@ EXPOSE 8081
 # tini as PID 1 — required for correct Ctrl-C handling and zombie reaping
 # when MinePanel forks Minecraft server child processes
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "minepanel_main.js"]
+CMD ["node", "dist/minepanel_main.js"]

@@ -1,14 +1,18 @@
+import Section from '../../components/Section.tsx';
+import ModalOverlay from '../../components/ModalOverlay.tsx';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { toast, showConfirm, showPrompt } from '../../components/Toast.jsx';
 import Select from '../../components/Select.tsx';
+import useActiveTabScroll from '../../hooks/useActiveTabScroll.ts';
 import '../../styles/pages/server/Players.css';
 
 export default function Players() {
   const { serverId, status, hasPerm } = useOutletContext();
   const [activeTab, setActiveTab] = useState('players');
+  const tabStripRef = useActiveTabScroll(activeTab);
 
   const tabs = [
     { id: 'players',        label: 'All Players' },
@@ -20,11 +24,13 @@ export default function Players() {
 
   return (
     <div>
-      <div className="sub-nav sub-nav-inner" id="players-sub-nav">
+      <div className="sub-nav sub-nav-inner" id="players-sub-nav" role="tablist" aria-label="Player lists" ref={tabStripRef}>
         {tabs.map(t => (
           <button
             key={t.id}
             className={`sub-nav-item${activeTab === t.id ? ' active' : ''}`}
+            role="tab"
+            aria-selected={activeTab === t.id}
             onClick={() => setActiveTab(t.id)}
           >{t.label}</button>
         ))}
@@ -128,7 +134,7 @@ function PlayersTab({ serverId, status, hasPerm }) {
   };
 
   return (
-    <div className="card">
+    <Section className="">
       <div className="list-header">
         <div className="col col-wide">Player</div>
         <div className="col actions">Actions</div>
@@ -139,7 +145,7 @@ function PlayersTab({ serverId, status, hasPerm }) {
         ) : !players.length ? (
           <div className="list-item"><p className="text-muted">No player data found.</p></div>
         ) : players.map(p => (
-          <div key={p.uuid} className="list-item">
+          <div key={p.uuid} className="list-item compact-list-row player-list-card">
             <div className="col col-wide text-mono" data-label="Player">{p.username || p.uuid}</div>
             <div className="col actions" data-label="Actions">
               <button className="btn outline small" onClick={() => openModal(p)}>Manage</button>
@@ -162,7 +168,7 @@ function PlayersTab({ serverId, status, hasPerm }) {
           }
         />
       )}
-    </div>
+    </Section>
   );
 }
 
@@ -273,14 +279,14 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
   }, [onClose]);
 
   return createPortal(
-    <div className="player-modal-overlay" onClick={onClose}>
+    <ModalOverlay className="player-modal-overlay" onClick={onClose}>
       <div className="player-modal-container" role="dialog" aria-modal="true" aria-label={`Player details: ${player.name}`} onClick={e => e.stopPropagation()}>
 
         {/* ══ MODAL HEADER ═══════════════════════════════════════════════════ */}
         <div className="player-modal-header">
           {/* Avatar */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
-            <img
+            <img loading="lazy"
               src={`https://mc-heads.net/avatar/${player.name}/72`}
               alt={player.name}
               width={72} height={72}
@@ -300,11 +306,11 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
             <div style={{ fontSize: '1.4rem', fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--text-primary)', lineHeight: 1.2 }}>
               {player.name}
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 6, wordBreak: 'break-all' }}>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 6, wordBreak: 'break-all' }}>
               {player.uuid}
             </div>
             {loading && (
-              <div style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--accent)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite' }} />
                 Loading data…
               </div>
@@ -353,7 +359,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
                 borderRadius: 'var(--radius)',
                 cursor: 'pointer',
                 fontFamily: 'var(--font-ui)',
-                fontSize: 13,
+                fontSize: '0.875rem',
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
                 transition: 'var(--transition)',
@@ -369,11 +375,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
           {activeSection === 'stats' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {!hasStats ? (
-                <div style={{
-                  padding: '2rem', textAlign: 'center',
-                  background: 'var(--bg-input)', borderRadius: 'var(--radius)',
-                  border: '1px dashed var(--border)',
-                }}>
+                <div className="detail-row" style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}></div>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
                     No server stats found for this player.<br />
@@ -427,11 +429,11 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
                   </RpgStatSection>
 
                   <details style={{ marginTop: '0.25rem' }}>
-                    <summary style={{ cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-muted)', userSelect: 'none', padding: '0.4rem 0' }}>
+                    <summary style={{ cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-muted)', userSelect: 'none', padding: '0.4rem 0' }}>
                       Raw stats JSON
                     </summary>
                     <pre style={{
-                      fontSize: '0.72rem', maxHeight: 260, overflowY: 'auto',
+                      fontSize: '0.875rem', maxHeight: 260, overflowY: 'auto',
                       background: 'var(--bg-input)', border: '1px solid var(--border)',
                       borderRadius: 'var(--radius)', padding: '0.75rem',
                       whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: '0.5rem',
@@ -451,11 +453,11 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
               {/* HP Bar */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--red)' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--red)' }}>
                     Health
                   </span>
                   {health != null && (
-                    <span style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+                    <span style={{ fontSize: '0.875rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
                       {health} / {maxHealth} HP
                     </span>
                   )}
@@ -472,7 +474,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
                     >Kill Player</button>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <div className="vitals-icons" style={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
                     {Array.from({ length: 10 }).map((_, i) => {
                       const filled = health != null ? Math.min(Math.max(health - i * 2, 0), 2) : 2;
                       return <Heart key={i} fill={filled} idx={i} />;
@@ -496,11 +498,11 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
               {/* Hunger Bar */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--orange)' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--orange)' }}>
                     Hunger
                   </span>
                   {food != null && (
-                    <span style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+                    <span style={{ fontSize: '0.875rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
                       {food} / {maxFood}
                     </span>
                   )}
@@ -520,7 +522,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
                     >Starve</button>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <div className="vitals-icons" style={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
                     {Array.from({ length: 10 }).map((_, i) => {
                       const filled = food != null ? Math.min(Math.max(food - i * 2, 0), 2) : 2;
                       return <Drumstick key={i} fill={filled} idx={i} />;
@@ -540,12 +542,12 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
               </div>
 
               {(health == null && food == null) && (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', margin: 0 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textAlign: 'center', margin: 0 }}>
                   No playerdata file found. Stats appear once the player has logged in at least once.
                 </p>
               )}
               {(health != null || food != null) && (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textAlign: 'center', margin: 0 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textAlign: 'center', margin: 0 }}>
                   Values are read from the saved playerdata file. They update after the server auto-saves or the player logs out.
                 </p>
               )}
@@ -558,7 +560,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
               <ActionGroup title="Kick">
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <input type="text" placeholder="Kick reason (optional)" value={kickReason}
+                  <input aria-label="Kick reason (optional)" type="text" placeholder="Kick reason (optional)" value={kickReason}
                     onChange={e => setKickReason(e.target.value)} style={{ flex: '1 1 200px' }} />
                   <button className="btn danger small" onClick={async () => {
                     if (await showConfirm(`Kick ${player.name}?`)) cmd('kick', kickReason || undefined);
@@ -568,7 +570,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
               <ActionGroup title="Ban / Unban">
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <input type="text" placeholder="Ban reason (optional)" value={banReason}
+                  <input aria-label="Ban reason (optional)" type="text" placeholder="Ban reason (optional)" value={banReason}
                     onChange={e => setBanReason(e.target.value)} style={{ flex: '1 1 200px' }} />
                   <button className="btn danger small" onClick={async () => {
                     if (await showConfirm(`Ban ${player.name}?`)) cmd('ban', banReason || undefined);
@@ -581,7 +583,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
               <ActionGroup title="Mute / Unmute" hint="Requires a mute plugin on the server.">
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <input type="text" placeholder="Reason or duration (optional)" value={muteReason}
+                  <input aria-label="Reason or duration (optional)" type="text" placeholder="Reason or duration (optional)" value={muteReason}
                     onChange={e => setMuteReason(e.target.value)} style={{ flex: '1 1 200px' }} />
                   <button className="btn outline small" onClick={() => cmd('mute', muteReason || undefined)}>Mute</button>
                   <button className="btn outline small" onClick={() => cmd('unmute')}>Unmute</button>
@@ -618,7 +620,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
               <ActionGroup title="Apply Effect" hint="Format: minecraft:effect_id duration_seconds amplifier">
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <input type="text" placeholder="minecraft:speed 30 1" value={effectValue}
+                  <input aria-label="minecraft:speed 30 1" type="text" placeholder="minecraft:speed 30 1" value={effectValue}
                     onChange={e => setEffectValue(e.target.value)} style={{ flex: '1 1 220px' }} />
                   <button className="btn primary small" onClick={() => {
                     if (!effectValue.trim()) return toast('Enter an effect', 'error');
@@ -642,7 +644,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
               <ActionGroup title="Teleport" hint="Enter X Y Z coordinates or a target player name.">
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <input type="text" placeholder="100 64 -200  or  PlayerName" value={tpValue}
+                  <input aria-label="100 64 -200  or  PlayerName" type="text" placeholder="100 64 -200  or  PlayerName" value={tpValue}
                     onChange={e => setTpValue(e.target.value)} style={{ flex: '1 1 220px' }} />
                   <button className="btn primary small" onClick={() => {
                     if (!tpValue.trim()) return toast('Enter a destination', 'error');
@@ -653,7 +655,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
               <ActionGroup title="Give Item" hint="Format: minecraft:item_id amount (e.g. minecraft:diamond_sword 1)">
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <input type="text" placeholder="minecraft:apple 1" value={giveValue}
+                  <input aria-label="minecraft:apple 1" type="text" placeholder="minecraft:apple 1" value={giveValue}
                     onChange={e => setGiveValue(e.target.value)} style={{ flex: '1 1 220px' }} />
                   <button className="btn primary small" onClick={() => {
                     if (!giveValue.trim()) return toast('Enter an item', 'error');
@@ -664,9 +666,9 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
               <ActionGroup title="Add XP">
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <input type="number" value={xpValue} onChange={e => setXpValue(e.target.value)}
+                  <input aria-label="100" inputMode="numeric" type="number" value={xpValue} onChange={e => setXpValue(e.target.value)}
                     style={{ width: 120 }} min={1} placeholder="100" />
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>points</span>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>points</span>
                   <button className="btn primary small" onClick={() => {
                     if (!xpValue) return toast('Enter XP amount', 'error');
                     cmd('xp', xpValue);
@@ -685,7 +687,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 
         </div>{/* end body */}
       </div>
-    </div>,
+    </ModalOverlay>,
     document.body
   );
 }
@@ -695,17 +697,8 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 /** Small header pill with label and value */
 function QuickPill({ label, val, color }) {
   return (
-    <div style={{
-      background: 'var(--bg-elevated)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius)',
-      padding: '6px 12px',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      minWidth: 70,
-    }}>
-      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>{label}</span>
+    <div className="detail-row" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 70 }}>
+      <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>{label}</span>
       <span style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: color || 'var(--text-primary)', marginTop: 2 }}>{val}</span>
     </div>
   );
@@ -725,7 +718,7 @@ function RpgStatSection({ title, color, children }) {
         borderBottom: `2px solid ${color}33`,
       }}>
         <span style={{
-          fontSize: '0.72rem', fontWeight: 800,
+          fontSize: '0.875rem', fontWeight: 800,
           letterSpacing: '0.1em', textTransform: 'uppercase',
           color: color || 'var(--text-muted)',
         }}>{title}</span>
@@ -743,21 +736,13 @@ function RpgStatSection({ title, color, children }) {
 /** Individual RPG-style stat card */
 function RpgStatBox({ label, val, tip, color, accent }) {
   return (
-    <div
-      title={tip || ''}
-      style={{
-        background: accent ? 'var(--accent-subtle)' : 'var(--bg-input)',
-        border: `1px solid ${accent ? 'var(--accent-glow)' : 'var(--border)'}`,
-        borderRadius: 'var(--radius)',
-        padding: '0.85rem 1rem',
-        cursor: tip ? 'help' : 'default',
-        display: 'flex', flexDirection: 'column', gap: '0.3rem',
-        minWidth: 0,
-      }}
+    <div className="detail-row"
+      aria-label={tip ? `${label}: ${tip}` : undefined}
+      style={{ cursor: tip ? 'help' : 'default', display: 'flex', flexDirection: 'column', gap: '0.3rem', minWidth: 0 }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
         <span style={{
-          fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase',
+          fontSize: '0.875rem', fontWeight: 700, textTransform: 'uppercase',
           letterSpacing: '0.08em', color: 'var(--text-muted)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{label}</span>
@@ -768,6 +753,7 @@ function RpgStatBox({ label, val, tip, color, accent }) {
         color: color || (accent ? 'var(--accent)' : 'var(--text-primary)'),
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>{val}</div>
+      {tip && <p className="stat-help">{tip}</p>}
     </div>
   );
 }
@@ -869,16 +855,11 @@ function Drumstick({ fill, idx }) {
 /** Action group with title bar */
 function ActionGroup({ title, hint, children }) {
   return (
-    <div style={{
-      background: 'var(--bg-input)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius)',
-      padding: '1rem 1.25rem',
-    }}>
+    <div className="detail-row" style={{  }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
         <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>{title}</span>
         {hint && (
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>{hint}</span>
+          <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>{hint}</span>
         )}
       </div>
       {children}
@@ -921,17 +902,17 @@ function WhitelistTab({ serverId }) {
   };
 
   return (<>
-    <div className="card" style={{ marginBottom: '1rem' }}>
+    <Section className="" style={{ marginBottom: '1rem' }}>
       <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Add to Whitelist</h3>
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+      <div className="player-entry-form">
         <div className="form-group" style={{ flex: 1, margin: 0 }}>
           <label>Player Username / UUID</label>
-          <input type="text" value={target} onChange={e => setTarget(e.target.value)} placeholder="e.g. Notch" style={{ width: '100%' }} />
+          <input aria-label="Player Username / UUID" type="text" value={target} onChange={e => setTarget(e.target.value)} placeholder="e.g. Notch" style={{ width: '100%' }} />
         </div>
         <button className="btn primary" style={{ height: 38 }} onClick={add}>Add Player</button>
       </div>
-    </div>
-    <div className="card">
+    </Section>
+    <Section className="">
       <div className="list-header">
         <div className="col col-wide">Player Name</div>
         <div className="col actions">Actions</div>
@@ -940,7 +921,7 @@ function WhitelistTab({ serverId }) {
         {loading ? <p className="text-muted" style={{ padding: '1rem' }}>Loading Whitelist…</p>
           : !list.length ? <div className="list-item"><p className="text-muted">Whitelist is empty.</p></div>
           : list.map(item => (
-            <div key={item.uuid || item.name} className="list-item">
+            <div key={item.uuid || item.name} className="list-item compact-list-row player-list-card">
               <div className="col col-wide text-mono" data-label="Player">{item.name || 'Unknown'}</div>
               <div className="col actions" data-label="Actions">
                 <button className="btn danger small" onClick={() => remove(item.name || item.uuid)}>Remove</button>
@@ -948,7 +929,7 @@ function WhitelistTab({ serverId }) {
             </div>
           ))}
       </div>
-    </div>
+    </Section>
   </>);
 }
 
@@ -988,16 +969,16 @@ function OpsTab({ serverId }) {
   };
 
   return (<>
-    <div className="card" style={{ marginBottom: '1rem' }}>
+    <Section className="" style={{ marginBottom: '1rem' }}>
       <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Make Player Operator</h3>
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+      <div className="player-entry-form">
         <div className="form-group" style={{ flex: 1, margin: 0 }}>
           <label>Player Username</label>
-          <input type="text" value={target} onChange={e => setTarget(e.target.value)} placeholder="e.g. Notch" style={{ width: '100%' }} />
+          <input aria-label="Player Username" type="text" value={target} onChange={e => setTarget(e.target.value)} placeholder="e.g. Notch" style={{ width: '100%' }} />
         </div>
-        <div className="form-group" style={{ width: 160, margin: 0 }}>
+        <div className="form-group" style={{ margin: 0 }}>
           <label>Permission Level</label>
-          <Select value={level} onChange={e => setLevel(e.target.value)}>
+          <Select aria-label="Permission Level" value={level} onChange={e => setLevel(e.target.value)}>
             <option value="4">4 (Full Admin)</option>
             <option value="3">3 (Moderator)</option>
             <option value="2">2 (Game Master)</option>
@@ -1006,8 +987,8 @@ function OpsTab({ serverId }) {
         </div>
         <button className="btn primary" style={{ height: 38 }} onClick={add}>OP Player</button>
       </div>
-    </div>
-    <div className="card">
+    </Section>
+    <Section className="">
       <div className="list-header">
         <div className="col col-wide">Player Name</div>
         <div className="col">OP Level</div>
@@ -1018,17 +999,18 @@ function OpsTab({ serverId }) {
         {loading ? <p className="text-muted" style={{ padding: '1rem' }}>Loading Operator List…</p>
           : !list.length ? <div className="list-item"><p className="text-muted">No operators defined.</p></div>
           : list.map(item => (
-            <div key={item.uuid || item.name} className="list-item">
-              <div className="col col-wide text-mono" data-label="Player">{item.name || 'Unknown'}</div>
-              <div className="col" data-label="OP Level">Level {item.level ?? 4}</div>
-              <div className="col" data-label="Bypasses Limit">{item.bypassesPlayerLimit ? 'Yes' : 'No'}</div>
+            <div key={item.uuid || item.name} className="list-item compact-list-row player-list-card">
+              <div className="compact-list-main">
+                <strong className="text-mono">{item.name || 'Unknown'}</strong>
+                <small>Level {item.level ?? 4} · Bypass {item.bypassesPlayerLimit ? 'yes' : 'no'}</small>
+              </div>
               <div className="col actions" data-label="Actions">
                 <button className="btn danger small" onClick={() => deop(item.name || item.uuid)}>Deop</button>
               </div>
             </div>
           ))}
       </div>
-    </div>
+    </Section>
   </>);
 }
 
@@ -1068,21 +1050,21 @@ function BannedPlayersTab({ serverId }) {
   };
 
   return (<>
-    <div className="card" style={{ marginBottom: '1rem' }}>
+    <Section className="" style={{ marginBottom: '1rem' }}>
       <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Ban Player</h3>
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+      <div className="player-entry-form">
         <div className="form-group" style={{ flex: 1, margin: 0 }}>
           <label>Player Username</label>
-          <input type="text" value={target} onChange={e => setTarget(e.target.value)} placeholder="e.g. GriefingSteve" style={{ width: '100%' }} />
+          <input aria-label="Player Username" type="text" value={target} onChange={e => setTarget(e.target.value)} placeholder="e.g. GriefingSteve" style={{ width: '100%' }} />
         </div>
         <div className="form-group" style={{ flex: 2, margin: 0 }}>
           <label>Reason</label>
-          <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="Griefing / Hacking" style={{ width: '100%' }} />
+          <input aria-label="Reason" type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="Griefing / Hacking" style={{ width: '100%' }} />
         </div>
         <button className="btn danger" style={{ height: 38 }} onClick={ban}>Ban Player</button>
       </div>
-    </div>
-    <div className="card">
+    </Section>
+    <Section className="">
       <div className="list-header">
         <div className="col col-wide">Player Name</div>
         <div className="col">Banned By</div>
@@ -1094,18 +1076,18 @@ function BannedPlayersTab({ serverId }) {
         {loading ? <p className="text-muted" style={{ padding: '1rem' }}>Loading Banned Players…</p>
           : !list.length ? <div className="list-item"><p className="text-muted">No banned players.</p></div>
           : list.map(item => (
-            <div key={item.uuid || item.name} className="list-item">
-              <div className="col col-wide text-mono" data-label="Player">{item.name || 'Unknown'}</div>
-              <div className="col" data-label="Banned By">{item.source || 'Admin'}</div>
-              <div className="col col-wide text-muted" data-label="Reason">{item.reason || 'Banned by panel'}</div>
-              <div className="col" style={{ fontSize: '0.8rem' }} data-label="Expires">{item.expires || 'forever'}</div>
+            <div key={item.uuid || item.name} className="list-item compact-list-row player-list-card">
+              <div className="compact-list-main">
+                <strong className="text-mono">{item.name || 'Unknown'}</strong>
+                <small>{item.reason || 'Banned by panel'} · {item.source || 'Admin'} · {item.expires || 'forever'}</small>
+              </div>
               <div className="col actions" data-label="Actions">
                 <button className="btn success small" onClick={() => pardon(item.name || item.uuid)}>Pardon</button>
               </div>
             </div>
           ))}
       </div>
-    </div>
+    </Section>
   </>);
 }
 
@@ -1145,21 +1127,21 @@ function BannedIpsTab({ serverId }) {
   };
 
   return (<>
-    <div className="card" style={{ marginBottom: '1rem' }}>
+    <Section className="" style={{ marginBottom: '1rem' }}>
       <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Ban IP Address</h3>
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+      <div className="player-entry-form">
         <div className="form-group" style={{ flex: 1, margin: 0 }}>
           <label>IP Address</label>
-          <input type="text" value={target} onChange={e => setTarget(e.target.value)} placeholder="e.g. 192.168.1.100" style={{ width: '100%' }} />
+          <input aria-label="IP Address" type="text" value={target} onChange={e => setTarget(e.target.value)} placeholder="e.g. 192.168.1.100" style={{ width: '100%' }} />
         </div>
         <div className="form-group" style={{ flex: 2, margin: 0 }}>
           <label>Reason</label>
-          <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="Spamming chat" style={{ width: '100%' }} />
+          <input aria-label="Reason" type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="Spamming chat" style={{ width: '100%' }} />
         </div>
         <button className="btn danger" style={{ height: 38 }} onClick={ban}>Ban IP</button>
       </div>
-    </div>
-    <div className="card">
+    </Section>
+    <Section className="">
       <div className="list-header">
         <div className="col col-wide">IP Address</div>
         <div className="col">Banned By</div>
@@ -1171,17 +1153,17 @@ function BannedIpsTab({ serverId }) {
         {loading ? <p className="text-muted" style={{ padding: '1rem' }}>Loading Banned IPs…</p>
           : !list.length ? <div className="list-item"><p className="text-muted">No banned IPs.</p></div>
           : list.map(item => (
-            <div key={item.ip || item.name} className="list-item">
+            <div key={item.ip || item.name} className="list-item player-list-card">
               <div className="col col-wide text-mono" data-label="IP">{item.ip || item.name || '--'}</div>
               <div className="col" data-label="Banned By">{item.source || 'Admin'}</div>
               <div className="col col-wide text-muted" data-label="Reason">{item.reason || '--'}</div>
-              <div className="col" style={{ fontSize: '0.8rem' }} data-label="Expires">{item.expires || 'forever'}</div>
+              <div className="col" style={{ fontSize: '0.875rem' }} data-label="Expires">{item.expires || 'forever'}</div>
               <div className="col actions" data-label="Actions">
                 <button className="btn success small" onClick={() => unban(item.ip || item.name)}>Unban</button>
               </div>
             </div>
           ))}
       </div>
-    </div>
+    </Section>
   </>);
 }

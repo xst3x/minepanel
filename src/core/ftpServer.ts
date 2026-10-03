@@ -1,3 +1,4 @@
+import { PROJECT_ROOT } from '../paths';
 // src/core/ftpServer.js
 // Per-server SFTP (SSH File Transfer Protocol) using the ssh2 library.
 // Each server gets its own SFTP daemon on its configured port.
@@ -44,7 +45,7 @@ let HOST_KEY = null;
 function getHostKey() {
     if (HOST_KEY) return HOST_KEY;
     // Try to load from data dir so the key survives restarts (avoids host-key warnings)
-    const keyPath = path.join(__dirname, '../../data/sftp_host_key');
+    const keyPath = path.join(PROJECT_ROOT, 'data', 'sftp_host_key');
     try {
         if (fs.existsSync(keyPath)) {
             const candidate = fs.readFileSync(keyPath);

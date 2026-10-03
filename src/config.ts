@@ -1,6 +1,7 @@
+import './paths';
 // src/config.js
 // Central configuration module for MinePanel
-// Loads environment variables (via dotenv already called in index.js)
+// Environment and installation paths are initialized by paths.ts.
 
 const DEFAULT_ALLOWED_ORIGINS = ['*'];
 const DEFAULT_RATE_LIMIT = 300; // requests per minute per IP

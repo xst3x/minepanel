@@ -27,9 +27,7 @@ const loadUsercache = (serverDir) => {
         if (fs.existsSync(cachePath))
             return JSON.parse(fs.readFileSync(cachePath, 'utf8'));
     }
-    catch (e) {
-        logger.warn('[playerRoutes] Failed to parse usercache.json: ' + (e.message || e));
-    }
+    catch (e) { }
     return [];
 };
 const resolveUsername = (usercache, uuid) => {
@@ -168,7 +166,6 @@ async function readPlayerVitals(datPath) {
         return { health, food };
     }
     catch (e) {
-        logger.warn('[playerRoutes] Failed to read player NBT data: ' + (e.message || e));
         return { health: null, food: null };
     }
 }
@@ -198,7 +195,9 @@ router.get('/list', authenticateToken, checkPermission('server.players.read'), a
         const usercache = loadUsercache(serverDir);
         let players = [];
         if (fs.existsSync(playerdataDir)) {
-            const files = fs.readdirSync(playerdataDir).filter(f => f.endsWith('.dat'));
+            const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            const files = fs.readdirSync(playerdataDir)
+                .filter(f => f.endsWith('.dat') && uuidRe.test(f.replace('.dat', '')));
             players = files.map(f => {
                 const uuid = f.replace('.dat', '');
                 const username = resolveUsername(usercache, uuid) || uuid;
@@ -240,9 +239,7 @@ router.get('/:uuid', authenticateToken, checkPermission('server.players.read'), 
                     try {
                         stats = JSON.parse(await fsp.readFile(statsFileAlt, 'utf8'));
                     }
-                    catch (e2) {
-                        logger.warn('[playerRoutes] Failed to parse alt stats file: ' + (e2.message || e2));
-                    }
+                    catch (_) { }
                 }
             }
         }
@@ -252,9 +249,7 @@ router.get('/:uuid', authenticateToken, checkPermission('server.players.read'), 
         try {
             advancements = JSON.parse(await fsp.readFile(advFile, 'utf8'));
         }
-        catch (e) {
-            logger.warn('[playerRoutes] Failed to parse advancements: ' + (e.message || e));
-        }
+        catch (_) { }
         // Read live health + food from playerdata .dat (NBT binary)
         const datFile = path.join(serverDir, 'world', 'playerdata', `${dashed}.dat`);
         const datFileAlt = path.join(serverDir, 'world', 'playerdata', `${uuid}.dat`);
@@ -518,9 +513,7 @@ router.post('/lists/:listName', authenticateToken, checkPermission('server.playe
                 try {
                     list = JSON.parse(fs.readFileSync(filePath, 'utf8') || '[]');
                 }
-                catch (e) {
-                    logger.warn('[playerRoutes] Failed to parse ' + listName + ' list: ' + (e.message || e));
-                }
+                catch (_) { }
             }
             if (listName === 'banned-ips') {
                 if (list.some(item => item.ip === target))
@@ -593,9 +586,7 @@ router.delete('/lists/:listName/:target', authenticateToken, checkPermission('se
             try {
                 list = JSON.parse(fs.readFileSync(filePath, 'utf8') || '[]');
             }
-            catch (e) {
-                logger.warn('[playerRoutes] Failed to parse ' + listName + ' list: ' + (e.message || e));
-            }
+            catch (_) { }
             let filteredList = [];
             if (listName === 'banned-ips')
                 filteredList = list.filter(item => item.ip !== target);

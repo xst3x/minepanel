@@ -108,7 +108,7 @@ function start() {
     if (_tickHandle.unref)
         _tickHandle.unref();
     // Run one tick immediately (async, non-blocking)
-    _tick().catch(err => { logger.error('[UpdateScheduler] Tick error: ' + (err.message || err)); });
+    _tick().catch(() => { });
 }
 /**
  * Stop the scheduler (useful for graceful shutdown / tests).

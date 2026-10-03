@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../paths");
 // ── Server API OpenAPI/Swagger Documentation ──────────────────────────
 // Serves auto-generated API docs at /serverapi/docs
 const express = require("express");
@@ -7,7 +8,7 @@ const OPENAPI_SPEC = {
     openapi: '3.0.3',
     info: {
         title: 'MinePanel Server API',
-        version: require('../../package.json').version || '1.0.0',
+        version: require(require('path').join(paths_1.PROJECT_ROOT, 'package.json')).version || '1.0.0',
         description: `REST API for interacting with individual Minecraft servers.
 
 Authentication: All endpoints require an API key sent as a Bearer token in the Authorization header.

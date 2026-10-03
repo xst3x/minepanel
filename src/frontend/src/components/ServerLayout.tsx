@@ -4,6 +4,7 @@ import { api, getToken } from '../lib/api.ts';
 import { toast, showConfirm } from './Toast.tsx';
 import log from '../lib/logger.ts';
 import { splitConsoleChunk } from '../lib/minecraftLog.ts';
+import useActiveTabScroll from '../hooks/useActiveTabScroll.ts';
 import '../styles/components/ServerLayout.css';
 
 const TAB_ICONS = {
@@ -38,6 +39,7 @@ export default function ServerLayout() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const tabStripRef = useActiveTabScroll(location.pathname);
   const [serverInfo, setServerInfo] = useState(null);
   const [status, setStatus] = useState('offline');
   const [permissions, setPermissions] = useState([]);
@@ -329,11 +331,11 @@ export default function ServerLayout() {
             <button className="btn success" onClick={() => sendControl('start')} disabled={status === 'online' || status === 'starting' || status === 'stopping'}>Start</button>
             <button className="btn danger" onClick={() => sendControl('stop')} disabled={status === 'offline' || status === 'stopping'}>Stop</button>
             <button className="btn outline" onClick={() => sendControl('restart')} disabled={status === 'offline' || status === 'starting' || status === 'stopping'}>Restart</button>
-            <button className="btn danger" onClick={() => sendControl('kill')} title="Force-kill process" disabled={status === 'offline'}>Kill</button>
+            <button aria-label="Force-kill process" className="btn danger" onClick={() => sendControl('kill')} title="Force-kill process" disabled={status === 'offline'}>Kill</button>
           </div>
         </div>
 
-        <nav className="sub-nav">
+        <nav className="sub-nav" ref={tabStripRef} aria-label="Server sections">
           {visibleTabs.map(([slug, label]) => (
             <NavLink
               key={slug}

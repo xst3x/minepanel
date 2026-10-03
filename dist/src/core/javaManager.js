@@ -1,3 +1,5 @@
+"use strict";
+const paths_1 = require("../paths");
 /**
  * javaManager.js
  * Ensures Java 26 is available, downloading it if needed.
@@ -13,7 +15,7 @@ const https = require("https");
 const child_process_1 = require("child_process");
 const logger = require("./utils/logger");
 const JAVA_VERSION = 26;
-const RUNTIME_DIR = path.resolve(__dirname, '../../runtime');
+const RUNTIME_DIR = path.join(paths_1.PROJECT_ROOT, 'runtime');
 const JAVA_DIR = path.join(RUNTIME_DIR, `java${JAVA_VERSION}`);
 const JAVA_EXE = process.platform === 'win32'
     ? path.join(JAVA_DIR, 'bin', 'java.exe')
@@ -173,9 +175,7 @@ async function getJavaPath(serverJavaPath) {
     // Panel-wide default (read from settings.json)
     try {
         const fsp = require('fs').promises;
-        const settingsPath = process.env.DATA_DIR
-            ? require('path').join(process.env.DATA_DIR, 'settings.json')
-            : require('path').resolve(__dirname, '../../settings.json');
+        const settingsPath = paths_1.SETTINGS_FILE;
         const raw = await fsp.readFile(settingsPath, 'utf8').catch(() => '{}');
         const settings = JSON.parse(raw);
         if (settings.defaultJavaPath && settings.defaultJavaPath !== 'java') {

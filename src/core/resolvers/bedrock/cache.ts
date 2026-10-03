@@ -1,3 +1,4 @@
+import { PROJECT_ROOT } from '../../../paths';
 /**
  * cache.js
  * ────────
@@ -18,7 +19,7 @@
 const fs = require('fs')
 import path = require('path')
 
-const CACHE_DIR = path.join(__dirname, '../../../../cache/resolvers');
+const CACHE_DIR = path.join(PROJECT_ROOT, 'cache', 'resolvers');
 
 function ensureDir() {
     if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });

@@ -1,300 +1,201 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { Children, Fragment, isValidElement, useEffect, useId, useRef, useState } from 'react';
+import type { ChangeEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode, SelectHTMLAttributes } from 'react';
 import { createPortal } from 'react-dom';
+import '../styles/components/Select.css';
 
-export default function Select({ value, onChange, children, style, className, disabled }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef(null);
-  const dropdownRef = useRef(null);
-  const displayRef = useRef(null);
-  const [activeIdx, setActiveIdx] = useState(-1);
-  const [coords, setCoords] = useState({ left: 0, top: 0, width: 0, dropUp: false, topOffset: 0 });
+type Option = { value: string; label: ReactNode; text: string; disabled: boolean };
+type OptionProps = { value?: string | number; disabled?: boolean; children?: ReactNode };
 
-  const updateCoords = () => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const dropdownHeight = 250;
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      
-      const dropUp = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
-      
-      setCoords({
-        left: rect.left,
-        top: rect.bottom,
-        width: rect.width,
-        dropUp,
-        topOffset: rect.top
-      });
-    }
-  };
+function nodeText(node: ReactNode): string {
+  if (node == null || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(nodeText).join('');
+  if (isValidElement(node)) return nodeText((node.props as { children?: ReactNode }).children);
+  return '';
+}
 
-  useEffect(() => {
-    if (isOpen) {
-      updateCoords();
-      // Start keyboard navigation at the selected option
-      const selIdx = options.findIndex(opt => String(opt.value) === String(value));
-      setActiveIdx(selIdx >= 0 ? selIdx : 0);
-      window.addEventListener('resize', updateCoords);
-      window.addEventListener('scroll', updateCoords, true);
-    }
-    return () => {
-      window.removeEventListener('resize', updateCoords);
-      window.removeEventListener('scroll', updateCoords, true);
-    };
-  }, [isOpen]);
-
-  // Close when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (containerRef.current && containerRef.current.contains(event.target)) return;
-      if (dropdownRef.current && dropdownRef.current.contains(event.target)) return;
-      setIsOpen(false);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Parse children to extract options
-  const options = [];
-  React.Children.forEach(children, child => {
-    if (React.isValidElement(child) && child.type === 'option') {
-      options.push({
-        value: child.props.value !== undefined ? child.props.value : child.props.children,
-        label: child.props.children,
-        disabled: child.props.disabled
-      });
-    } else if (child && child.type === React.Fragment) {
-       React.Children.forEach(child.props.children, subChild => {
-         if (React.isValidElement(subChild) && subChild.type === 'option') {
-            options.push({
-                value: subChild.props.value !== undefined ? subChild.props.value : subChild.props.children,
-                label: subChild.props.children,
-                disabled: subChild.props.disabled
-            });
-         }
-       })
-    } else if (Array.isArray(child)) {
-        child.forEach(subChild => {
-             if (React.isValidElement(subChild) && subChild.type === 'option') {
-                options.push({
-                    value: subChild.props.value !== undefined ? subChild.props.value : subChild.props.children,
-                    label: subChild.props.children,
-                    disabled: subChild.props.disabled
-                });
-             }
-        })
-    } else if (child !== null && typeof child === 'object') {
-        // Fallback for nested maps returning arrays directly
-        if (Array.isArray(child)) {
-            child.forEach(subChild => {
-                if (React.isValidElement(subChild) && subChild.type === 'option') {
-                   options.push({
-                       value: subChild.props.value !== undefined ? subChild.props.value : subChild.props.children,
-                       label: subChild.props.children,
-                       disabled: subChild.props.disabled
-                   });
-                }
-            })
-        } else if (React.isValidElement(child) && child.props && Array.isArray(child.props.children)) {
-            child.props.children.forEach(subChild => {
-                if (React.isValidElement(subChild) && subChild.type === 'option') {
-                   options.push({
-                       value: subChild.props.value !== undefined ? subChild.props.value : subChild.props.children,
-                       label: subChild.props.children,
-                       disabled: subChild.props.disabled
-                   });
-                }
-            })
-        }
+/** Reads <option> children (also inside fragments, arrays and <optgroup>) into a flat list. */
+function collectOptions(children: ReactNode, out: Option[] = []): Option[] {
+  Children.forEach(children, child => {
+    if (!isValidElement(child)) return;
+    const props = child.props as OptionProps;
+    if (child.type === 'option') {
+      const text = nodeText(props.children);
+      out.push({ value: props.value !== undefined ? String(props.value) : text, label: props.children, text, disabled: !!props.disabled });
+    } else if (child.type === 'optgroup' || child.type === Fragment) {
+      collectOptions(props.children, out);
     }
   });
+  return out;
+}
 
-  const selectedOption = options.find(opt => String(opt.value) === String(value));
-  const displayLabel = selectedOption ? selectedOption.label : value;
-  const selectId = useRef(`mp-select-${Math.random().toString(36).slice(2, 9)}`).current;
+type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange' | 'multiple' | 'size'> & {
+  onChange?: (event: ChangeEvent<HTMLSelectElement>) => void;
+};
 
-  // Keep the keyboard-active option visible while navigating
-  useEffect(() => {
-    if (!isOpen || activeIdx < 0 || !dropdownRef.current) return;
-    const el = dropdownRef.current.children[activeIdx];
-    el?.scrollIntoView?.({ block: 'nearest' });
-  }, [activeIdx, isOpen]);
+/**
+ * Themed single-select dropdown. Drop-in for <select> with <option> children:
+ * `onChange` receives an event whose `target.value` is the chosen value.
+ * Implements the WAI-ARIA combobox/listbox pattern (arrows, Home/End, Enter/Space, Esc, type-ahead).
+ * Use a native <select multiple> where multiple selection is needed.
+ */
+export default function Select({ value, onChange, children, style, className = '', disabled, id, name, title, ...rest }: SelectProps) {
+  const autoId = useId();
+  const triggerId = id || `mp-select-${autoId}`;
+  const listId = `${triggerId}-listbox`;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const typed = useRef({ text: '', timer: 0 });
+  const [open, setOpen] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const [pos, setPos] = useState({ left: 0, top: 0, bottom: 0, minWidth: 0, dropUp: false });
 
-  const handleSelect = (opt) => {
-    if (opt.disabled || disabled) return;
-    setIsOpen(false);
-    // Return focus to the combobox so keyboard users keep their place
-    displayRef.current?.focus();
-    if (onChange) {
-      onChange({ target: { value: opt.value } });
-    }
+  const options = collectOptions(children);
+  const current = String(Array.isArray(value) ? (value[0] ?? '') : (value ?? ''));
+  const selectedIdx = options.findIndex(o => o.value === current);
+  const display = selectedIdx >= 0 ? options[selectedIdx].label : (current || options[0]?.label);
+
+  const updatePos = () => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom;
+    setPos({ left: r.left, top: r.bottom + 6, bottom: window.innerHeight - r.top + 6, minWidth: r.width, dropUp: below < 260 && r.top > below });
   };
 
-  // Keyboard support (WAI-ARIA combobox / listbox pattern)
-  const handleKeyDown = (e) => {
+  const firstEnabled = () => options.findIndex(o => !o.disabled);
+  const move = (from: number, dir: 1 | -1) => {
+    if (!options.length) return -1;
+    let i = from;
+    for (let n = 0; n < options.length; n++) {
+      i = (i + dir + options.length) % options.length;
+      if (!options[i].disabled) return i;
+    }
+    return from;
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updatePos();
+    setActiveIdx(selectedIdx >= 0 ? selectedIdx : firstEnabled());
+    const onScroll = (e: Event) => { if (!listRef.current?.contains(e.target as Node)) updatePos(); };
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (containerRef.current?.contains(t) || listRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', onScroll, true);
+    document.addEventListener('mousedown', onDown);
+    return () => {
+      window.removeEventListener('resize', updatePos);
+      window.removeEventListener('scroll', onScroll, true);
+      document.removeEventListener('mousedown', onDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Keep the keyboard-active option visible
+  useEffect(() => {
+    if (!open || activeIdx < 0) return;
+    (listRef.current?.children[activeIdx] as HTMLElement | undefined)?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeIdx, open]);
+
+  const choose = (opt: Option) => {
+    if (opt.disabled || disabled) return;
+    setOpen(false);
+    triggerRef.current?.focus();
+    if (opt.value === current) return;
+    const target = { value: opt.value, name: name ?? '', id: triggerId };
+    onChange?.({ target, currentTarget: target } as unknown as ChangeEvent<HTMLSelectElement>);
+  };
+
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (disabled) return;
-    if (!isOpen) {
-      if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
-        e.preventDefault();
-        setIsOpen(true);
-      }
+    if (!open) {
+      if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); setOpen(true); }
       return;
     }
     switch (e.key) {
-      case 'ArrowDown': {
-        e.preventDefault();
-        setActiveIdx(i => {
-          let next = i;
-          do { next = (next + 1) % options.length; } while (options[next]?.disabled && next !== i);
-          return next;
-        });
-        break;
-      }
-      case 'ArrowUp': {
-        e.preventDefault();
-        setActiveIdx(i => {
-          let next = i;
-          do { next = (next - 1 + options.length) % options.length; } while (options[next]?.disabled && next !== i);
-          return next;
-        });
-        break;
-      }
-      case 'Home':
-        e.preventDefault();
-        setActiveIdx(0);
-        break;
-      case 'End':
-        e.preventDefault();
-        setActiveIdx(options.length - 1);
-        break;
+      case 'ArrowDown': e.preventDefault(); setActiveIdx(i => move(i, 1)); break;
+      case 'ArrowUp': e.preventDefault(); setActiveIdx(i => move(i, -1)); break;
+      case 'Home': e.preventDefault(); setActiveIdx(firstEnabled()); break;
+      case 'End': e.preventDefault(); setActiveIdx(options.length - 1 - [...options].reverse().findIndex(o => !o.disabled)); break;
       case 'Enter':
-      case ' ':
-        e.preventDefault();
-        if (options[activeIdx]) handleSelect(options[activeIdx]);
-        break;
-      case 'Escape':
-        e.preventDefault();
-        setIsOpen(false);
-        displayRef.current?.focus();
-        break;
-      case 'Tab':
-        setIsOpen(false);
-        break;
+      case ' ': e.preventDefault(); if (options[activeIdx]) choose(options[activeIdx]); break;
+      case 'Escape': e.preventDefault(); setOpen(false); break;
+      case 'Tab': setOpen(false); break;
       default:
-        break;
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          window.clearTimeout(typed.current.timer);
+          typed.current.text += e.key.toLowerCase();
+          typed.current.timer = window.setTimeout(() => { typed.current.text = ''; }, 600);
+          const hit = options.findIndex(o => !o.disabled && o.text.toLowerCase().startsWith(typed.current.text));
+          if (hit >= 0) setActiveIdx(hit);
+        }
     }
   };
 
   return (
-    <div
-      ref={containerRef}
-      className={`custom-select-container ${className || ''}`}
-      style={{ position: 'relative', width: '100%', ...style, opacity: disabled ? 0.5 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
-    >
+    <div ref={containerRef} className={`custom-select-container ${className}`.trim()} style={style} data-disabled={disabled ? 'true' : undefined}>
       <div
-        ref={displayRef}
-        id={selectId}
-        className="custom-select-display"
+        ref={triggerRef}
+        id={triggerId}
+        className={`custom-select-display${open ? ' open' : ''}`}
         role="combobox"
-        aria-expanded={isOpen}
+        aria-expanded={open}
         aria-haspopup="listbox"
-        aria-controls={`${selectId}-listbox`}
+        aria-controls={open ? listId : undefined}
+        aria-activedescendant={open && activeIdx >= 0 ? `${listId}-opt-${activeIdx}` : undefined}
+        aria-label={rest['aria-label']}
+        aria-labelledby={rest['aria-labelledby']}
         aria-disabled={disabled || undefined}
+        title={title}
         tabIndex={disabled ? -1 : 0}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        onKeyDown={handleKeyDown}
-        style={{
-          width: '100%',
-          padding: '0 38px 0 14px',
-          height: style?.height || '38px',
-          background: 'var(--bg-input)',
-          border: isOpen ? '1px solid var(--accent)' : '1px solid var(--border)',
-          borderRadius: 'var(--radius)',
-          color: 'var(--text-primary)',
-          fontSize: '13.5px',
-          display: 'flex',
-          alignItems: 'center',
-          boxShadow: isOpen ? '0 0 0 3px var(--accent-glow)' : 'none',
-          transition: 'var(--transition)',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          userSelect: 'none',
-          outline: 'none',
-          cursor: disabled ? 'not-allowed' : 'pointer'
-        }}
+        onClick={() => { if (!disabled) setOpen(o => !o); }}
+        onKeyDown={onKeyDown}
       >
-        {displayLabel}
-        
-        {/* Dropdown Arrow */}
-        <div style={{ position: 'absolute', right: '14px', top: '50%', transform: isOpen ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)', transition: 'transform 0.2s', pointerEvents: 'none', display: 'flex' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </div>
+        <span className="custom-select-value">{display}</span>
+        <svg className="custom-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
       </div>
+      {name && <input type="hidden" name={name} value={current} />}
 
-      {isOpen && !disabled && createPortal(
+      {open && !disabled && createPortal(
         <div
-          ref={dropdownRef}
-          id={`${selectId}-listbox`}
+          ref={listRef}
+          id={listId}
           role="listbox"
-          aria-labelledby={selectId}
+          aria-label={rest['aria-label']}
           className="custom-select-dropdown"
           style={{
-            position: 'fixed',
-            ...(coords.dropUp
-              ? { bottom: window.innerHeight - coords.topOffset + 6 }
-              : { top: coords.top + 6 }),
-            left: coords.left,
-            width: coords.width,
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
-            boxShadow: 'var(--shadow-md)',
-            maxHeight: '250px',
-            overflowY: 'auto',
-            zIndex: 999999,
-            padding: '4px',
-            backdropFilter: 'var(--glass-blur)',
-            WebkitBackdropFilter: 'var(--glass-blur)',
+            left: pos.left,
+            minWidth: pos.minWidth,
+            maxWidth: `calc(100vw - ${Math.round(pos.left)}px - 8px)`,
+            ...(pos.dropUp ? { bottom: pos.bottom } : { top: pos.top }),
           }}
+          // React bubbles events from portals to ancestors; keep clicks here from reaching a modal backdrop handler.
+          onClick={e => e.stopPropagation()}
         >
-          {options.length === 0 && (
-             <div style={{ padding: '8px 12px', fontSize: '13.5px', color: 'var(--text-muted)' }}>
-               No options available
-             </div>
-          )}
-          {options.map((opt, i) => {
-            const isSelected = String(opt.value) === String(value);
-            const isActive = i === activeIdx;
-            return (
-              <div
-                key={i}
-                role="option"
-                aria-selected={isSelected}
-                aria-disabled={opt.disabled || undefined}
-                className="custom-select-option"
-                onClick={() => handleSelect(opt)}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '4px',
-                  cursor: opt.disabled ? 'not-allowed' : 'pointer',
-                  opacity: opt.disabled ? 0.5 : 1,
-                  fontSize: '13.5px',
-                  color: isSelected ? 'var(--accent)' : 'var(--text-primary)',
-                  background: isSelected ? 'var(--accent-subtle)' : (isActive ? 'var(--bg-elevated)' : 'transparent'),
-                  transition: 'background 0.1s, color 0.1s',
-                  userSelect: 'none'
-                }}
-                onMouseEnter={() => { if (!opt.disabled) setActiveIdx(i); }}
-              >
-                {opt.label}
-              </div>
-            );
-          })}
+          {options.length === 0 && <div className="custom-select-empty">No options available</div>}
+          {options.map((opt, i) => (
+            <div
+              key={i}
+              id={`${listId}-opt-${i}`}
+              role="option"
+              aria-selected={i === selectedIdx}
+              aria-disabled={opt.disabled || undefined}
+              className={`custom-select-option${i === selectedIdx ? ' selected' : ''}${i === activeIdx ? ' active' : ''}${opt.disabled ? ' disabled' : ''}`}
+              onClick={() => choose(opt)}
+              onMouseEnter={() => { if (!opt.disabled) setActiveIdx(i); }}
+            >
+              {opt.label}
+            </div>
+          ))}
         </div>,
-        document.body
+        document.body,
       )}
     </div>
   );

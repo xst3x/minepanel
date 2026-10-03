@@ -1,3 +1,4 @@
+import { AVATARS_DIR } from '../paths';
 import express = require('express')
 import databaseModule = require('../db/database')
 const { User, Rank, Setting, UserCustomAccent, UserServerPermission, UserServerRank, AccountCreationToken } = databaseModule;
@@ -19,7 +20,7 @@ import fs = require('fs')
 import { Op } from 'sequelize'
 
 // ── Avatar upload config ──────────────────────────────────────────────────────
-const AVATARS_DIR = path.resolve(__dirname, '../../data/avatars');
+
 if (!fs.existsSync(AVATARS_DIR)) fs.mkdirSync(AVATARS_DIR, { recursive: true });
 
 const avatarStorage = multer.diskStorage({

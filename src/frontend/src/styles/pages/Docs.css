@@ -1,3 +1,4 @@
+@layer components {
 .docs-sidebar {
 width: 280px;
     flex-shrink: 0;
@@ -10,15 +11,13 @@ width: 280px;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    max-height: calc(100vh - 6rem);
+    max-height: calc(100dvh - 6rem);
     overflow-y: auto;
 }
-
 .docs-cat-group {
 display: flex;
     flex-direction: column;
 }
-
 .docs-cat-header {
 display: flex;
     align-items: center;
@@ -38,16 +37,13 @@ display: flex;
     transition: background 0.15s, color 0.15s;
     margin-bottom: 1px;
 }
-
 .docs-cat-header:hover {
 background: var(--bg-elevated);
     color: var(--text-primary);
 }
-
 .docs-cat-header.has-active {
 color: var(--accent);
 }
-
 .docs-cat-items {
 display: flex;
     flex-direction: column;
@@ -55,7 +51,6 @@ display: flex;
     padding-left: 0.75rem;
     margin-bottom: 6px;
 }
-
 .docs-item {
 display: block;
     width: 100%;
@@ -73,89 +68,60 @@ display: block;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-
 .docs-item:hover {
 background: var(--bg-elevated);
     color: var(--text-primary);
 }
-
 .docs-item.active {
 background: var(--accent-subtle);
     color: var(--accent);
     border-left-color: var(--accent);
     font-weight: 500;
 }
-
 .doc-content h4 {
 margin-top: 1.5rem;
     margin-bottom: 0.5rem;
-    color: var(--text-primary);
 }
-
-/* ── Docs layout: sidebar + content ────────────────────────────── */
-/* Wraps naturally on narrow screens; sidebar becomes a full-width
-   block above the content (not sticky) once it can't sit beside it. */
 .docs-layout {
     display: flex;
     gap: 1.5rem;
     align-items: flex-start;
     flex-wrap: wrap;
 }
-
-@media (max-width: 900px) {
-    .docs-layout {
-        flex-direction: column;
-    }
-    .docs-layout .docs-sidebar {
-        width: 100%;
-        position: static;
-        max-height: none;
-        order: -1;
-    }
-}
-
 .doc-content h1 {
 font-size: 1.5rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.4rem;
     margin-top: 0;
 }
-
 .doc-content h2 {
 font-size: 1.2rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.3rem;
 }
-
 .doc-content h3 {
 font-size: 1rem;
 }
-
 .doc-content h4 {
 font-size: 0.9rem; color: var(--text-muted);
 }
-
 .doc-content p {
 margin: 0.6rem 0; color: var(--text-primary);
 }
-
 .doc-content ol {
 padding-left: 1.4rem;
     margin: 0.5rem 0;
     color: var(--text-primary);
 }
-
 .doc-content li {
 margin: 0.2rem 0;
 }
-
 .doc-content table {
 width: 100%;
     border-collapse: collapse;
     font-size: 0.85rem;
     margin: 0.75rem 0;
 }
-
 .doc-content th {
 padding: 6px 10px;
     border-bottom: 2px solid var(--border);
@@ -163,17 +129,14 @@ padding: 6px 10px;
     color: var(--text-muted);
     font-weight: 600;
 }
-
 .doc-content td {
 padding: 6px 10px;
     border-bottom: 1px solid var(--border);
     vertical-align: top;
 }
-
 .doc-content tr:last-child td {
 border-bottom: none;
 }
-
 .doc-content code {
 background: var(--bg-elevated);
     padding: 0.1em 0.35em;
@@ -182,7 +145,6 @@ background: var(--bg-elevated);
     font-size: 0.83em;
     color: var(--accent);
 }
-
 .doc-content pre {
 background: var(--bg-input, #111);
     border: 1px solid var(--border);
@@ -191,14 +153,12 @@ background: var(--bg-input, #111);
     overflow-x: auto;
     margin: 0.75rem 0;
 }
-
 .doc-content pre code {
 background: none;
     padding: 0;
     color: var(--text-primary);
     font-size: 0.82rem;
 }
-
 .doc-content blockquote {
 border-left: 3px solid var(--accent);
     margin: 0.75rem 0;
@@ -208,19 +168,16 @@ border-left: 3px solid var(--accent);
     font-size: 0.875rem;
     color: var(--text-secondary);
 }
-
 .doc-content blockquote p {
 margin: 0;
 }
-
 .doc-content strong {
 color: var(--text-primary);
 }
-
 .doc-content a {
 color: var(--accent); text-decoration: none;
 }
-
 .doc-content a:hover {
 text-decoration: underline;
+}
 }

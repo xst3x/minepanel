@@ -1,3 +1,4 @@
+import ModalOverlay from './ModalOverlay.tsx';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 // Shared Color Well (custom color picker modal)
@@ -127,11 +128,11 @@ export default function ColorWell({ onClose, onApply }) {
   const hslValue = `hsl(${Math.round(wheelH)},${Math.round(wheelS)}%,${Math.round(brightness)}%)`;
 
   return (
-    <div className="modal-overlay active" onClick={onClose}>
+    <ModalOverlay className="modal-overlay active" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 360 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Choose a color</h3>
-          <button className="close-btn" onClick={onClose}>&times;</button>
+          <button aria-label="Close dialog" className="close-btn" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ position: 'relative', width: 200, height: 200, margin: '0 auto' }}>
@@ -147,7 +148,7 @@ export default function ColorWell({ onClose, onApply }) {
             }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', flexShrink: 0 }}>Brightness</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', flexShrink: 0 }}>Brightness</span>
             <div style={{ flex: 1, height: 8, borderRadius: 4, background: trackGrad, position: 'relative' }}>
               <input type="range" min={10} max={90} value={brightness}
                 onChange={e => setBrightness(Number(e.target.value))}
@@ -160,13 +161,13 @@ export default function ColorWell({ onClose, onApply }) {
                 boxShadow: '0 1px 4px rgba(0,0,0,0.4)', pointerEvents: 'none',
               }} />
             </div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', width: 32, textAlign: 'right', flexShrink: 0 }}>{brightness}%</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', width: 32, textAlign: 'right', flexShrink: 0 }}>{brightness}%</span>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
             {['r','g','b'].map(ch => (
               <div key={ch} style={{ flex: 1 }}>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 3, textTransform: 'uppercase' }}>{ch}</label>
-                <input type="number" min={0} max={255} value={rgb[ch]}
+                <label style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: 'block', marginBottom: 3, textTransform: 'uppercase' }}>{ch}</label>
+                <input inputMode="numeric" type="number" min={0} max={255} value={rgb[ch]}
                   onChange={e => {
                     const newRgb = { ...rgb, [ch]: Math.max(0, Math.min(255, parseInt(e.target.value) || 0)) };
                     setRgb(newRgb);
@@ -178,8 +179,8 @@ export default function ColorWell({ onClose, onApply }) {
               </div>
             ))}
             <div style={{ flex: 2 }}>
-              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: 3, textTransform: 'uppercase' }}>HEX</label>
-              <input type="text" value={hex} maxLength={7}
+              <label style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: 'block', marginBottom: 3, textTransform: 'uppercase' }}>HEX</label>
+              <input aria-label="HEX" type="text" value={hex} maxLength={7}
                 onChange={e => {
                   const val = e.target.value.startsWith('#') ? e.target.value : '#' + e.target.value;
                   setHex(val);
@@ -197,7 +198,7 @@ export default function ColorWell({ onClose, onApply }) {
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <div style={{ width: 44, height: 44, borderRadius: 'var(--radius)', background: previewColor, flexShrink: 0, border: '1px solid var(--border)' }} />
-            <input type="text" placeholder="Name this color" maxLength={24}
+            <input aria-label="Name this color" type="text" placeholder="Name this color" maxLength={24}
               value={colorName} onChange={e => setColorName(e.target.value)}
               style={{ flex: 1 }} />
           </div>
@@ -207,6 +208,6 @@ export default function ColorWell({ onClose, onApply }) {
           <button className="btn primary" onClick={() => onApply(hex, hslValue, colorName.trim() || 'Custom')}>Apply</button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

@@ -11,6 +11,7 @@ Plans-and-internal-stuff/
 .agent/
 venv
 ADMIN_CREDENTIALS.txt
+dist
 
 # AI / aider / history junk
 .aider.*

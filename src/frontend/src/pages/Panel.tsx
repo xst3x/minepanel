@@ -1,3 +1,5 @@
+import Section from '../components/Section.tsx';
+import ModalOverlay from '../components/ModalOverlay.tsx';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api.ts';
@@ -272,7 +274,7 @@ export default function Panel() {
           Loading servers…
         </div>
       ) : servers.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--text-muted)' }}>
+        <Section className="" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
           <svg viewBox="0 0 24 24" width="44" height="44" stroke="currentColor" fill="none" strokeWidth="1.25" style={{ opacity: 0.3, margin: '0 auto 1rem', display: 'block' }}>
             <rect x="2" y="2" width="20" height="8" rx="2" />
             <rect x="2" y="14" width="20" height="8" rx="2" />
@@ -280,7 +282,7 @@ export default function Panel() {
             <line x1="6" y1="18" x2="6.01" y2="18" />
           </svg>
           <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-secondary)' }}>No servers yet.</p>
-          <p style={{ margin: '0.4rem 0 1.25rem', fontSize: '0.85rem' }}>
+          <p style={{ margin: '0.4rem 0 1.25rem', fontSize: '0.875rem' }}>
             Create your first server or import an existing one to get started.
           </p>
           {isAdmin && (
@@ -289,7 +291,7 @@ export default function Panel() {
               <button className="btn outline" onClick={() => setSearchParams({ action: 'import' })}>Import Server</button>
             </div>
           )}
-        </div>
+        </Section>
       ) : (
         <div className="servers-grid" id="servers-grid">
           {servers.map((sv, i) => (
@@ -313,26 +315,26 @@ export default function Panel() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="modal-overlay active" id="modal-create-server" onClick={() => { setSearchParams({}); setCsTab('java'); }}>
+        <ModalOverlay className="modal-overlay active" id="modal-create-server" onClick={() => { setSearchParams({}); setCsTab('java'); }}>
           <div className={`modal${csTab === 'modpacks' ? ' large' : ''}`} role="dialog" aria-modal="true" aria-label="Create new server" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Create new server</h3>
-              <button className="close-btn" onClick={() => { setSearchParams({}); setCsTab('java'); }}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => { setSearchParams({}); setCsTab('java'); }}>&times;</button>
             </div>
 
             {/* Tab bar */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', padding: '0 1.5rem', gap: '0.25rem' }}>
+            <div className="create-edition-tabs">
               {[
-                { id: 'java', label: 'Java Edition', icon: 'java' },
-                { id: 'bedrock', label: 'Bedrock Edition', icon: 'bedrock' },
-                { id: 'modpacks', label: 'Java Modpacks', icon: 'modpacks' },
+                { id: 'java', label: 'Java Edition', shortLabel: 'Java', icon: 'java' },
+                { id: 'bedrock', label: 'Bedrock Edition', shortLabel: 'Bedrock', icon: 'bedrock' },
+                { id: 'modpacks', label: 'Java Modpacks', shortLabel: 'Modpacks', icon: 'modpacks' },
               ].map(tab => (
                 <button
                   key={tab.id}
                   type="button"
+                  className="create-edition-tab"
                   onClick={() => setCsTab(tab.id)}
                   style={{
-                    padding: '0.65rem 1.1rem',
                     background: 'none',
                     border: 'none',
                     borderBottom: csTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
@@ -362,7 +364,8 @@ export default function Panel() {
                       <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
                     </svg>
                   )}
-                  {tab.label}
+                  <span className="create-edition-long">{tab.label}</span>
+                  <span className="create-edition-short">{tab.shortLabel}</span>
                 </button>
               ))}
             </div>
@@ -371,7 +374,7 @@ export default function Panel() {
               <div className="modal-body" style={csTab === 'modpacks' ? { paddingBottom: '0.5rem' } : undefined}>
                 <div className="form-group">
                   <label>Server Name</label>
-                  <input
+                  <input aria-label="Server Name"
                     type="text"
                     required={csTab !== 'modpacks'}
                     placeholder="My Server"
@@ -385,11 +388,11 @@ export default function Panel() {
                     <div className="form-group row" style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem' }}>
                       <div className="col" style={{ flex: 1 }}>
                         <label>RAM (MB)</label>
-                        <input type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
+                        <input aria-label="RAM (MB)" inputMode="numeric" type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
                       </div>
                       <div className="col" style={{ flex: 1 }}>
                         <label>Port</label>
-                        <input type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
+                        <input aria-label="Port" inputMode="numeric" type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
                       </div>
                     </div>
                     <ModpackBrowser
@@ -413,7 +416,7 @@ export default function Panel() {
                   <>
                     <div className="form-group">
                       <label>Software Engine</label>
-                      <Select value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
+                      <Select aria-label="Software Engine" value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
                         <option value="paper">Paper (Recommended)</option>
                         <option value="vanilla">Vanilla</option>
                         <option value="snapshots">Vanilla Snapshots</option>
@@ -436,7 +439,7 @@ export default function Panel() {
                     <div className="form-group">
                       <label>Minecraft Version</label>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Select
+                        <Select aria-label="Minecraft Version"
                           style={{ flex: 1 }}
                           value={csVersion}
                           onChange={(e) => setCsVersion(e.target.value)}
@@ -448,7 +451,7 @@ export default function Panel() {
                             <option value="">{syncingVersions ? 'Syncing...' : 'No versions available'}</option>
                           )}
                         </Select>
-                        <button type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
+                        <button aria-label="Refresh versions" type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
                           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                           </svg>
@@ -458,11 +461,11 @@ export default function Panel() {
                     <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
                       <div className="col" style={{ flex: 1 }}>
                         <label>RAM (MB)</label>
-                        <input type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
+                        <input aria-label="RAM (MB)" inputMode="numeric" type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
                       </div>
                       <div className="col" style={{ flex: 1 }}>
                         <label>Port</label>
-                        <input type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
+                        <input aria-label="Port" inputMode="numeric" type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
                       </div>
                     </div>
                   </>
@@ -471,7 +474,7 @@ export default function Panel() {
                 {/* ── BEDROCK TAB ── */}
                 {csTab === 'bedrock' && (
                   <>
-                    <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.75rem 1rem', marginBottom: '0.75rem', fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                    <div className="detail-row" style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
                       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px', color: 'var(--accent)' }}>
                         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                       </svg>
@@ -479,7 +482,7 @@ export default function Panel() {
                     </div>
                     <div className="form-group">
                       <label>Software Engine</label>
-                      <Select value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
+                      <Select aria-label="Software Engine" value={csSoftware} onChange={(e) => setCsSoftware(e.target.value)}>
                         <option value="bedrock">Vanilla</option>
                         <option value="bedrock-preview">Vanilla (Preview/Snapshots)</option>
                         <option value="pocketmine">PocketMine-MP</option>
@@ -488,7 +491,7 @@ export default function Panel() {
                     <div className="form-group">
                       <label>Version</label>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Select
+                        <Select aria-label="Version"
                           style={{ flex: 1 }}
                           value={csVersion}
                           onChange={(e) => setCsVersion(e.target.value)}
@@ -500,7 +503,7 @@ export default function Panel() {
                             <option value="">{syncingVersions ? 'Syncing...' : 'No versions available'}</option>
                           )}
                         </Select>
-                        <button type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
+                        <button aria-label="Refresh versions" type="button" className="btn outline" title="Refresh versions" onClick={refreshVersions} disabled={syncingVersions} style={{ height: '38px', padding: '0 0.75rem' }}>
                           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                           </svg>
@@ -510,14 +513,14 @@ export default function Panel() {
                     <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
                       <div className="col" style={{ flex: 1 }}>
                         <label>RAM (MB)</label>
-                        <input type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
+                        <input aria-label="RAM (MB)" inputMode="numeric" type="number" min="512" max="16384" value={csRam} onChange={(e) => setCsRam(e.target.value)} />
                       </div>
                       <div className="col" style={{ flex: 1 }}>
                         <label>
-                          Port <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(UDP)</span>
+                          Port <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(UDP)</span>
                         </label>
-                        <input type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
-                        <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Default: 19132</small>
+                        <input aria-label="Port (UDP)" inputMode="numeric" type="number" min="1024" max="65535" value={csPort} onChange={(e) => setCsPort(e.target.value)} />
+                        <small style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Default: 19132</small>
                       </div>
                     </div>
                   </>
@@ -533,23 +536,23 @@ export default function Panel() {
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Import Modal */}
       {showImportModal && (
-        <div className="modal-overlay active" id="modal-import-server" onClick={() => { if (!impBusy) setSearchParams({}); }}>
+        <ModalOverlay className="modal-overlay active" id="modal-import-server" onClick={() => { if (!impBusy) setSearchParams({}); }}>
           <div className="modal large" role="dialog" aria-modal="true" aria-label="Import existing server" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Import Existing Server</h3>
-              <button className="close-btn" onClick={() => setSearchParams({})} disabled={impBusy}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setSearchParams({})} disabled={impBusy}>&times;</button>
             </div>
             <form onSubmit={handleImportServer}>
               <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Server Archive (.zip)</label>
-                  <div 
-                    id="import-dropzone" 
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Server Archive (.zip)</label>
+                  <div role="button" tabIndex={0} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click(); } }}
+                    id="import-dropzone"
                     style={{
                       border: '2px dashed var(--border-color)',
                       borderRadius: 'var(--radius)',
@@ -569,14 +572,14 @@ export default function Panel() {
                       <polyline points="17 8 12 3 7 8" />
                       <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       {impFile ? ` ${impFile.name}` : 'Click to select a .zip file, or drag & drop here'}
                     </p>
                   </div>
-                  <input 
-                    type="file" 
+                  <input aria-label="Server Archive (.zip)"
+                    type="file"
                     ref={fileInputRef}
-                    accept=".zip,application/zip" 
+                    accept=".zip,application/zip"
                     style={{ display: 'none' }}
                     onChange={(e) => {
                       if (e.target.files?.[0]) setFile(e.target.files[0]);
@@ -584,40 +587,40 @@ export default function Panel() {
                   />
                 </div>
 
-                <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.75rem 1rem', fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                <div className="detail-row" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px', color: 'var(--accent)' }}>
                     <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                   </svg>
                   <span>Only your world(s), <code>plugins</code>/<code>mods</code>, <code>config</code> and server config files (server.properties, eula.txt, ops.json, whitelist, bans, permissions.yml, etc.) are imported from the archive. The server executable is never taken from the zip — MinePanel downloads a fresh, official binary for the software and version you select below, exactly like when creating a new server.</span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1rem' }}>
+                <div className="layout-grid" style={{  }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Server Name</label>
-                    <input 
-                      type="text" 
-                      required 
-                      placeholder="My Imported Server" 
+                    <input aria-label="Server Name"
+                      type="text"
+                      required
+                      placeholder="My Imported Server"
                       value={impName}
                       onChange={(e) => setImpName(e.target.value)}
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Port</label>
-                    <input 
-                      type="number" 
-                      min="1024" 
-                      max="65535" 
+                    <input aria-label="Port" inputMode="numeric"
+                      type="number"
+                      min="1024"
+                      max="65535"
                       value={impPort}
                       onChange={(e) => setImpPort(e.target.value)}
                     />
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: '1rem' }}>
+                <div className="layout-grid" style={{  }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Software</label>
-                    <Select 
+                    <Select aria-label="Software"
                       value={impSoftware}
                       onChange={(e) => setImpSoftware(e.target.value)}
                     >
@@ -644,7 +647,7 @@ export default function Panel() {
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Minecraft Version</label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <Select 
+                      <Select aria-label="Minecraft Version"
                         style={{ flex: 1 }}
                         value={impVersion}
                         onChange={(e) => setImpVersion(e.target.value)}
@@ -653,9 +656,9 @@ export default function Panel() {
                           <option key={v} value={v}>{v}</option>
                         ))}
                       </Select>
-                      <button 
-                        type="button" 
-                        className="btn outline" 
+                      <button
+                        type="button"
+                        className="btn outline"
                         onClick={refreshVersions}
                         disabled={syncingVersions}
                         style={{ height: '38px', padding: '0 0.75rem' }}
@@ -669,10 +672,10 @@ export default function Panel() {
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>RAM (MB)</label>
-                    <input 
-                      type="number" 
-                      min="512" 
-                      max="16384" 
+                    <input aria-label="RAM (MB)" inputMode="numeric"
+                      type="number"
+                      min="512"
+                      max="16384"
                       value={impRam}
                       onChange={(e) => setImpRam(e.target.value)}
                     />
@@ -681,18 +684,18 @@ export default function Panel() {
 
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>Server Root Path <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
-                  <input 
-                    type="text" 
-                    placeholder="Leave blank if server is in zip root" 
+                  <input aria-label="Server Root Path (optional)"
+                    type="text"
+                    placeholder="Leave blank if server is in zip root"
                     value={impRoot}
                     onChange={(e) => setImpRoot(e.target.value)}
                   />
-                  <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If your server lives in a sub-folder inside the zip, enter that folder name (e.g. <code>myserver</code>).</p>
+                  <p style={{ margin: '0.3rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>If your server lives in a sub-folder inside the zip, enter that folder name (e.g. <code>myserver</code>).</p>
                 </div>
 
                 {importProgress && (
                   <div id="import-progress-wrap" style={{ display: 'block' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                       <span>{importProgress.label}</span>
                       <span>{importProgress.pct}%</span>
                     </div>
@@ -710,7 +713,7 @@ export default function Panel() {
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

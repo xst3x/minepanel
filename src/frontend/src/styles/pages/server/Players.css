@@ -1,18 +1,16 @@
+@layer components {
 .player-detail-stats {
 display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 0.75rem;
     margin-bottom: 1.25rem;
 }
-
 .player-detail-stats .stat-box {
 padding: 0.75rem;
 }
-
 .inv-section {
 margin-bottom: 1.25rem;
 }
-
 .inv-section-label {
 font-size: 0.65rem;
     text-transform: uppercase;
@@ -21,24 +19,20 @@ font-size: 0.65rem;
     margin-bottom: 0.4rem;
     font-weight: 600;
 }
-
 .inv-layout {
 display: flex;
     gap: 1.25rem;
     flex-wrap: wrap;
 }
-
 .inv-equip {
 display: flex;
     flex-direction: column;
     gap: 3px;
     min-width: 46px;
 }
-
 .inv-equip-row {
 display: flex; gap: 3px;
 }
-
 .inv-main {
 display: flex;
     flex-direction: column;
@@ -46,13 +40,11 @@ display: flex;
     flex: 1;
     min-width: 0;
 }
-
 .inv-grid {
 display: grid;
     grid-template-columns: repeat(9, 1fr);
     gap: 3px;
 }
-
 .inv-slot {
 aspect-ratio: 1;
     min-width: 0;
@@ -67,15 +59,12 @@ aspect-ratio: 1;
     transition: border-color 0.15s, background 0.15s;
     cursor: default;
 }
-
 .inv-slot.has-item {
 border-color: hsla(149, 100%, 47%, 0.25); background: hsla(149, 100%, 47%, 0.04);
 }
-
 .inv-slot.has-item:hover {
 border-color: var(--accent); background: hsla(149, 100%, 47%, 0.12);
 }
-
 .inv-slot img.inv-icon {
 width: 70%;
     height: 70%;
@@ -83,7 +72,6 @@ width: 70%;
     image-rendering: pixelated;
     pointer-events: none;
 }
-
 .inv-slot .inv-count {
 position: absolute;
     bottom: 1px;
@@ -96,7 +84,6 @@ position: absolute;
     line-height: 1;
     pointer-events: none;
 }
-
 .inv-slot .inv-empty-label {
 font-size: 0.5rem;
     color: rgba(255,255,255,0.12);
@@ -105,13 +92,11 @@ font-size: 0.5rem;
     pointer-events: none;
     user-select: none;
 }
-
 .inv-hotbar-sep {
 height: 1px;
     background: rgba(255,255,255,0.06);
     margin: 2px 0;
 }
-
 .mc-tooltip {
 position: fixed;
     background: rgba(16, 0, 16, 0.94);
@@ -129,51 +114,39 @@ position: fixed;
     box-shadow: 0 6px 24px rgba(0,0,0,0.6);
     display: none;
 }
-
 .mc-tooltip .tt-title {
 color: #fff; font-weight: 600; margin-bottom: 3px;
 }
-
 .mc-tooltip .tt-line {
 margin: 1px 0;
 }
-
 .mc-tooltip .c-gold {
 color: #FFAA00; } .mc-tooltip .c-red { color: #FF5555;
 }
-
 .mc-tooltip .c-green {
 color: #55FF55; } .mc-tooltip .c-blue { color: #5555FF;
 }
-
 .mc-tooltip .c-yellow {
 color: #FFFF55; } .mc-tooltip .c-aqua { color: #55FFFF;
 }
-
 .mc-tooltip .c-lpurple {
 color: #FF55FF; } .mc-tooltip .c-dpurple { color: #AA00AA;
 }
-
 .mc-tooltip .c-white {
 color: #FFF; } .mc-tooltip .c-gray { color: #AAA;
 }
-
 .mc-tooltip .c-dgray {
 color: #555; } .mc-tooltip .c-dred { color: #AA0000;
 }
-
 .mc-tooltip .c-dgreen {
 color: #00AA00; } .mc-tooltip .c-dblue { color: #0000AA;
 }
-
 .mc-tooltip .c-daqua {
 color: #00AAAA;
 }
-
 .mc-tooltip .f-bold {
 font-weight: bold; } .mc-tooltip .f-italic { font-style: italic;
 }
-
 .player-action-section {
 margin-top: 1rem;
     padding: 0.75rem 1rem;
@@ -181,7 +154,6 @@ margin-top: 1rem;
     border: 1px solid var(--border-color);
     border-radius: var(--radius);
 }
-
 .player-action-section h5 {
 font-size: 0.75rem;
     text-transform: uppercase;
@@ -190,43 +162,36 @@ font-size: 0.75rem;
     margin-bottom: 0.5rem;
     font-weight: 700;
 }
-
 .player-action-buttons {
 display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
 }
-
 .player-actions-grid {
 display: flex;
     flex-direction: column;
     gap: 0.75rem;
 }
-
 .mc-grid-3x9 {
 display: grid;
     grid-template-columns: repeat(9, 36px);
     gap: 3px;
 }
-
 .mc-grid-1x9 {
 display: grid;
     grid-template-columns: repeat(9, 36px);
     gap: 3px;
 }
-
 .mc-enderchest-grid {
 display: grid;
     grid-template-columns: repeat(9, 36px);
     gap: 3px;
 }
-
 .mc-armor-column {
 display: flex;
     flex-direction: column;
     gap: 3px;
 }
-
 .mc-slot {
 width: 36px;
     height: 36px;
@@ -242,22 +207,18 @@ width: 36px;
     overflow: hidden;
     flex-shrink: 0;
 }
-
 .mc-slot.has-item {
 border-color: rgba(59,130,246,0.25);
     background: rgba(59,130,246,0.04);
 }
-
 .mc-slot.has-item:hover {
 border-color: var(--accent);
     background: rgba(59,130,246,0.12);
 }
-
 .mc-slot.selected {
 border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent);
 }
-
 .mc-item-wrapper {
 position: relative;
     width: 32px;
@@ -266,17 +227,14 @@ position: relative;
     align-items: center;
     justify-content: center;
 }
-
 .mc-item-icon {
 width: 32px;
     height: 32px;
-    image-rendering: pixelated;
     image-rendering: crisp-edges;
     object-fit: contain;
     pointer-events: none;
     display: block;
 }
-
 .mc-item-count {
 position: absolute;
     bottom: -4px;
@@ -290,101 +248,73 @@ position: absolute;
     pointer-events: none;
     z-index: 2;
 }
-
 .mc-item-label {
 display: none;
 }
-
 .mc-armor-svg {
 color: rgba(255,255,255,0.2);
     pointer-events: none;
 }
-
 .mc-tooltip-name {
 color: #fff; font-weight: 600; margin-bottom: 4px; font-size: 13px;
 }
-
 .mc-name-custom {
 color: #fff;
 }
-
 .mc-name-enchanted {
 color: #aaaaff;
 }
-
 .mc-name-normal {
 color: #fff;
 }
-
 .mc-tooltip-meta {
 color: rgba(255,255,255,0.35); font-size: 10px; margin-bottom: 6px; font-family: var(--font-mono);
 }
-
 .mc-count-label {
 color: rgba(255,255,255,0.5);
 }
-
 .mc-tooltip-section {
 margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08);
 }
-
 .mc-enchants .mc-enchant-line {
 color: #b0b0ff; font-size: 11px; line-height: 1.6;
 }
-
 .mc-lore .mc-lore-line {
 color: #9b59b6; font-style: italic; font-size: 11px; line-height: 1.5;
 }
-
 .mc-attributes .mc-attribute-line {
 color: #55ff55; font-size: 11px; line-height: 1.6;
 }
-
 .mc-durability .mc-damage-line {
 color: #ff5555; font-size: 11px;
 }
-
 .mc-durability .mc-unbreakable-line {
 color: #5555ff; font-size: 11px;
 }
-
 .mc-raw-nbt .mc-raw-title {
 color: rgba(255,255,255,0.5); font-size: 10px; margin-bottom: 4px;
 }
-
 .mc-raw-nbt pre {
 font-size: 10px; color: rgba(255,255,255,0.6); max-height: 200px; overflow-y: auto; margin: 0;
 }
-
 .mc-tooltip-hint {
 color: rgba(255,255,255,0.3); font-size: 10px; margin-top: 6px; font-style: italic;
 }
-
 .mc-item-canvas {
 width: 32px;
     height: 32px;
-    image-rendering: pixelated;
     image-rendering: crisp-edges;
     transition: transform 0.1s ease;
     pointer-events: none;
     display: block;
 }
-
 .mc-slot:hover .mc-item-canvas {
 transform: scale(1.05);
 }
-
-/* ── Inner tab strip (All Players / Whitelist / OPs / ...) ──────────────────
-   Reuses .sub-nav-item styling but drops the card/pill chrome so it reads
-   as a continuation of the server's main tab bar instead of a second,
-   visually separate boxed nav — especially important on narrow/mobile
-   widths where two stacked pill-bars look disconnected. */
 .sub-nav.sub-nav-inner {
     background: var(--bg-card-solid, var(--bg-base));
     position: relative;
     z-index: 1;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
     border: none;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     box-shadow: none;
@@ -392,42 +322,28 @@ transform: scale(1.05);
     margin-bottom: 1.1rem;
     border-bottom: 1px solid var(--border);
 }
-
 .sub-nav.sub-nav-inner .sub-nav-item {
     background: none;
     border-radius: var(--radius);
 }
-
 .sub-nav.sub-nav-inner .sub-nav-item.active {
     background: var(--accent-subtle);
     box-shadow: none;
 }
-
-@media (max-width: 768px) {
-    .sub-nav.sub-nav-inner {
-        padding-bottom: 0.5rem;
-        margin-bottom: 0.85rem;
-    }
-}
-
-/* ── Player Detail Modal Layouts ── */
 .player-modal-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(6px);
-    /* Above mobile top bar (8000) and drawer (10000) */
     z-index: 11000;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1rem;
 }
-
 .player-modal-container {
     width: 860px;
     max-width: 100%;
-    max-height: 85vh;
+    max-height: 85dvh;
     height: auto;
     background: var(--bg-card-solid, var(--bg-surface));
     position: relative;
@@ -439,7 +355,6 @@ transform: scale(1.05);
     flex-direction: column;
     overflow: hidden;
 }
-
 .player-modal-header {
     display: flex;
     align-items: center;
@@ -449,112 +364,56 @@ transform: scale(1.05);
     background: var(--bg-input);
     flex-shrink: 0;
 }
-
 .player-modal-identity {
     flex: 1;
     min-width: 0;
 }
-
 .player-modal-pills {
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
     flex-shrink: 0;
 }
-
 .player-modal-actions {
     display: flex;
     gap: 0.5rem;
     flex-shrink: 0;
     margin-left: auto;
 }
-
 .player-modal-body {
     padding: 1.25rem 1.75rem;
     overflow-y: auto;
     flex: 0 1 auto;
 }
-
 .rpg-stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 0.65rem;
 }
-
 .vitals-row {
     display: flex;
     align-items: center;
     gap: 0.75rem;
 }
-
 .vitals-action-left {
     flex: 1;
     display: flex;
     justify-content: flex-end;
 }
-
 .vitals-action-right {
     flex: 1;
     display: flex;
     justify-content: flex-start;
 }
+}
+/* Player entries are individual cards, including the last row in each list. */
+#players-content .player-list-card {
+  box-sizing: border-box;
+  padding-inline: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
 
-@media (max-width: 768px) {
-    .player-modal-overlay {
-        padding: 0.5rem;
-    }
-
-    .player-modal-container {
-        width: 100%;
-        max-height: 94vh;
-    }
-
-    .player-modal-header {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 1rem;
-        gap: 0.75rem;
-    }
-    
-    .player-modal-identity {
-        width: 100%;
-        text-align: center;
-    }
-
-    .player-modal-pills {
-        justify-content: center;
-        width: 100%;
-    }
-
-    .player-modal-actions {
-        width: 100%;
-        justify-content: center;
-        margin-left: 0;
-    }
-
-    .player-modal-body {
-        padding: 1rem;
-    }
-
-    .rpg-stat-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 0.5rem !important;
-    }
-
-    .vitals-row {
-        flex-direction: column;
-        gap: 0.85rem;
-        align-items: center;
-    }
-
-    .vitals-action-left, .vitals-action-right {
-        justify-content: center;
-        width: 100%;
-    }
-
-    .vitals-action-left button, .vitals-action-right button {
-        width: 100%;
-        justify-content: center;
-    }
+#players-content .player-list-card:last-child {
+  border-bottom: 1px solid var(--border);
 }

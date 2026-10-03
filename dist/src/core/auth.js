@@ -3,12 +3,13 @@ const argon2 = require("argon2");
 const jwt = require("jsonwebtoken");
 const { E, sendError } = require('./errors');
 const SECRET_KEY = process.env.JWT_SECRET;
+const defaultJwt = 'minepanel_super_secret_jwt_key_schimba_asta_in_productie_2024';
 if (!SECRET_KEY) {
     console.error('FATAL ERROR: process.env.JWT_SECRET is not set. Please create a .env file with a strong JWT_SECRET.');
     process.exit(1);
 }
-if (process.env.NODE_ENV !== 'test' && SECRET_KEY.length < 32) {
-    console.error('FATAL ERROR: process.env.JWT_SECRET is insecure. It must be at least 32 characters long.');
+if (process.env.NODE_ENV !== 'test' && (SECRET_KEY === defaultJwt || SECRET_KEY.length < 32)) {
+    console.error('FATAL ERROR: process.env.JWT_SECRET is insecure (either set to default or too short). It must be at least 32 characters long.');
     process.exit(1);
 }
 // Lazy-load User model to avoid circular dependency with database.js

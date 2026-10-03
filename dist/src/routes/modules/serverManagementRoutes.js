@@ -23,7 +23,7 @@ const { retryRename, retryDelete, retryUnlink, retryCopy } = fsRetryModule;
 const path = require("path");
 const fs = require("fs");
 const fsp = fs.promises;
-const StreamZip = require("node-stream-zip");
+const StreamZip = require("adm-zip");
 const logger = require("../../core/utils/logger");
 const serverHelpersModule = require("./serverHelpers");
 const { importUpload, runForgeInstaller, runNeoForgeInstaller, buildDefaultStartCommand } = serverHelpersModule;
@@ -568,22 +568,15 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
         await fsp.mkdir(serverDir, { recursive: true });
         processManager.acquireLock(serverId);
         try {
-            // node-stream-zip streams each entry straight to disk — it never
-            // buffers the archive (or an entry) into a single Buffer, so this
-            // has no ~2 GiB ceiling the way `new AdmZip(path)` did (that
-            // constructor calls fs.readFileSync under the hood, which Node
-            // itself refuses for files over ~2 GiB — ERR_FS_FILE_TOO_LARGE).
-            const zip = new StreamZip.async({ file: zipPath, storeEntries: true });
-            const entriesMap = await zip.entries();
-            const entries = Object.values(entriesMap);
+            const zip = new StreamZip(zipPath);
+            const entries = zip.getEntries();
             const prefix = normRoot ? normRoot + '/' : '';
             const scoped = entries.filter(e => {
                 if (prefix)
-                    return e.name.startsWith(prefix) && e.name !== prefix;
+                    return e.entryName.startsWith(prefix) && e.entryName !== prefix;
                 return true;
             });
             if (scoped.length === 0) {
-                await zip.close();
                 throw new Error(`No files found under path "${normRoot}" inside the zip. Check the Server Root Path.`);
             }
             // Auto-detect world folders: any top-level dir that directly contains
@@ -591,7 +584,7 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
             // catches custom-named worlds / multiverse setups without a hardcoded list.
             const worldDirs = new Set();
             for (const entry of scoped) {
-                const rel = prefix ? entry.name.slice(prefix.length) : entry.name;
+                const rel = prefix ? entry.entryName.slice(prefix.length) : entry.entryName;
                 const parts = rel.split('/');
                 if (parts.length === 2 && parts[1].toLowerCase() === 'level.dat') {
                     worldDirs.add(parts[0].toLowerCase());
@@ -606,7 +599,7 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
             let copiedFiles = 0;
             const skippedTopLevel = new Set();
             for (const entry of scoped) {
-                const rel = prefix ? entry.name.slice(prefix.length) : entry.name;
+                const rel = prefix ? entry.entryName.slice(prefix.length) : entry.entryName;
                 if (!rel)
                     continue;
                 if (!isImportable(rel)) {
@@ -619,12 +612,14 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
                 }
                 else {
                     await fsp.mkdir(path.dirname(destPath), { recursive: true });
-                    // Streaming extract — works the same for a 1 KB config file or a 50 GB world.
-                    await zip.extract(entry.name, destPath);
-                    copiedFiles++;
+                    const data = zip.readFile(entry);
+                    if (data) {
+                        await fsp.writeFile(destPath, data);
+                        copiedFiles++;
+                    }
                 }
             }
-            await zip.close();
+            zip.close ? zip.close() : undefined;
             logger.info(`Server import ${serverId}: migrated ${copiedFiles} data/config file(s); skipped top-level entries: [${[...skippedTopLevel].join(', ')}] (server binaries are always freshly downloaded).`);
             // ─── Always download a fresh, official server binary — same path as /create ───
             const jarInfo = await resolveJar(software, version);

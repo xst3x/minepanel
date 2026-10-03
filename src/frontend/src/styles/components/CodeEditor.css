@@ -1,5 +1,7 @@
+@layer components {
 .CodeMirror {
-height: 100% !important;
-    font-family: var(--font-mono) !important;
+height: 100%;
+    font-family: var(--font-mono);
     font-size: 13px;
+}
 }

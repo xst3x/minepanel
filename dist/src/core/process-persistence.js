@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../paths");
 /**
  * Persistence utilities for saving/loading running servers from disk.
  * Extracted from processManager.js — single responsibility.
@@ -6,7 +7,7 @@
 const fs = require("fs");
 const path = require("path");
 /** @type {string} */
-const dataDir = process.env.DATA_DIR || path.join(__dirname, '../../../data');
+const dataDir = paths_1.PROCESS_DATA_DIR;
 const runningServersFile = path.join(dataDir, 'running_servers.json');
 /**
  * Save running server processes to disk for crash recovery.

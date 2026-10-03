@@ -48,7 +48,7 @@ const runMigrations = async (dbRun, dbGet, dbAll) => {
             // If the column already exists (duplicate column name), treat as already-applied.
             if (err.message && err.message.includes('duplicate column name')) {
                 logger.warn(`[Migrations] v${migration.version} skipped — column already exists (idempotent).`);
-                await dbRun('INSERT OR IGNORE INTO _migrations (version, description) VALUES (?, ?)', [migration.version, migration.description || file]).catch(err => { console.warn('[Migration] Failed to track version: ' + (err.message || err)); });
+                await dbRun('INSERT OR IGNORE INTO _migrations (version, description) VALUES (?, ?)', [migration.version, migration.description || file]).catch(() => { });
                 applied++;
                 continue;
             }

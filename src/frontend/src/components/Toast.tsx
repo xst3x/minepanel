@@ -1,7 +1,9 @@
+import ModalOverlay from './ModalOverlay.tsx';
 import { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
 import '../styles/components/Toast.css';
 
 const ToastContext = createContext(null);
+const MAX_VISIBLE_TOASTS = 3;
 
 export function useToast() {
   return useContext(ToastContext);
@@ -52,7 +54,8 @@ export function ToastProvider({ children }) {
 
   const addToast = useCallback((message, type = 'info') => {
     const id = ++idRef.current;
-    setToasts(prev => [...prev, { id, message, type, exiting: false }]);
+    // Evict the oldest immediately, including during its exit animation.
+    setToasts(prev => [...prev.slice(-(MAX_VISIBLE_TOASTS - 1)), { id, message, type, exiting: false }]);
     // Start exit animation 220ms before DOM removal
     setTimeout(() => setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t)), 3280);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
@@ -131,13 +134,7 @@ export function ToastProvider({ children }) {
 
       {/* ── Toasts ── */}
       <div
-        role="status"
-        aria-live="polite"
-        style={{
-          position: 'fixed', bottom: '2rem', right: '2rem',
-          zIndex: 12000, display: 'flex', flexDirection: 'column', gap: '0.6rem',
-          pointerEvents: 'none',
-        }}
+        role="status" aria-live="polite" className="toast-region"
       >
         {/* Progress toasts (persistent, with indeterminate bar) */}
         {progressToasts.map(t => (
@@ -150,11 +147,11 @@ export function ToastProvider({ children }) {
             borderLeft: '4px solid var(--accent)',
             borderRadius: 'var(--radius)',
             color: 'var(--text-primary)',
-            fontSize: '0.85rem',
+            fontSize: '0.875rem',
             fontWeight: 600,
             fontFamily: 'var(--font-ui)',
             boxShadow: 'var(--shadow-md)',
-            minWidth: 280, maxWidth: 420,
+            minWidth: 0, maxWidth: '100%', width: 'min(100%, 420px)',
           }}>
             <span>{t.message}</span>
             <div style={{ height: '3px', borderRadius: '2px', background: 'var(--bg-input)', overflow: 'hidden' }}>
@@ -178,11 +175,11 @@ export function ToastProvider({ children }) {
             borderLeft: `4px solid ${borderFor(t.type)}`,
             borderRadius: 'var(--radius)',
             color: 'var(--text-primary)',
-            fontSize: '0.85rem',
+            fontSize: '0.875rem',
             fontWeight: 600,
             fontFamily: 'var(--font-ui)',
             boxShadow: 'var(--shadow-md)',
-            minWidth: 280, maxWidth: 420,
+            minWidth: 0, maxWidth: '100%', width: 'min(100%, 420px)',
           }}>
             <span style={{ flex: 1 }}>{t.message}</span>
             <button
@@ -196,7 +193,7 @@ export function ToastProvider({ children }) {
 
       {/* ── Confirm dialog ── */}
       {confirm && (
-        <div className="modal-overlay active" style={{ zIndex: 11000 }} onClick={() => handleConfirm(false)}>
+        <ModalOverlay className="modal-overlay active" style={{ zIndex: 11000 }} onClick={() => handleConfirm(false)}>
           <div
             className="modal"
             style={{ maxWidth: 420 }}
@@ -222,12 +219,12 @@ export function ToastProvider({ children }) {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* ── Prompt dialog ── */}
       {prompt && (
-        <div className="modal-overlay active" style={{ zIndex: 11000 }} onClick={handlePromptCancel}>
+        <ModalOverlay className="modal-overlay active" style={{ zIndex: 11000 }} onClick={handlePromptCancel}>
           <div
             className="modal"
             style={{ maxWidth: 420 }}
@@ -257,7 +254,7 @@ export function ToastProvider({ children }) {
               <button className="btn primary" onClick={handlePromptSubmit}>OK</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </ToastContext.Provider>
   );

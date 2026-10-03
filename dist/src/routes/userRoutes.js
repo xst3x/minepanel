@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../paths");
 const express = require("express");
 const databaseModule = require("../db/database");
 const { User, Rank, Setting, UserCustomAccent, UserServerPermission, UserServerRank, AccountCreationToken } = databaseModule;
@@ -19,11 +20,10 @@ const path = require("path");
 const fs = require("fs");
 const sequelize_1 = require("sequelize");
 // ── Avatar upload config ──────────────────────────────────────────────────────
-const AVATARS_DIR = path.resolve(__dirname, '../../data/avatars');
-if (!fs.existsSync(AVATARS_DIR))
-    fs.mkdirSync(AVATARS_DIR, { recursive: true });
+if (!fs.existsSync(paths_1.AVATARS_DIR))
+    fs.mkdirSync(paths_1.AVATARS_DIR, { recursive: true });
 const avatarStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, AVATARS_DIR),
+    destination: (req, file, cb) => cb(null, paths_1.AVATARS_DIR),
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
         cb(null, `avatar_${req.user.id}${ext}`);
@@ -487,7 +487,7 @@ router.delete('/me/avatar', authenticateToken, async (req, res) => {
     try {
         const user = await User.findByPk(req.user.id, { attributes: ['avatar_url'] });
         if (user?.avatar_url) {
-            const filePath = path.join(AVATARS_DIR, path.basename(user.avatar_url));
+            const filePath = path.join(paths_1.AVATARS_DIR, path.basename(user.avatar_url));
             if (fs.existsSync(filePath))
                 fs.unlinkSync(filePath);
         }

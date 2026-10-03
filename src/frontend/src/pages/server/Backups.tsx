@@ -1,3 +1,4 @@
+import Section from '../../components/Section.tsx';
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import '../../styles/pages/server/Backups.css';
@@ -151,12 +152,12 @@ export default function ServerBackups() {
       
       {/* Configuration Card */}
       {hasPerm('server.backups.write') && (
-        <div className="card">
+        <Section className="">
           <h3 style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text)' }}>Backup Configuration</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+          <div className="layout-grid" style={{ marginBottom: '1rem' }}>
             <div className="form-group">
               <label>Auto-Backup Interval (Hours)</label>
-              <input
+              <input aria-label="Auto-Backup Interval (Hours)" inputMode="numeric"
                 type="number"
                 value={config.backup_interval}
                 onChange={(e) => setConfig(prev => ({ ...prev, backup_interval: e.target.value }))}
@@ -166,7 +167,7 @@ export default function ServerBackups() {
             </div>
             <div className="form-group">
               <label>Included Directories (comma separated, or 'all')</label>
-              <input
+              <input aria-label="Included Directories (comma separated, or 'all')"
                 type="text"
                 value={config.backup_includes}
                 onChange={(e) => setConfig(prev => ({ ...prev, backup_includes: e.target.value }))}
@@ -200,11 +201,11 @@ export default function ServerBackups() {
               </button>
             </div>
           </div>
-        </div>
+        </Section>
       )}
 
       {/* Backups List Card */}
-      <div className="card" style={{ padding: 0 }}>
+      <Section className="" style={{  }}>
         <div className="list-header">
           <div className="col col-wide">Filename</div>
           <div className="col col-created">Size</div>
@@ -225,9 +226,9 @@ export default function ServerBackups() {
                 key={b.name}
                 className="list-item"
               >
-                <div className="col col-wide" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text)' }}>{b.name}</div>
+                <div className="col col-wide" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', color: 'var(--text)' }}>{b.name}</div>
                 <div className="col col-created" data-label="Size">{formatBytes(b.size)}</div>
-                <div className="col col-status" data-label="Date" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                <div className="col col-status" data-label="Date" style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   {new Date(b.date).toLocaleDateString()}
                 </div>
                 <div className="col actions" data-label="Actions">
@@ -243,7 +244,7 @@ export default function ServerBackups() {
             ))
           )}
         </div>
-      </div>
+      </Section>
 
     </div>
   );

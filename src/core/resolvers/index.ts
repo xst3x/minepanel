@@ -1,3 +1,4 @@
+import { PROJECT_ROOT } from '../../paths';
 import fs = require('fs')
 import path = require('path')
 import https = require('https')
@@ -43,7 +44,7 @@ const fetchJson = (url: string): Promise<any> => {
     });
 };
 
-const CACHE_DIR = path.join(__dirname, '../../../cache/jars');
+const CACHE_DIR = path.join(PROJECT_ROOT, 'cache', 'jars');
 
 if (!fs.existsSync(CACHE_DIR)) {
     fs.mkdirSync(CACHE_DIR, { recursive: true });

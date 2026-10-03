@@ -11,10 +11,11 @@
  */
 'use strict';
 Object.defineProperty(exports, "__esModule", { value: true });
+const paths_1 = require("../paths");
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 const fs = require("fs");
-const dbDir = path.join(__dirname, 'data');
+const dbDir = paths_1.DB_DIR;
 const dbPath = path.join(dbDir, 'minepanel.db');
 if (!fs.existsSync(dbPath)) {
     console.error(`[ERROR] Database not found at: ${dbPath}`);
@@ -31,8 +32,8 @@ const dbGet = (sql, params = []) => new Promise((resolve, reject) => {
 const dbAll = (sql, params = []) => new Promise((resolve, reject) => {
     db.all(sql, params, (err, rows) => { err ? reject(err) : resolve(rows || []); });
 });
-const { runMigrations, rollbackTo, getMigrationStatus } = require('./src/db/migrationRunner');
-const database_1 = require("../db/database");
+const { runMigrations, rollbackTo, getMigrationStatus } = require('./migrationRunner');
+const database_1 = require("./database");
 const cmd = process.argv[2];
 async function main() {
     switch (cmd) {
@@ -53,7 +54,7 @@ async function main() {
         }
         case 'migrate': {
             console.log('\nRunning pending migrations...\n');
-            await runMigrations(dbRun, dbGet);
+            await runMigrations(dbRun, dbGet, dbAll);
             console.log('\nDone.\n');
             break;
         }

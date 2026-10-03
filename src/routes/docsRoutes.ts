@@ -1,3 +1,4 @@
+import { PROJECT_ROOT } from '../paths';
 import express = require('express')
 import fs = require('fs')
 const fsp = require('fs').promises;
@@ -8,7 +9,7 @@ import logger = require('../core/utils/logger')
 
 const router = express.Router();
 
-const DOCS_DIR = path.resolve(__dirname, '../docs');
+const DOCS_DIR = path.join(PROJECT_ROOT, 'src', 'docs');
 
 /**
  * Default category display order. Lower number = appears first in sidebar.

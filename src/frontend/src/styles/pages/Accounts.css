@@ -1,0 +1,162 @@
+@layer components {
+  .accounts-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    margin: -0.75rem 0 1.5rem;
+  }
+
+  .accounts-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+
+  .accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .account-card {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .account-card.active {
+    background: var(--accent-subtle);
+    border-radius: var(--radius);
+    padding-inline: 12px;
+  }
+
+  .account-avatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    text-transform: uppercase;
+  }
+
+  .account-card.active .account-avatar {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #071a10;
+  }
+
+  .account-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .account-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account-badge {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    background: var(--accent-subtle);
+    border: 1px solid var(--accent-glow);
+    border-radius: 999px;
+    padding: 1px 8px;
+  }
+
+  .account-sub {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+  }
+
+  .account-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+
+  .account-current-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--green);
+    padding: 0.35rem 0.5rem;
+  }
+
+  .account-remove {
+    color: var(--text-muted);
+  }
+
+  .account-remove:hover {
+    color: var(--red);
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .account-remove:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .accounts-empty {
+    padding: 2rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .accounts-note {
+    margin-top: 1.25rem;
+  }
+
+  @media (min-width: 48rem) {
+    .account-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 12px;
+    }
+
+    .account-card.active {
+      padding: 16px 20px;
+    }
+
+    .account-card:last-child {
+      margin-bottom: 0;
+    }
+
+    .accounts-empty {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+    }
+  }
+}

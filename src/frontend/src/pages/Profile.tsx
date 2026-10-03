@@ -1,3 +1,5 @@
+import Section from '../components/Section.tsx';
+import ModalOverlay from '../components/ModalOverlay.tsx';
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { toast } from '../components/Toast.tsx';
@@ -228,20 +230,20 @@ export default function Profile() {
       {loading ? (
         <p className="text-muted">Loading profile details...</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '1.5rem' }}>
+        <div className="layout-grid" style={{  }}>
           
           {/* Change Username Card */}
-          <div className="card">
+          <Section className="">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h3 style={{ margin: 0 }}>Change Username</h3>
-              <span className="rank-badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+              <span className="rank-badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.875rem', textTransform: 'uppercase' }}>
                 Global Role: {profile?.role}
               </span>
             </div>
             
             <div className="form-group">
               <label>New Username</label>
-              <input
+              <input aria-label="New Username"
                 type="text"
                 value={newUsername}
                 onChange={e => setNewUsername(e.target.value)}
@@ -250,7 +252,7 @@ export default function Profile() {
             </div>
             <div className="form-group">
               <label>Confirm New Username</label>
-              <input
+              <input aria-label="Confirm New Username"
                 type="text"
                 value={confirmUsername}
                 onChange={e => setConfirmUsername(e.target.value)}
@@ -260,14 +262,14 @@ export default function Profile() {
             <button className="btn primary full-width" onClick={handleUpdateUsername} disabled={usernameUpdating}>
               {usernameUpdating ? 'Updating...' : 'Update Username'}
             </button>
-          </div>
+          </Section>
 
           {/* Change Password Card */}
-          <div className="card">
+          <Section className="">
             <h3 style={{ marginTop: 0, marginBottom: '1.25rem' }}>Change Password</h3>
             <div className="form-group">
               <label>Current Password</label>
-              <input
+              <input aria-label="Current Password"
                 type="password"
                 value={currentPassword}
                 onChange={e => setCurrentPassword(e.target.value)}
@@ -276,7 +278,7 @@ export default function Profile() {
             </div>
             <div className="form-group">
               <label>New Password</label>
-              <input
+              <input aria-label="New Password"
                 type="password"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
@@ -285,7 +287,7 @@ export default function Profile() {
             </div>
             <div className="form-group">
               <label>Confirm New Password</label>
-              <input
+              <input aria-label="Confirm New Password"
                 type="password"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
@@ -295,18 +297,18 @@ export default function Profile() {
             <button className="btn primary full-width" onClick={handleUpdatePassword} disabled={passwordUpdating}>
               {passwordUpdating ? 'Updating...' : 'Update Password'}
             </button>
-          </div>
+          </Section>
 
           {/* Two-Factor Authentication Card */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <Section className="" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h3 style={{ margin: 0 }}>Two-Factor Authentication</h3>
-            <p className="text-muted" style={{ fontSize: '0.85rem', margin: 0 }}>
+            <p className="text-muted" style={{ fontSize: '0.875rem', margin: 0 }}>
               MFA secures your account by requiring an authenticator code alongside your password when logging in.
             </p>
 
             {!twoFaStatus.configured ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: 'auto' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#777' }} />
                   MFA is not set up
                 </div>
@@ -316,7 +318,7 @@ export default function Profile() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: 'auto' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--green)', fontSize: '0.85rem', fontWeight: 600 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--green)', fontSize: '0.875rem', fontWeight: 600 }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--green)' }} />
                   Authenticator Configured
                 </div>
@@ -334,7 +336,7 @@ export default function Profile() {
                   </span>
                 </label>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                <div className="layout-grid" style={{ borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
                   <button className="btn outline small" onClick={handleOpenSetup}>Reconfigure</button>
                   <button className="btn outline small" onClick={handleOpenRegenCodes}>Backup Codes</button>
                 </div>
@@ -343,32 +345,32 @@ export default function Profile() {
                 </button>
               </div>
             )}
-          </div>
+          </Section>
 
         </div>
       )}
 
       {/* 2FA SETUP MODAL */}
       {activeModal === 'setup' && (
-        <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setActiveModal(null)}>
           <div className="modal" style={{ maxWidth: '440px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Setup Authenticator</h3>
-              <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <div className="modal-body">
               {setupStep === 'qr' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', textAlign: 'center' }}>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                     Scan this QR code with Google Authenticator, Authy, or any TOTP app:
                   </p>
-                  {qrCode && <img src={qrCode} alt="QR Code" style={{ border: '6px solid #ffffff', outline: '1px solid var(--border)', borderRadius: '8px', width: '180px', height: '180px' }} />}
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {qrCode && <img loading="lazy" src={qrCode} alt="QR Code" style={{ border: '6px solid #ffffff', outline: '1px solid var(--border)', borderRadius: '8px', width: '180px', height: '180px' }} />}
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     Manual entry code: <strong style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{secret}</strong>
                   </div>
                   <div className="form-group" style={{ width: '100%', textAlign: 'left', marginTop: '0.5rem' }}>
                     <label>Verify Code from App</label>
-                    <input
+                    <input aria-label="Verify Code from App"
                       type="text"
                       value={setupCode}
                       onChange={e => setSetupCode(e.target.value)}
@@ -380,14 +382,14 @@ export default function Profile() {
                 </div>
               ) : (
                 <div>
-                  <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem', background: 'rgba(234,179,8,0.1)', border: '1px solid var(--yellow)', borderRadius: 'var(--radius)', marginBottom: '1rem' }}>
-                    <span style={{ fontSize: '0.82rem', color: 'var(--yellow)', fontWeight: 600 }}>
+                  <div className="detail-row" style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--yellow)', fontWeight: 600 }}>
                       Write down these backup codes. They can be used to recover access if you lose your authenticator.
                     </span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginBottom: '1rem' }}>
+                  <div className="layout-grid" style={{ marginBottom: '1rem' }}>
                     {setupBackupCodes.map(code => (
-                      <div key={code} style={{ padding: '0.4rem 0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent)', textAlign: 'center' }}>
+                      <div className="detail-row" key={code} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', color: 'var(--accent)', textAlign: 'center' }}>
                         {code}
                       </div>
                     ))}
@@ -409,16 +411,16 @@ export default function Profile() {
               )}
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* 2FA DISABLE MODAL */}
       {activeModal === 'disable' && (
-        <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setActiveModal(null)}>
           <div className="modal" style={{ maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Remove Authenticator</h3>
-              <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <div className="modal-body">
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
@@ -426,7 +428,7 @@ export default function Profile() {
               </p>
               <div className="form-group">
                 <label>Account Password</label>
-                <input
+                <input aria-label="Account Password"
                   type="password"
                   value={disablePassword}
                   onChange={e => setDisablePassword(e.target.value)}
@@ -439,16 +441,16 @@ export default function Profile() {
               <button className="btn danger" onClick={handleConfirmDisable} disabled={actionLoading}>Remove Authenticator</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* VIEW / REGENERATE BACKUP CODES MODAL */}
       {activeModal === 'backup-codes' && (
-        <div className="modal-overlay active" onClick={() => setActiveModal(null)}>
+        <ModalOverlay className="modal-overlay active" onClick={() => setActiveModal(null)}>
           <div className="modal" style={{ maxWidth: '440px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Backup Codes</h3>
-              <button className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <div className="modal-body">
               {regenStep === 'input' ? (
@@ -458,7 +460,7 @@ export default function Profile() {
                   </p>
                   <div className="form-group">
                     <label>Authenticator Code</label>
-                    <input
+                    <input aria-label="Authenticator Code"
                       type="text"
                       value={regenTotpCode}
                       onChange={e => setRegenTotpCode(e.target.value)}
@@ -470,14 +472,14 @@ export default function Profile() {
                 </div>
               ) : (
                 <div>
-                  <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem', background: 'rgba(234,179,8,0.1)', border: '1px solid var(--yellow)', borderRadius: 'var(--radius)', marginBottom: '1rem' }}>
-                    <span style={{ fontSize: '0.82rem', color: 'var(--yellow)', fontWeight: 600 }}>
+                  <div className="detail-row" style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--yellow)', fontWeight: 600 }}>
                       Old backup codes are now invalid. Save these new codes!
                     </span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginBottom: '1rem' }}>
+                  <div className="layout-grid" style={{ marginBottom: '1rem' }}>
                     {regenBackupCodes.map(code => (
-                      <div key={code} style={{ padding: '0.4rem 0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent)', textAlign: 'center' }}>
+                      <div className="detail-row" key={code} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', color: 'var(--accent)', textAlign: 'center' }}>
                         {code}
                       </div>
                     ))}
@@ -499,7 +501,7 @@ export default function Profile() {
               )}
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
     </div>

@@ -5,6 +5,7 @@
     "moduleResolution": "node",
     "lib": ["es2020"],
     "rootDir": ".",
+    "outDir": "./dist",
     "strict": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -29,6 +30,7 @@
   ],
   "exclude": [
     "node_modules",
+    "dist",
     "src/frontend",
     "src/demo",
     "venv",

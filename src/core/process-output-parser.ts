@@ -24,6 +24,17 @@ function parseServerStderr(serverId, output) {
         output += hint;
     }
 
+    const portInUse =
+        output.includes('Address already in use') ||
+        output.includes('Failed to bind to port') ||
+        output.includes('Perhaps a server is already running on that port');
+    if (portInUse && !output.includes('Port is already in use')) {
+        const hint =
+            `\n[MinePanel] ⚠  Port is already in use by another process.\n` +
+            `[MinePanel]    Stop the process using it, or change server-port in server.properties.\n`;
+        output += hint;
+    }
+
     if (output.includes('Unrecognized VM option')) {
         const optMatch = output.match(/Unrecognized VM option '([^']+)'/);
         const flag = optMatch ? optMatch[1] : 'unknown flag';

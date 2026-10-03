@@ -1,3 +1,5 @@
+import CustomColorButton from '../components/CustomColorButton.tsx';
+import Section from '../components/Section.tsx';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.ts';
@@ -106,7 +108,7 @@ export default function Settings() {
           maxRam: Number(maxRam),
           requireInviteTokenToCreateAccount: requireInviteToken,
           defaultRankId: defaultRankId ? Number(defaultRankId) : null,
-          defaultJavaPath: defaultJavaPath.trim() || 'java'
+          defaultJavaPath: defaultJavaPath.trim() || 'java',
         }
       });
       toast(res.message || 'System settings saved.', 'success');
@@ -186,8 +188,11 @@ export default function Settings() {
 
       <div className="page-header">
         <h2>Panel Settings</h2>
-        <button className="btn primary" onClick={handleSaveSettings} disabled={saving || loading}>
-          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+      </div>
+
+      <div className="settings-save-row">
+        <button className="btn primary small" onClick={handleSaveSettings} disabled={saving || loading}>
+          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
             <polyline points="17 21 17 13 7 13 7 21" />
             <polyline points="7 3 7 8 15 8" />
@@ -199,32 +204,32 @@ export default function Settings() {
       {loading ? (
         <p className="text-muted">Loading settings...</p>
       ) : (
-        <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '1.5rem' }}>
+        <div className="settings-grid layout-grid" style={{  }}>
 
           {/* Security & Rate Limits */}
-          <div className="card">
+          <Section className="">
             <h3>Security &amp; Rate Limits</h3>
             <div className="form-group" style={{ marginTop: '1rem' }}>
               <label>Login Cooldown (seconds)</label>
-              <input type="number" value={loginCooldown} onChange={e => setLoginCooldown(e.target.value)} placeholder="60" />
+              <input aria-label="Login Cooldown (seconds)" inputMode="numeric" type="number" value={loginCooldown} onChange={e => setLoginCooldown(e.target.value)} placeholder="60" />
             </div>
             <div className="form-group">
               <label>Max Login Attempts</label>
-              <input type="number" value={maxAttempts} onChange={e => setMaxAttempts(e.target.value)} placeholder="5" />
+              <input aria-label="Max Login Attempts" inputMode="numeric" type="number" value={maxAttempts} onChange={e => setMaxAttempts(e.target.value)} placeholder="5" />
             </div>
             <div className="form-group">
               <label>API Rate Limit (requests/min)</label>
-              <input type="number" value={rateLimit} onChange={e => setRateLimit(e.target.value)} placeholder="100" />
+              <input aria-label="API Rate Limit (requests/min)" inputMode="numeric" type="number" value={rateLimit} onChange={e => setRateLimit(e.target.value)} placeholder="100" />
             </div>
-          </div>
+          </Section>
 
           {/* Network & Ports  exact same card as old frontend, combined */}
-          <div className="card">
+          <Section className="">
             <h3>Network &amp; Ports</h3>
             <div className="form-group" style={{ marginTop: '1rem' }}>
               <label>Server Port</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
+                <input aria-label="Server Port" inputMode="numeric"
                   type="number"
                   value={systemPort}
                   onChange={e => setSystemPort(e.target.value)}
@@ -246,7 +251,7 @@ export default function Settings() {
             </div>
             <div className="form-group">
               <label>FTP Service Port</label>
-              <input type="number" value={ftpPort} onChange={e => setFtpPort(e.target.value)} placeholder="2121" min="1" max="65535" />
+              <input aria-label="FTP Service Port" inputMode="numeric" type="number" value={ftpPort} onChange={e => setFtpPort(e.target.value)} placeholder="2121" min="1" max="65535" />
             </div>
             <div className="form-group">
               <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', cursor: 'pointer' }}>
@@ -257,12 +262,12 @@ export default function Settings() {
                 </span>
               </label>
             </div>
-          </div>
+          </Section>
 
           {/* Appearance */}
-          <div className="card accent-appearance-card" style={{ minWidth: 0 }}>
+          <Section className="accent-appearance-card" style={{ minWidth: 0 }}>
             <h3>Appearance</h3>
-            <p className="text-muted" style={{ fontSize: '0.82rem', margin: '0.25rem 0 1.25rem' }}>
+            <p className="text-muted" style={{ fontSize: '0.875rem', margin: '0.25rem 0 1.25rem' }}>
               Your accent color is saved to your account and applied instantly everywhere.
             </p>
             <div className="accent-picker" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(50px, 1fr))', gap: '10px 6px', marginBottom: '1rem' }}>
@@ -288,72 +293,47 @@ export default function Settings() {
                         flexShrink: 0,
                       }}
                     />
-                    <span style={{ fontSize: '0.7rem', color: isSelected ? 'var(--accent)' : 'var(--text-muted)', whiteSpace: 'nowrap', maxWidth: 56, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.875rem', color: isSelected ? 'var(--accent)' : 'var(--text-muted)', whiteSpace: 'nowrap', maxWidth: 56, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
                       {preset.label}
                     </span>
                   </div>
                 );
               })}
-              {/* Custom color button */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-                <button
-                  title="Custom color"
-                  aria-label="Pick a custom accent color"
-                  onClick={() => setShowColorWell(true)}
-                  style={{
-                    width: 44, height: 44, borderRadius: '50%',
-                    background: 'transparent',
-                    cursor: 'pointer', padding: 0,
-                    border: '2px dashed var(--border-hover)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: 'var(--text-muted)',
-                    transition: 'all 0.18s ease',
-                    flexShrink: 0,
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-hover)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
-                >
-                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </button>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Custom</span>
-              </div>
+              <CustomColorButton label="Pick a custom accent color" onClick={() => setShowColorWell(true)} />
             </div>
-            <p className="accent-selected-label" style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            <p className="accent-selected-label" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Selected: <span id="accent-selected-name" style={{ color: 'var(--accent)', fontWeight: 600 }}>
                 {ACCENT_PRESETS.find(p => p.value === selectedAccent)?.label || 'Custom'}
               </span>
             </p>
-          </div>
+          </Section>
 
           {/* System & Server Defaults */}
-          <div className="card">
+          <Section className="">
             <h3>System &amp; Server Defaults</h3>
             <div className="form-group" style={{ marginTop: '1rem' }}>
               <label>Default Server Creation RAM (MB)</label>
-              <input type="number" value={defaultRam} onChange={e => setDefaultRam(e.target.value)} placeholder="2048" />
+              <input aria-label="Default Server Creation RAM (MB)" inputMode="numeric" type="number" value={defaultRam} onChange={e => setDefaultRam(e.target.value)} placeholder="2048" />
             </div>
             <div className="form-group">
               <label>Default Server Port</label>
-              <input type="number" value={defaultPort} onChange={e => setDefaultPort(e.target.value)} placeholder="25565" />
+              <input aria-label="Default Server Port" inputMode="numeric" type="number" value={defaultPort} onChange={e => setDefaultPort(e.target.value)} placeholder="25565" />
             </div>
             <div className="form-group">
               <label>Max RAM allocation per Server (MB)</label>
-              <input type="number" value={maxRam} onChange={e => setMaxRam(e.target.value)} placeholder="16384" />
+              <input aria-label="Max RAM allocation per Server (MB)" inputMode="numeric" type="number" value={maxRam} onChange={e => setMaxRam(e.target.value)} placeholder="16384" />
             </div>
             <div className="form-group">
               <label>Default Java Path</label>
-              <input type="text" value={defaultJavaPath} onChange={e => setDefaultJavaPath(e.target.value)} placeholder="java" />
-              <p className="text-muted" style={{ fontSize: '0.79rem', margin: '0.5rem 0 0' }}>
+              <input aria-label="Default Java Path" type="text" value={defaultJavaPath} onChange={e => setDefaultJavaPath(e.target.value)} placeholder="java" />
+              <p className="text-muted" style={{ fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
                 Used for new servers and any server without its own custom Java path set. Leave as "java" to use the system PATH (or the auto-managed Java runtime as fallback).
               </p>
             </div>
-          </div>
+          </Section>
 
           {/* Account Registration */}
-          <div className="card">
+          <Section className="">
             <h3>Account Registration</h3>
             <div className="form-group" style={{ marginTop: '1rem' }}>
               <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
@@ -363,16 +343,16 @@ export default function Settings() {
                   <span className="toggle-slider"></span>
                 </span>
               </label>
-              <p className="text-muted" style={{ fontSize: '0.79rem', margin: '0.5rem 0 0' }}>
+              <p className="text-muted" style={{ fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
                 When enabled, users must have an invite token to register. When disabled, anyone can create an account (invite tokens still work).
               </p>
             </div>
             <div className="form-group" id="ps-default-rank-group" style={{ marginTop: '1.25rem' }}>
               <label>Default Rank for New Accounts</label>
-              <p className="text-muted" style={{ fontSize: '0.79rem', margin: '0.25rem 0 0.5rem' }}>
+              <p className="text-muted" style={{ fontSize: '0.875rem', margin: '0.25rem 0 0.5rem' }}>
                 Applied when a user registers without an invite token.
               </p>
-              <Select
+              <Select aria-label="Default Rank for New Accounts"
                 value={defaultRankId}
                 onChange={e => setDefaultRankId(e.target.value)}
               >
@@ -380,7 +360,7 @@ export default function Settings() {
                 {ranks.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </Select>
             </div>
-          </div>
+          </Section>
 
         </div>
       )}

@@ -1,3 +1,4 @@
+import './styles/layers.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -6,7 +7,7 @@ import { AuthProvider } from './context/AuthContext.tsx';
 import { ToastProvider } from './components/Toast.tsx';
 import './styles/style.css';
 import './styles/global.css';
-import './styles/automation-visual.css';
+
 
 // Self-hosted fonts (no Google Fonts network request)
 import '@fontsource/sora/300.css';
@@ -19,8 +20,7 @@ import '@fontsource/fira-code/500.css';
 import '@fontsource/fira-code/600.css';
 
 import log from './lib/logger.ts';
-// Mobile native layer — MUST stay the last stylesheet import so its rules win
-// cascade ties against legacy responsive patches (see styles/mobile.css).
+// Responsive layout has an explicit cascade layer, independent of import order.
 import './styles/mobile.css';
 
 // Apply saved accent color on boot
@@ -59,3 +59,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+import './styles/surfaces.css';

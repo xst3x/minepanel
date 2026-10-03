@@ -1,3 +1,4 @@
+import { PROJECT_ROOT } from '../paths';
 /**
  * Proxy Process Manager — communicates with the worker process via IPC.
  * Used in the API process.
@@ -81,6 +82,7 @@ class ProxyProcessManager extends EventEmitter {
 
         this.worker = fork(workerPath, [], {
             env: { ...process.env, MINEPANEL_PROCESS: 'worker' },
+            cwd: PROJECT_ROOT,
             stdio: 'inherit'
         });
 

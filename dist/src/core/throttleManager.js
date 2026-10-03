@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../paths");
 // src/core/throttleManager.js
 // Monitors RAM and CPU temperature for each server.
 // When temperature is high, applies REAL CPU throttle on the Java process
@@ -82,7 +83,7 @@ function getCpuTemperature() {
     catch (_) { }
     // Windows: optional cpu_temp.txt written by external helper
     try {
-        const f = path.join(__dirname, '../../data/cpu_temp.txt');
+        const f = path.join(paths_1.PROJECT_ROOT, 'data', 'cpu_temp.txt');
         if (fs.existsSync(f)) {
             const val = parseFloat(fs.readFileSync(f, 'utf8').trim());
             if (!isNaN(val))

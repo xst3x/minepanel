@@ -1,3 +1,4 @@
+import { PROJECT_ROOT } from '../../paths';
 /**
  * src/core/utils/logger.js
  * Centralized Winston logger for MinePanel.
@@ -11,7 +12,7 @@ import path = require('path')
 import fs = require('fs')
 
 // Ensure logs directory exists
-const logsDir = path.resolve(__dirname, '../../../logs');
+const logsDir = path.join(PROJECT_ROOT, 'logs');
 if (!fs.existsSync(logsDir)) {
     fs.mkdirSync(logsDir, { recursive: true });
 }

@@ -1,3 +1,4 @@
+import Section from '../../components/Section.tsx';
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
@@ -101,10 +102,10 @@ export default function ServerLogs() {
   };
 
   return (
-    <div className="card">
+    <Section className="">
       <div className="logs-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
         <div className="logs-toolbar-left" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flex: 1, minWidth: 'min(280px, 100%)', flexWrap: 'wrap' }}>
-          <Select
+          <Select aria-label="Log file"
             value={selectedFile}
             onChange={handleFileChange}
             className="log-select"
@@ -119,7 +120,7 @@ export default function ServerLogs() {
               </option>
             ))}
           </Select>
-          <input
+          <input aria-label="Filter logs..."
             type="text"
             placeholder="Filter logs..."
             value={filterText}
@@ -144,7 +145,7 @@ export default function ServerLogs() {
           <button className="btn outline small" onClick={handlePrev} disabled={currentPage <= 1 || loading}>
             Prev
           </button>
-          <span className="log-page-info" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          <span className="log-page-info" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
             Page {currentPage} / {totalPages}
           </span>
           <button className="btn outline small" onClick={handleNext} disabled={currentPage >= totalPages || loading}>
@@ -153,29 +154,20 @@ export default function ServerLogs() {
         </div>
       </div>
 
-      <div style={{
-        position: 'relative',
-        background: isLight ? '#ffffff' : '#0d0d0d',
-        borderRadius: 'var(--radius)',
-        border: `1px solid ${isLight ? '#d1d5db' : '#2a2a2a'}`,
-        maxHeight: '60vh',
-        overflowY: 'auto',
-        opacity: loading ? 0.55 : 1,
-        transition: 'opacity 0.15s ease',
-      }}>
+      <div className="detail-row" style={{ position: 'relative', maxHeight: "60dvh", overflowY: 'auto', opacity: loading ? 0.55 : 1, transition: 'opacity 0.15s ease' }}>
         <pre style={{
           margin: 0,
           padding: '1.25rem',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-all',
           fontFamily: 'var(--font-mono)',
-          fontSize: '0.82rem',
+          fontSize: '0.875rem',
           color: isLight ? '#1a1a1a' : '#e6e6e6',
           lineHeight: '1.5'
         }}>
           {logContent}
         </pre>
       </div>
-    </div>
+    </Section>
   );
 }

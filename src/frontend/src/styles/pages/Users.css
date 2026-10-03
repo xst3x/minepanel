@@ -1,8 +1,8 @@
+@layer components {
 .list-item, .fm-item, .installed-plugin-item, .perm-item, .prop-item {
 max-width: 100%;
     min-width: 0;
 }
-
 .list-header {
 display: flex;
     padding: 12px 20px;
@@ -16,20 +16,16 @@ display: flex;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     gap: 0.5rem;
 }
-
 .list-body {
 background: var(--bg-surface);
 }
-
 .list-item:hover {
 background: var(--bg-elevated);
 }
-
 .list-item:last-child {
 border-bottom: none;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
-
 .toolbar {
 display: flex;
     justify-content: space-between;
@@ -38,13 +34,11 @@ display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
 }
-
 .toolbar-left, .toolbar-right {
 display: flex;
     align-items: center;
     gap: 0.75rem;
 }
-
 .toggle-label {
 display: flex;
     align-items: center;
@@ -52,7 +46,6 @@ display: flex;
     font-size: 0.85rem;
     color: var(--text-secondary);
 }
-
 .toggle-switch {
 position: relative;
     display: inline-block;
@@ -60,13 +53,11 @@ position: relative;
     height: 22px;
     flex-shrink: 0;
 }
-
 .toggle-switch input {
 opacity: 0;
     width: 0;
     height: 0;
 }
-
 .toggle-slider {
 position: absolute;
     cursor: pointer;
@@ -76,7 +67,6 @@ position: absolute;
     transition: var(--transition);
     border-radius: 12px;
 }
-
 .toggle-slider:before {
 position: absolute;
     content: "";
@@ -88,17 +78,14 @@ position: absolute;
     transition: var(--transition);
     border-radius: 50%;
 }
-
 .toggle-switch input:checked + .toggle-slider {
 background: var(--accent);
     border-color: var(--accent);
 }
-
 .toggle-switch input:checked + .toggle-slider:before {
 transform: translateX(16px);
     background: #ffffff;
 }
-
 .permissions-grid {
 display: grid;
     grid-template-columns: 1fr;
@@ -107,7 +94,6 @@ display: grid;
     overflow-y: auto;
     padding-right: 0.25rem;
 }
-
 .perm-item {
 display: flex;
     justify-content: space-between;
@@ -117,18 +103,15 @@ display: flex;
     border-radius: var(--radius);
     border: 1px solid var(--border);
 }
-
 .perm-item-label {
 font-size: 0.85rem;
     font-weight: 500;
 }
-
 .perm-item-key {
 font-size: 0.75rem;
     color: var(--text-muted);
     font-family: var(--font-mono);
 }
-
 .perm-group-header {
 font-size: 0.75rem;
     font-weight: 700;
@@ -139,18 +122,12 @@ font-size: 0.75rem;
     padding: 0.25rem 0;
     border-bottom: 1px solid var(--border);
 }
-
 .matrix-checkbox-wrapper {
-display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    position: relative;
-    width: 20px;
-    height: 20px;
     margin: 0 auto;
 }
-
 .matrix-checkbox-wrapper input[type="checkbox"] {
 position: absolute;
     opacity: 0;
@@ -158,21 +135,13 @@ position: absolute;
     height: 0;
     pointer-events: none;
 }
-
 .matrix-checkbox-square {
 display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
-    border: 1.5px solid var(--border);
     background: var(--bg-input);
-    transition: var(--transition);
     flex-shrink: 0;
-    position: relative;
 }
-
 .matrix-checkbox-square::after {
 content: '';
     display: block;
@@ -184,36 +153,28 @@ content: '';
     transform: rotate(45deg) translateY(-1px);
     transition: var(--transition);
 }
-
 .matrix-checkbox-wrapper:not(:has(input:disabled)):hover .matrix-checkbox-square {
 border-color: var(--accent);
     background: var(--accent-subtle);
 }
-
 .matrix-checkbox-wrapper input:checked + .matrix-checkbox-square {
 background: var(--accent);
     border-color: var(--accent);
 }
-
 .matrix-checkbox-wrapper input:checked + .matrix-checkbox-square::after {
 border-color: #000;
 }
-
 .matrix-checkbox-square.locked {
 opacity: 0.5;
-    cursor: not-allowed;
-    border-color: var(--accent) !important;
-    background: var(--accent-subtle) !important;
+    border-color: var(--accent);
+    background: var(--accent-subtle);
 }
-
 .matrix-checkbox-wrapper input:disabled + .matrix-checkbox-square {
 cursor: not-allowed;
 }
-
 .matrix-checkbox-wrapper input:disabled:checked + .matrix-checkbox-square::after {
 border-color: var(--accent);
 }
-
 .matrix-scroll-wrapper {
 width: 100%;
     overflow-x: auto;
@@ -223,20 +184,17 @@ width: 100%;
     margin-top: 1.25rem;
     box-shadow: var(--shadow-sm);
 }
-
 .matrix-table {
 width: 100%;
     border-collapse: collapse;
     font-size: 0.85rem;
 }
-
 .matrix-table th, .matrix-table td {
 padding: 0.85rem 1.25rem;
     border-bottom: 1px solid var(--border);
     text-align: center;
     vertical-align: middle;
 }
-
 .matrix-table th {
 background: var(--bg-input);
     color: var(--text-muted);
@@ -245,7 +203,6 @@ background: var(--bg-input);
     font-weight: 700;
     letter-spacing: 0.8px;
 }
-
 .matrix-table td:first-child, .matrix-table th:first-child {
 position: sticky;
     left: 0;
@@ -256,22 +213,18 @@ position: sticky;
     z-index: 10;
     border-right: 1px solid var(--border);
 }
-
 .matrix-table th:first-child {
 background: var(--bg-input);
     z-index: 11;
 }
-
 .matrix-table tr:hover td {
 background: var(--bg-elevated);
 }
-
 .matrix-table tr:hover td:first-child {
 background: var(--bg-elevated);
 }
-
 .matrix-table .matrix-group-row td {
-background: var(--bg-input) !important;
+background: var(--bg-input);
     text-align: left;
     font-size: 0.75rem;
     font-weight: 700;
@@ -280,7 +233,6 @@ background: var(--bg-input) !important;
     letter-spacing: 0.8px;
     padding: 0.6rem 1.25rem;
 }
-
 .matrix-checkbox-wrapper {
 position: relative;
     display: inline-block;
@@ -288,7 +240,6 @@ position: relative;
     height: 18px;
     vertical-align: middle;
 }
-
 .matrix-checkbox {
 position: absolute;
     opacity: 0;
@@ -296,7 +247,6 @@ position: absolute;
     height: 0;
     width: 0;
 }
-
 .matrix-checkbox-square {
 position: absolute;
     top: 0;
@@ -306,18 +256,14 @@ position: absolute;
     background-color: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: 4px;
-    transition: var(--transition);
 }
-
 .matrix-checkbox-wrapper:hover input ~ .matrix-checkbox-square {
 border-color: var(--accent);
 }
-
 .matrix-checkbox-wrapper input:checked ~ .matrix-checkbox-square {
 background-color: var(--accent);
     border-color: var(--accent);
 }
-
 .matrix-checkbox-square:after {
 content: "";
     position: absolute;
@@ -330,25 +276,19 @@ content: "";
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
 }
-
 .matrix-checkbox-wrapper input:checked ~ .matrix-checkbox-square:after {
 display: block;
 }
-
 .matrix-checkbox-square.locked {
 cursor: not-allowed;
 }
-
 .list-item {
 animation: mp-slideInUp 0.22s ease both;
     transition: background var(--transition), transform 0.15s ease;
 }
-
 .list-item:hover {
 transform: translateX(1px);
 }
-
-/* ── Users Page: Row layout + responsive card collapse ──────────── */
 #view-users .list-item {
     display: flex;
     align-items: center;
@@ -356,7 +296,6 @@ transform: translateX(1px);
     gap: 0;
     padding: 10px 20px;
 }
-
 #view-users .list-item > div {
     flex: 1;
     min-width: 0;
@@ -365,28 +304,23 @@ transform: translateX(1px);
     white-space: nowrap;
     padding: 0 0.5rem;
 }
-
 #view-users .list-item > div:nth-child(1) {
     flex: 2;
     font-weight: 600;
 }
-
 #view-users .list-item > div:nth-child(2) {
     flex: 1.2;
 }
-
 #view-users .list-item > div:nth-child(3) {
     flex: 0.8;
     display: flex;
     align-items: center;
 }
-
 #view-users .list-item > div:nth-child(4) {
     flex: 1.2;
     font-size: 0.85rem;
     color: var(--text-muted);
 }
-
 #view-users .list-item > div:nth-child(5) {
     flex: 2.5;
     display: flex;
@@ -394,11 +328,9 @@ transform: translateX(1px);
     justify-content: flex-end;
     gap: 0.35rem;
 }
-
 #view-users .list-header {
     gap: 0.5rem;
 }
-
 #view-users .list-header > div {
     flex: 1;
     min-width: 0;
@@ -406,82 +338,65 @@ transform: translateX(1px);
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-
 #view-users .list-header > div:nth-child(1) {
     flex: 2;
 }
-
 #view-users .list-header > div:nth-child(2) {
     flex: 1.2;
 }
-
 #view-users .list-header > div:nth-child(3) {
     flex: 0.8;
 }
-
 #view-users .list-header > div:nth-child(4) {
     flex: 1.2;
 }
-
 #view-users .list-header > div:nth-child(5) {
     flex: 2.5;
     text-align: right;
 }
-
-/* ── Header action buttons ────────────────────────────────────────── */
 .users-header-actions {
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
     align-items: center;
 }
-
 .users-header-actions .btn {
     white-space: nowrap;
     font-size: 0.8rem;
     padding: 0.4rem 0.75rem;
 }
-
-/* ── Kebab (3-dot) actions menu ───────────────────────────────────── */
 .user-actions-cell {
     position: relative;
     display: flex;
     justify-content: flex-end;
 }
-
 .user-actions-mobile {
     display: none;
     position: relative;
 }
-
 .fm-row-menu-btn {
-    display: flex !important;
+    display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.3rem 0.4rem !important;
-    min-width: auto !important;
-    opacity: 1 !important;
+    padding: 0.3rem 0.4rem;
+    min-width: auto;
+    opacity: 1;
 }
-
-/* ── Per-row actions bottom sheet ─────────────────────────────────── */
 .fm-sheet-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.55);
-    z-index: 11000; /* above top bar + modals */
+    z-index: 11000;
     display: flex;
     align-items: flex-end;
     justify-content: center;
     animation: fmSheetFadeIn 0.18s ease-out;
 }
-
 .fm-sheet {
     width: 100%;
     max-width: 560px;
     background: var(--bg-surface);
     opacity: 1;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
     border: 1px solid var(--border);
     border-bottom: none;
     border-radius: 20px 20px 0 0;
@@ -490,11 +405,10 @@ transform: translateX(1px);
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    max-height: 80vh;
+    max-height: 80dvh;
     overflow-y: auto;
     animation: fmSheetSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
 .fm-sheet-handle {
     width: 40px;
     height: 4px;
@@ -503,7 +417,6 @@ transform: translateX(1px);
     margin: 0.25rem auto 0.75rem;
     flex-shrink: 0;
 }
-
 .fm-sheet-title {
     font-size: 0.9rem;
     font-weight: 700;
@@ -515,7 +428,6 @@ transform: translateX(1px);
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-
 .fm-sheet-item {
     display: flex;
     align-items: center;
@@ -531,21 +443,12 @@ transform: translateX(1px);
     cursor: pointer;
     transition: background 0.12s ease;
 }
-
 .fm-sheet-item:active {
     background: var(--bg-elevated);
 }
-
-@media (min-width: 481px) {
-    .fm-sheet-item:hover {
-        background: var(--bg-elevated);
-    }
-}
-
 .fm-sheet-danger {
     color: var(--danger, #e5484d);
 }
-
 .fm-sheet-cancel {
     margin-top: 0.4rem;
     border-top: 1px solid var(--border);
@@ -553,93 +456,24 @@ transform: translateX(1px);
     color: var(--text-muted);
     font-weight: 600;
 }
-
 @keyframes fmSheetFadeIn {
     from { opacity: 0; }
     to   { opacity: 1; }
 }
-
 @keyframes fmSheetSlideUp {
     from { transform: translateY(100%); }
     to   { transform: translateY(0); }
 }
-
-/* Mobile: collapse to a single compact row + date below */
-@media (max-width: 768px) {
-    #view-users .list-header {
-        display: none;
-    }
-    #view-users .list-item {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.85rem;
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius);
-        margin-bottom: 0.6rem;
-        background: var(--bg-surface);
-    }
-    #view-users .list-item > div {
-        flex: none;
-        width: auto !important;
-        overflow: visible;
-        text-overflow: clip;
-        white-space: normal;
-        padding: 0;
-        border-bottom: none;
-    }
-    /* Username */
-    #view-users .list-item > div:nth-child(1) {
-        order: 1;
-        font-size: 1rem;
-        flex: 1 1 auto !important;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    /* Rank / Owner badge */
-    #view-users .list-item > div:nth-child(2) {
-        order: 2;
-        flex: 0 0 auto !important;
-    }
-    /* Status toggle */
-    #view-users .list-item > div:nth-child(3) {
-        order: 3;
-        flex: 0 0 auto !important;
-    }
-    /* Actions cell -> kebab, stays on the first row, far right */
-    #view-users .list-item > div:nth-child(5),
-    #view-users .user-actions-cell {
-        order: 4;
-        flex: 0 0 auto !important;
-    }
-    /* Created date -> hidden on mobile card view */
-    #view-users .list-item > div:nth-child(4) {
-        display: none;
-    }
-    .user-actions-desktop {
-        display: none !important;
-    }
-    .user-actions-mobile {
-        display: block;
-    }
-}
-
 .perm-item {
 transition: background var(--transition), border-color var(--transition);
 }
-
 .perm-item:hover {
 border-color: var(--border-hover);
 }
-
 .matrix-checkbox-square {
 transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
-
 .matrix-checkbox-wrapper:hover .matrix-checkbox-square {
 transform: scale(1.1);
+}
 }

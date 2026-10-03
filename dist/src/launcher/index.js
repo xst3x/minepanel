@@ -33,6 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+const paths_1 = require("../paths");
 const crypto = __importStar(require("crypto"));
 const logger = __importStar(require("./logger"));
 const pm = __importStar(require("./processManager"));
@@ -90,9 +91,7 @@ function getBackendPort() {
     return process.env.PORT ? parseInt(process.env.PORT, 10) : 8082;
 }
 function isBackendHttps() {
-    const settingsPath = process.env.DATA_DIR
-        ? require('path').join(process.env.DATA_DIR, 'settings.json')
-        : require('path').resolve(__dirname, '../../settings.json');
+    const settingsPath = paths_1.SETTINGS_FILE;
     try {
         if (require('fs').existsSync(settingsPath)) {
             const raw = require('fs').readFileSync(settingsPath, 'utf8');

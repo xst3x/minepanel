@@ -1,0 +1,68 @@
+@layer components {
+.custom-select-container { position: relative; width: 100%; min-width: 0; }
+.custom-select-container[data-disabled="true"] { opacity: 0.5; }
+.custom-select-container[data-disabled="true"] .custom-select-display { cursor: not-allowed; }
+
+.custom-select-display {
+  position: relative;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 38px 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.5;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  transition: var(--transition);
+}
+.custom-select-display.open { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.custom-select-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.custom-select-chevron {
+  position: absolute; right: 14px; top: 50%; width: 14px; height: 14px;
+  color: var(--text-secondary); pointer-events: none;
+  transform: translateY(-50%); transition: transform 0.2s;
+}
+.custom-select-display.open .custom-select-chevron { transform: translateY(-50%) rotate(180deg); }
+
+.custom-select-dropdown {
+  position: fixed;
+  z-index: 999999;
+  box-sizing: border-box;
+  width: max-content;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  font-family: var(--font-ui);
+}
+.custom-select-option {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14.5px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s, color 0.1s;
+}
+.custom-select-option.active { background: var(--bg-elevated); }
+.custom-select-option.selected { color: var(--accent); background: var(--accent-subtle); }
+.custom-select-option.disabled { opacity: 0.5; cursor: not-allowed; }
+.custom-select-empty { padding: 8px 12px; font-size: 14px; color: var(--text-muted); }
+}

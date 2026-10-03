@@ -1,4 +1,5 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
 const fs = require("fs");
 const fsp = require('fs').promises;
@@ -65,7 +66,6 @@ function buildZipBuffer(absPaths, serverDir) {
         try {
             const stat = fs.statSync(absPath);
             if (stat.isDirectory()) {
-                // addLocalFolder(localPath, zipPath)
                 const relName = path.relative(serverDir, absPath).replace(/\\/g, '/');
                 zip.addLocalFolder(absPath, relName);
             }
@@ -103,11 +103,13 @@ const upload = multer({
         filename: (req, file, cb) => {
             const safeName = path.basename(file.originalname).replace(/[^\w.\-]/g, '_');
             if (!safeName || safeName === '.' || safeName === '..') {
-                return cb(new Error('Invalid filename'), '');
+                return cb(new Error('Invalid filename'));
             }
             const ext = path.extname(safeName).toLowerCase();
             if (BLOCKED_EXTENSIONS.has(ext)) {
-                return cb(Object.assign(new Error(`File extension '${ext}' is blocked for security reasons`), { code: 'BLOCKED_EXTENSION' }), '');
+                const err = new Error(`File extension '${ext}' is blocked for security reasons`);
+                err.code = 'BLOCKED_EXTENSION';
+                return cb(err);
             }
             cb(null, safeName);
         }
@@ -139,6 +141,68 @@ router.get('/list', authenticateToken, checkPermission('server.files.read'), asy
             return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
         logger.error(`[fileRoutes] list error (Server: ${req.params.serverId}):`, e);
+        return sendError(res, E.INTERNAL_ERROR, 500);
+    }
+});
+// Fetch detailed metadata only when the file manager's Info action is opened.
+router.get('/info', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
+    if (typeof req.query.path !== 'string' || !req.query.path)
+        return sendError(res, E.FILE_PATH_REQUIRED, 400);
+    try {
+        const server = await getServer(req.params.serverId);
+        if (!server)
+            return sendError(res, E.SERVER_NOT_FOUND, 404);
+        const serverDir = getServerDir(server);
+        const safePath = getSafePath(serverDir, req.query.path);
+        const rootReal = await fsp.realpath(serverDir);
+        const targetReal = await fsp.realpath(safePath);
+        const relative = path.relative(rootReal, targetReal);
+        if (relative.startsWith('..') || path.isAbsolute(relative))
+            return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        const stats = await fsp.lstat(safePath);
+        if (stats.isSymbolicLink())
+            return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        const isDirectory = stats.isDirectory();
+        let size = isDirectory ? 0 : stats.size;
+        let folderCount = 0;
+        let fileCount = 0;
+        if (isDirectory) {
+            const pending = [safePath];
+            while (pending.length) {
+                const directory = pending.pop();
+                const children = await fsp.readdir(directory, { withFileTypes: true });
+                for (const child of children) {
+                    if (child.isSymbolicLink())
+                        continue;
+                    const childPath = path.join(directory, child.name);
+                    if (child.isDirectory()) {
+                        folderCount++;
+                        pending.push(childPath);
+                    }
+                    else if (child.isFile()) {
+                        fileCount++;
+                        size += (await fsp.stat(childPath)).size;
+                    }
+                }
+            }
+        }
+        res.json({
+            name: path.basename(safePath),
+            isDirectory,
+            createdAt: stats.birthtimeMs > 0 ? stats.birthtime : null,
+            modifiedAt: stats.mtime,
+            size,
+            folderCount: isDirectory ? folderCount : undefined,
+            fileCount: isDirectory ? fileCount : undefined,
+            extension: isDirectory ? undefined : path.extname(safePath).slice(1).toLowerCase()
+        });
+    }
+    catch (e) {
+        if (e.code === 'ENOENT')
+            return sendError(res, E.FILE_NOT_FOUND, 404);
+        if (e.message?.includes('Access denied'))
+            return sendError(res, E.FILE_ACCESS_DENIED, 403);
+        logger.error(`[fileRoutes] info error (Server: ${req.params.serverId}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
 });
@@ -320,7 +384,7 @@ router.get('/dl/:token', async (req, res) => {
     catch {
         return sendError(res, E.FILE_NOT_FOUND, 404);
     }
-    res.download(entry.file, entry.name, err => {
+    res.download(entry.file, entry.name, (err) => {
         if (entry.deleteAfter)
             fsp.unlink(entry.file).catch(() => { });
         if (err && !res.headersSent)
@@ -457,18 +521,17 @@ router.post('/copy', authenticateToken, checkPermission('server.files.write'), a
                     continue;
                 }
                 const baseName = path.basename(srcSafe);
-                const destPath = path.join(destSafe, baseName);
+                let destPath = path.join(destSafe, baseName);
                 // Handle name conflicts
-                let finalDest = destPath;
                 let counter = 1;
-                while (fs.existsSync(finalDest)) {
+                while (fs.existsSync(destPath)) {
                     const ext = path.extname(baseName);
                     const stem = path.basename(baseName, ext);
-                    finalDest = path.join(destSafe, `${stem} (${counter})${ext}`);
+                    destPath = path.join(destSafe, `${stem} (${counter})${ext}`);
                     counter++;
                 }
-                await fsp.cp(srcSafe, finalDest, { recursive: true, force: false });
-                results.push({ path: p, status: 'copied', dest: path.relative(serverDir, finalDest) });
+                await fsp.cp(srcSafe, destPath, { recursive: true, force: false });
+                results.push({ path: p, status: 'copied', dest: path.relative(serverDir, destPath) });
             }
             catch (err) {
                 results.push({ path: p, status: 'error', error: err.message });
@@ -505,18 +568,17 @@ router.post('/move', authenticateToken, checkPermission('server.files.write'), a
                     continue;
                 }
                 const baseName = path.basename(srcSafe);
-                const destPath = path.join(destSafe, baseName);
+                let destPath = path.join(destSafe, baseName);
                 // Handle name conflicts
-                let finalDest = destPath;
                 let counter = 1;
-                while (fs.existsSync(finalDest)) {
+                while (fs.existsSync(destPath)) {
                     const ext = path.extname(baseName);
                     const stem = path.basename(baseName, ext);
-                    finalDest = path.join(destSafe, `${stem} (${counter})${ext}`);
+                    destPath = path.join(destSafe, `${stem} (${counter})${ext}`);
                     counter++;
                 }
-                await fsp.rename(srcSafe, finalDest);
-                results.push({ path: p, status: 'moved', dest: path.relative(serverDir, finalDest) });
+                await fsp.rename(srcSafe, destPath);
+                results.push({ path: p, status: 'moved', dest: path.relative(serverDir, destPath) });
             }
             catch (err) {
                 results.push({ path: p, status: 'error', error: err.message });
@@ -576,7 +638,7 @@ router.get('/archive-tree', authenticateToken, checkPermission('server.files.rea
         if (ext !== '.zip')
             return sendError(res, E.BAD_REQUEST, 400, 'Not a .zip archive');
         const zip = new AdmZip(safePath);
-        const entries = zip.getEntries().map(e => ({
+        const entries = zip.getEntries().map((e) => ({
             name: e.entryName,
             isDirectory: e.isDirectory,
             size: e.header.size,

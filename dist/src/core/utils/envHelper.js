@@ -1,4 +1,5 @@
 "use strict";
+const paths_1 = require("../../paths");
 // src/core/utils/envHelper.js
 const fs = require("fs");
 const path = require("path");
@@ -9,7 +10,7 @@ const crypto = require('crypto');
  * @param {number} newPort - The new port number to save.
  */
 function updateEnvPort(newPort) {
-    const envPath = path.resolve(__dirname, '../../../.env');
+    const envPath = path.join(paths_1.PROJECT_ROOT, '.env');
     const tempPath = envPath + '.tmp';
     let content = '';
     if (fs.existsSync(envPath)) {
@@ -39,7 +40,7 @@ function updateEnvPort(newPort) {
 function sanitizeSecrets() {
     if (process.env.NODE_ENV === 'test')
         return;
-    const envPath = path.resolve(__dirname, '../../../.env');
+    const envPath = path.join(paths_1.PROJECT_ROOT, '.env');
     const tempPath = envPath + '.tmp';
     if (!fs.existsSync(envPath))
         return;
