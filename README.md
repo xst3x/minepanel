@@ -4,7 +4,7 @@
 
 **A self-hosted Minecraft server management panel**
 
-[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![Node.js](https://img.shields.io/badge/Node.js-22.12%2B-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
@@ -46,7 +46,7 @@ From the repository root:
 
 The previous GitHub Pages deployment has been retired. No replacement public URL is configured yet.
 
-**Vercel:** Import this repository, keep the project Root Directory at the repository root, and use the checked-in `vercel.json`. It specifies `npm run build:demo`, output `dist-demo`, and `VITE_DEMO_MODE=true`. Use Node.js 22 or newer and the default `npm ci` installation. The SPA rewrite supports directly opening and refreshing nested routes. Connect your preferred domain in Vercel after deployment. No backend URL or credentials are needed.
+**Vercel:** Import this repository, keep the project Root Directory at the repository root, and use the checked-in `vercel.json`. It specifies `npm run build:demo`, output `dist-demo`, and `VITE_DEMO_MODE=true`. Use Node.js 22.12 or newer; the configuration installs only the frontend workspace from the root lockfile. The SPA rewrite supports directly opening and refreshing nested routes. Connect your preferred domain in Vercel after deployment. No backend URL or credentials are needed. If your Vercel project already uses `src/frontend` as its Root Directory, its workspace-local `vercel.json` builds the same demo into `src/frontend/dist-demo`; keep the output setting `dist-demo`, use the configuration's install command, and enable access to files outside the Root Directory so demo documentation can include the repository's docs.
 
 Demo builds exclude the real provider and carry a `connect-src 'none'` content security policy. Demo development deliberately uses a watched static build without a hot-reload WebSocket. See [frontend architecture](src/frontend/README.md) for the provider boundary and extension rules.
 
@@ -182,10 +182,10 @@ Demo builds exclude the real provider and carry a `connect-src 'none'` content s
 
 | Layer               | Technology                                 |
 | ------------------- | ------------------------------------------ |
-| Runtime             | Node.js 18+                                |
+| Runtime             | Node.js 22.12+                                |
 | Web framework       | Express 4                                  |
 | Frontend            | React 18 + React Router 6                  |
-| Frontend build      | Vite 5                                     |
+| Frontend build      | Vite 7                                     |
 | Real-time           | `ws` (WebSocket)                           |
 | Database            | SQLite 3 (via Sequelize)                   |
 | Auth                | `jsonwebtoken` + `argon2` / `bcryptjs`     |
@@ -205,7 +205,7 @@ The frontend is a React SPA built with Vite. It is compiled automatically on fir
 
 ### Prerequisites
 
-- **Node.js** v18 or higher
+- **Node.js** v22.12 or higher
 - **Java** installed and in `PATH`
 - **Python 3** installed (for automations engine)
 

@@ -1,10 +1,10 @@
 {
   "buildCommand": "npm run build:demo",
-  "installCommand": "npm ci --workspace minepanel-frontend --include-workspace-root=false",
   "outputDirectory": "dist-demo",
   "framework": null,
   "env": {
-    "VITE_DEMO_MODE": "true"
+    "VITE_DEMO_MODE": "true",
+    "MINEPANEL_DEMO_OUTPUT": "workspace"
   },
   "rewrites": [
     {
@@ -22,5 +22,6 @@
         }
       ]
     }
-  ]
+  ],
+  "installCommand": "npm ci --prefix ../.. --workspace minepanel-frontend --include-workspace-root=false"
 }

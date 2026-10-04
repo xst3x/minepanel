@@ -39,7 +39,9 @@ export default defineConfig(({ mode, command }) => {
     },
     build: {
       ...(demo ? { modulePreload: { polyfill: false } } : {}),
-      outDir: demo ? '../../dist-demo' : '../public',
+      outDir: demo ? (process.env.MINEPANEL_DEMO_OUTPUT === 'workspace' ? 'dist-demo' : '../../dist-demo') : '../public',
+      // Retain Vite 5's browser coverage after the security upgrade.
+      target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
       emptyOutDir: true,
       chunkSizeWarningLimit: 600,
       rollupOptions: {
