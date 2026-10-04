@@ -20,7 +20,7 @@
     "db:backup": "node dist/src/db/db-cli.js backup",
     "dev:demo": "node scripts/dev-demo.mjs",
     "build": "npm run compile && npm run build --workspace minepanel-frontend",
-    "build:demo": "npm run build:demo --workspace minepanel-frontend",
+    "build:demo": "npm run build:demo --workspace minepanel-frontend -- --outDir ../../dist-demo",
     "dev:frontend": "npm run dev --workspace minepanel-frontend",
     "typecheck:frontend": "npm run typecheck --workspace minepanel-frontend",
     "test:frontend": "npm run test --workspace minepanel-frontend",

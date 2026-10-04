@@ -3,8 +3,7 @@
   "outputDirectory": "dist-demo",
   "framework": null,
   "env": {
-    "VITE_DEMO_MODE": "true",
-    "MINEPANEL_DEMO_OUTPUT": "workspace"
+    "VITE_DEMO_MODE": "true"
   },
   "rewrites": [
     {
