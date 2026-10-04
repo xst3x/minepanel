@@ -27,28 +27,16 @@ MinePanel is a lightweight, self-hosted web panel for managing Minecraft servers
 
 ## Demo
 
-MinePanel has **one frontend**, under `src/frontend`. Production and demo use the same React pages, routes, components, and CSS. With `VITE_DEMO_MODE=true`, Vite selects a local demo provider instead of the real API and WebSocket provider. The static demo needs no backend and signs visitors into a sample administrator account automatically.
+[**Try the live demo →**](https://minepanel-8l7c.vercel.app/)
 
-The demo includes sample servers, players, files, plugins, backups, users, ranks, settings, Discord bots, and the installation's documentation. Start/stop/restart and a few console commands run only in memory and reset on refresh. Theme and accent preferences remain local. Operations requiring a backend (uploads/downloads, installation, backups, FTP, automations, account changes, and integrations) explain that the full installation is required and link to [Get MinePanel](https://github.com/xst3x/minepanel).
+The demo uses the same frontend as a full MinePanel installation, with simulated data and no backend required. No login is needed. Local server controls and console commands reset on refresh; features requiring a real backend are unavailable.
 
-From the repository root:
+To run or build the demo locally:
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Existing backend development watcher; serves the production frontend built by `npm run build` |
-| `npm run dev:frontend` | Production Vite development server with the real backend proxy |
-| `npm run dev:demo` | Backend-free demo at http://127.0.0.1:5173; rebuilds on edits, refresh the browser to view changes |
-| `npm run build` | Compile the backend and build the production frontend into `src/public` |
-| `npm run build:demo` | Build the static demo into `dist-demo` |
-| `npm run typecheck:frontend` | Check the shared frontend and both providers |
-| `npm run test:frontend` | Run frontend and provider contract tests |
-| `npm run check:network` | Check that native network access stays in the real provider |
-
-The previous GitHub Pages deployment has been retired. No replacement public URL is configured yet.
-
-**Vercel:** Import this repository, keep the project Root Directory at the repository root, and use the checked-in `vercel.json`. It specifies `npm run build:demo`, output `dist-demo`, and `VITE_DEMO_MODE=true`. Use Node.js 22.12 or newer; the configuration installs only the frontend workspace from the root lockfile. The SPA rewrite supports directly opening and refreshing nested routes. Connect your preferred domain in Vercel after deployment. No backend URL or credentials are needed. If your Vercel project already uses `src/frontend` as its Root Directory, its workspace-local `vercel.json` builds the same demo into `src/frontend/dist-demo`; keep the output setting `dist-demo`, use the configuration's install command, and enable access to files outside the Root Directory so demo documentation can include the repository's docs.
-
-Demo builds exclude the real provider and carry a `connect-src 'none'` content security policy. Demo development deliberately uses a watched static build without a hot-reload WebSocket. See [frontend architecture](src/frontend/README.md) for the provider boundary and extension rules.
+```bash
+npm run dev:demo
+npm run build:demo
+```
 
 ---
 
