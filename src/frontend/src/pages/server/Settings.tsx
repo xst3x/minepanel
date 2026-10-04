@@ -1,9 +1,10 @@
+import type { ServerContext } from '../../lib/serverContext';
 import Section from '../../components/Section.tsx';
 import ModalOverlay from '../../components/ModalOverlay.tsx';
 import { useState, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
-import { toast, showConfirm, showPrompt } from '../../components/Toast.tsx';
+import { toast, showConfirm } from '../../components/Toast.tsx';
 import Select from '../../components/Select.tsx';
 import '../../styles/pages/server/Settings.css';
 
@@ -32,15 +33,15 @@ const IconShield = () => (
 
 
 export default function ServerSettings() {
-  const { serverId, serverInfo, status, hasPerm, reloadServerInfo } = useOutletContext();
+  const { serverId, serverInfo, status, hasPerm, reloadServerInfo } = useOutletContext<ServerContext>();
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
-  const [ram, setRam] = useState(2048);
-  const [port, setPort] = useState(25565);
+  const [ram, setRam] = useState<string | number>(2048);
+  const [port, setPort] = useState<string | number>(25565);
   const [javaPath, setJavaPath] = useState('java');
-  const [logRetention, setLogRetention] = useState(7);
-  const [backupRetention, setBackupRetention] = useState(30);
+  const [logRetention, setLogRetention] = useState<string | number>(7);
+  const [backupRetention, setBackupRetention] = useState<string | number>(30);
   const [autostart, setAutostart] = useState(false);
   const [autostartCrash, setAutostartCrash] = useState(false);
 
@@ -60,7 +61,7 @@ export default function ServerSettings() {
     force_incompatible_updates: false,
     auto_backup_before_update: true,
     ignored_plugins: [],
-    update_interval_hours: 12,
+    update_interval_hours: 12 as string | number,
     last_update_check: null,
     last_update_run: null,
     _updateState: { status: 'idle', message: null },
@@ -271,8 +272,8 @@ export default function ServerSettings() {
 
   const handleSaveSettings = async () => {
     if (!name) return toast('Server name is required', 'error');
-    if (ram < 512 || ram > 16384) return toast('RAM must be between 512 and 16384 MB', 'error');
-    if (port < 1024 || port > 65535) return toast('Port must be between 1024 and 65535', 'error');
+    if (Number(ram) < 512 || Number(ram) > 16384) return toast('RAM must be between 512 and 16384 MB', 'error');
+    if (Number(port) < 1024 || Number(port) > 65535) return toast('Port must be between 1024 and 65535', 'error');
     if (!javaPath) return toast('Java path is required', 'error');
 
     const isOnline = status === 'online';
@@ -356,18 +357,11 @@ export default function ServerSettings() {
 
   const handleDeleteServer = async () => {
     const ok = await showConfirm(
-      'PERMANENTLY DELETE THIS SERVER? This cannot be undone. All server files, logs, databases, and configs will be completely deleted.',
+      'Are you sure you want to delete this server?',
       'Delete Server',
       { danger: true, confirmLabel: 'Delete Server' }
     );
     if (!ok) return;
-
-    const confirmName = await showPrompt('Type the server name exactly to confirm deletion:', '', 'Confirm Deletion');
-    if (confirmName === null) return;
-    if (confirmName !== serverInfo?.name) {
-      toast('Confirmation name did not match. Deletion aborted.', 'error');
-      return;
-    }
 
     try {
       toast('Deleting server', 'info');

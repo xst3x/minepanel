@@ -71,14 +71,15 @@ before(() => {
     fs.cpSync(path.join(root, dir), path.join(install, dir), { recursive: true, filter: p => !/\.(ts|js|map)$/.test(p) });
   }
   fs.mkdirSync(path.join(install, 'src/public'), { recursive: true });
-  fs.writeFileSync(path.join(install, 'src/public/index.html'), '<html>dist-layout-static-marker</html>');
+  fs.cpSync(path.join(root, 'src/public'), path.join(install, 'src/public'), { recursive: true });
+  fs.appendFileSync(path.join(install, 'src/public/index.html'), '<!-- dist-layout-static-marker -->');
   fs.writeFileSync(path.join(install, '.env'), 'HTTPS=false\nFTP_ENABLED=false\nJWT_SECRET=dist-layout-test-secret\nDIST_LAYOUT_MARKER=loaded-from-installation\n');
   fs.writeFileSync(path.join(install, 'settings.json'), '{"ftpEnabled":false}');
   fs.mkdirSync(path.join(install, 'data'));
   fs.mkdirSync(path.join(install, 'servers/Existing_Server'), { recursive: true });
   fs.writeFileSync(path.join(install, 'servers/Existing_Server/server.properties'), 'server-port=25565');
   env = { ...process.env, NODE_ENV: 'production' };
-  for (const key of ['DATA_DIR', 'HTTPS', 'HTTPS_KEY', 'HTTPS_CERT', 'PORT', 'MINEPANEL_SERVER', 'MINEPANEL_PROCESS', 'DIST_LAYOUT_MARKER', 'NODE_OPTIONS']) delete env[key];
+  for (const key of ['BASE_PATH', 'DATA_DIR', 'HTTPS', 'HTTPS_KEY', 'HTTPS_CERT', 'PORT', 'MINEPANEL_SERVER', 'MINEPANEL_PROCESS', 'DIST_LAYOUT_MARKER', 'NODE_OPTIONS']) delete env[key];
 });
 after(() => {
   if (sandbox && path.dirname(sandbox) === path.resolve(os.tmpdir()) && path.basename(sandbox).startsWith('minepanel-dist-')) {
@@ -190,3 +191,66 @@ test('production entrypoint starts backend and worker, serves health/static file
   assert.equal(fs.existsSync(path.join(install, 'dist/ADMIN_CREDENTIALS.txt')), false);
 
 });
+for (const override of [undefined, '/custom/admin/']) {
+  test(`configured base path mounts HTTP, authentication and WebSocket (${override || 'saved /panel/'})`, async () => {
+    const settingsFile = path.join(install, 'settings.json');
+    const previous = fs.readFileSync(settingsFile, 'utf8');
+    fs.writeFileSync(settingsFile, JSON.stringify({ ftpEnabled: false, basePath: '/panel' }));
+    const prefix = override || '/panel/';
+    const port = await freePort();
+    const child = spawn(process.execPath, ['dist/minepanel_main.js'], { cwd: install, env: { ...env, PORT: String(port), ...(override ? { BASE_PATH: override } : {}) }, stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32', windowsHide: true });
+    let output = '';
+    child.stdout.on('data', d => output += d);
+    child.stderr.on('data', d => output += d);
+    try {
+      let health;
+      for (let i = 0; i < 100; i++) {
+        health = await get(port, prefix + 'health').catch(() => null);
+        if (health?.status === 200) break;
+        if (child.exitCode !== null) assert.fail('Sandbox panel exited before becoming ready');
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      assert.equal(health?.status, 200, 'Sandbox panel must become ready');
+      assert.equal((await get(port, '/health')).status, 404);
+      assert.equal((await get(port, prefix.slice(0, -1))).status, 302);
+      assert.equal((await get(port, prefix)).status, 200, 'The canonical base path must not redirect to itself');
+      assert.equal((await get(port, prefix + '?source=bookmark')).status, 200, 'Query strings must not trigger a redirect loop');
+      const followed = await fetch(`http://127.0.0.1:${port}${prefix.slice(0, -1)}?source=bookmark`);
+      assert.equal(followed.status, 200, 'Following the slash redirect must terminate successfully');
+      assert.equal(new URL(followed.url).pathname, prefix);
+      assert.equal(new URL(followed.url).search, '?source=bookmark');
+      for (const route of ['login', 'server/1/files', 'index.html']) {
+        const page = await get(port, prefix + route);
+        assert.equal(page.status, 200);
+        assert.ok(page.body.includes(`<base href="${prefix}" />`));
+        const asset = page.body.match(/src="\.\/(assets\/[^\"]+\.js)"/)[1];
+        assert.equal((await get(port, prefix + asset)).status, 200);
+      }
+      assert.equal((await get(port, prefix + 'api/users/me')).status, 401);
+      const credentials = fs.readFileSync(path.join(install, 'ADMIN_CREDENTIALS.txt'), 'utf8');
+      const login = await fetch(`http://127.0.0.1:${port}${prefix}api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'admin', password: credentials.match(/Password\s*:\s*(.+)/)[1].trim() }) });
+      assert.equal(login.status, 200);
+      const { token } = await login.json();
+      assert.ok(token, 'Normal login issues a token');
+      const settingsUrl = `http://127.0.0.1:${port}${prefix}api/system/settings`;
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const settings = await (await fetch(settingsUrl, { headers })).json();
+      assert.equal(settings.activeBasePath, prefix);
+      assert.equal(settings.basePathFromEnvironment, !!override);
+      const invalid = await fetch(settingsUrl, { method: 'POST', headers, body: JSON.stringify({ basePath: '/a/../b', ftpEnabled: false }) });
+      assert.equal(invalid.status, 400);
+      const saved = await fetch(settingsUrl, { method: 'POST', headers, body: JSON.stringify({ basePath: '/next', ftpEnabled: false }) });
+      assert.equal(saved.status, 200);
+      assert.equal(JSON.parse(fs.readFileSync(settingsFile, 'utf8')).basePath, '/next/');
+      assert.equal((await get(port, prefix + 'health')).status, 200, 'Saving does not change the active path until restart');
+      const WebSocket = require('ws');
+      await new Promise((resolve, reject) => {
+        const socket = new WebSocket(`ws://127.0.0.1:${port}${prefix}ws?serverId=1`);
+        const timeout = setTimeout(() => { socket.terminate(); reject(new Error('WebSocket timeout')); }, 5000);
+        socket.on('error', reject);
+        socket.on('open', () => socket.send(JSON.stringify({ type: 'auth', token: 'invalid-token' })));
+        socket.on('close', code => { clearTimeout(timeout); try { assert.equal(code, 4001, 'Console retains token validation'); resolve(); } catch (err) { reject(err); } });
+      });
+    } finally { await stop(child); fs.writeFileSync(settingsFile, previous); }
+  });
+}

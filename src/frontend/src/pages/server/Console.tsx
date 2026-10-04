@@ -1,3 +1,4 @@
+import type { ServerContext } from '../../lib/serverContext';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import '../../styles/pages/server/Console.css';
@@ -19,7 +20,7 @@ export default function ServerConsole() {
     sendChatMessage,
     clearConsoleLines,
     hasPerm,
-  } = useOutletContext();
+  } = useOutletContext<ServerContext>();
 
   const canWrite = hasPerm ? hasPerm('server.console.write') : true;
   const canChatView = hasPerm ? hasPerm('server.console.chat.view') : false;

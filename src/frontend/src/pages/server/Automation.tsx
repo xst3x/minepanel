@@ -1,3 +1,4 @@
+import type { ServerContext } from '../../lib/serverContext';
 import Section from '../../components/Section.tsx';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
@@ -7,7 +8,7 @@ import CodeEditor from '../../components/CodeEditor.tsx';
 import '../../styles/pages/server/Automation.css';
 
 export default function Automation() {
-  const { serverId, hasPerm } = useOutletContext();
+  const { serverId, hasPerm } = useOutletContext<ServerContext>();
   const canWrite = hasPerm('server.automation.write');
 
   const [loading, setLoading] = useState(true);

@@ -1,4 +1,5 @@
 {
+  "basePath": "/",
   "loginCooldown": 30,
   "maxAttempts": 5,
   "rateLimit": 100,

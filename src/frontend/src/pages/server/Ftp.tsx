@@ -1,3 +1,4 @@
+import type { ServerContext } from '../../lib/serverContext';
 import Section from '../../components/Section.tsx';
 import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
@@ -6,7 +7,7 @@ import { toast } from '../../components/Toast.tsx';
 import '../../styles/pages/server/Ftp.css';
 
 export default function ServerFtp() {
-  const { serverId, hasPerm } = useOutletContext();
+  const { serverId, hasPerm } = useOutletContext<ServerContext>();
   
   const [ftpInfo, setFtpInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,7 +16,7 @@ export default function ServerFtp() {
   // Credentials configured in the save form
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [port, setPort] = useState(2121);
+  const [port, setPort] = useState<string | number>(2121);
   
   // Show / hide state
   const [revealPass, setRevealPass] = useState(false);
@@ -117,9 +118,9 @@ export default function ServerFtp() {
 
   // Security UX: auto-hide a revealed password after 30 seconds
   const schedulePasswordHide = () => {
-    if (passwordHideTimer) clearTimeout(passwordHideTimer);
+    if (passwordHideTimer.current) clearTimeout(passwordHideTimer.current);
     const t = setTimeout(() => setRevealPass(false), 30000);
-    setPasswordHideTimer(t);
+    passwordHideTimer.current = t;
   };
 
   const currentHost = window.location.hostname;

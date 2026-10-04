@@ -1,11 +1,13 @@
 "use strict";
 require("./paths");
+const basePath_1 = require("./core/basePath");
 // src/config.js
 // Central configuration module for MinePanel
 // Environment and installation paths are initialized by paths.ts.
 const DEFAULT_ALLOWED_ORIGINS = ['*'];
 const DEFAULT_RATE_LIMIT = 300; // requests per minute per IP
 module.exports = {
+    BASE_PATH: (0, basePath_1.configuredBasePath)(),
     // Array of allowed origin strings for CORS. Empty array disables all origins.
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : DEFAULT_ALLOWED_ORIGINS,
     // Rate limit for global API limiter (requests per minute per IP)

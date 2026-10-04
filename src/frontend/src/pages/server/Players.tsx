@@ -1,3 +1,5 @@
+import type { ServerContext } from '../../lib/serverContext';
+import PlayerSkin from '../../components/PlayerSkin';
 import Section from '../../components/Section.tsx';
 import ModalOverlay from '../../components/ModalOverlay.tsx';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -10,7 +12,7 @@ import useActiveTabScroll from '../../hooks/useActiveTabScroll.ts';
 import '../../styles/pages/server/Players.css';
 
 export default function Players() {
-  const { serverId, status, hasPerm } = useOutletContext();
+  const { serverId, status, hasPerm } = useOutletContext<ServerContext>();
   const [activeTab, setActiveTab] = useState('players');
   const tabStripRef = useActiveTabScroll(activeTab);
 
@@ -146,7 +148,7 @@ function PlayersTab({ serverId, status, hasPerm }) {
           <div className="list-item"><p className="text-muted">No player data found.</p></div>
         ) : players.map(p => (
           <div key={p.uuid} className="list-item compact-list-row player-list-card">
-            <div className="col col-wide text-mono" data-label="Player">{p.username || p.uuid}</div>
+            <div className="col col-wide text-mono player-identity" data-label="Player"><PlayerSkin name={p.username} uuid={p.uuid} /><span>{p.username || p.uuid}</span></div>
             <div className="col actions" data-label="Actions">
               <button className="btn outline small" onClick={() => openModal(p)}>Manage</button>
             </div>
@@ -186,7 +188,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
   const [muteReason,    setMuteReason]    = useState('');
   const [activeSection, setActiveSection] = useState('stats');
 
-  const cmd = (action, value) => sendCmd(player.uuid, action, value || undefined);
+  const cmd = (action, value = undefined) => sendCmd(player.uuid, action, value || undefined);
 
   /* ── live health / hunger from API response ─────────────────────────── */
   const health    = d?.health    ?? null;   // 0–20
@@ -235,13 +237,13 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
   const raidsWon            = getStat('minecraft:custom', 'minecraft:raid_win');
   const cakeSlicesEaten     = getStat('minecraft:custom', 'minecraft:eat_cake_slice');
   const craftedItems        = d?.stats?.stats?.['minecraft:crafted']
-    ? Object.values(d.stats.stats['minecraft:crafted']).reduce((a, b) => a + b, 0)
+    ? Object.values<number>(d.stats.stats['minecraft:crafted']).reduce((a, b) => a + b, 0)
     : null;
   const minedBlocks         = d?.stats?.stats?.['minecraft:mined']
-    ? Object.values(d.stats.stats['minecraft:mined']).reduce((a, b) => a + b, 0)
+    ? Object.values<number>(d.stats.stats['minecraft:mined']).reduce((a, b) => a + b, 0)
     : null;
   const killedByMob         = d?.stats?.stats?.['minecraft:killed_by']
-    ? Object.entries(d.stats.stats['minecraft:killed_by'])
+    ? Object.entries<number>(d.stats.stats['minecraft:killed_by'])
         .sort((a, b) => b[1] - a[1])
         .map(([k, v]) => ({ mob: k.replace('minecraft:', ''), count: v }))
     : [];
@@ -250,7 +252,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
   /* Player deaths = times killed by another player specifically */
   const playerDeaths        = d?.stats?.stats?.['minecraft:killed_by']?.['minecraft:player'] ?? null;
   const advDone             = d?.advancements
-    ? Object.values(d.advancements).filter(v => typeof v === 'object' && v.done === true).length
+    ? Object.values<{ done?: boolean }>(d.advancements).filter(v => typeof v === 'object' && v.done === true).length
     : null;
   const advTotal            = d?.advancements ? Object.keys(d.advancements).length : null;
 
@@ -286,19 +288,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
         <div className="player-modal-header">
           {/* Avatar */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
-            <img loading="lazy"
-              src={`https://mc-heads.net/avatar/${player.name}/72`}
-              alt={player.name}
-              width={72} height={72}
-              style={{
-                borderRadius: 10,
-                imageRendering: 'pixelated',
-                border: '2px solid var(--accent)',
-                boxShadow: '0 0 16px var(--accent-glow)',
-                display: 'block',
-              }}
-              onError={e => { e.target.style.display = 'none'; }}
-            />
+            <PlayerSkin name={player.name} uuid={player.uuid} large />
           </div>
 
           {/* Name + UUID */}
@@ -635,6 +625,12 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
                 </div>
               </ActionGroup>
 
+              <ActionGroup title="Clear Ender Chest" hint="Stop the server first. This permanently empties the saved ender chest without plugins; other player data is preserved.">
+                <button className="btn outline small" onClick={async () => {
+                  if (await showConfirm(`Permanently clear ${player.name}'s ender chest? The server must be stopped.`, 'Clear Ender Chest', { danger: true, confirmLabel: 'Clear Ender Chest' })) cmd('clear-enderchest');
+                }}>Clear Ender Chest</button>
+              </ActionGroup>
+
             </div>
           )}
 
@@ -695,7 +691,7 @@ function PlayerDetailModal({ player, loading, serverId, hasPerm, onClose, sendCm
 /* ── Reusable visual components ──────────────────────────────────────────── */
 
 /** Small header pill with label and value */
-function QuickPill({ label, val, color }) {
+function QuickPill({ label, val, color = undefined }) {
   return (
     <div className="detail-row" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 70 }}>
       <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>{label}</span>
@@ -734,7 +730,7 @@ function RpgStatSection({ title, color, children }) {
 }
 
 /** Individual RPG-style stat card */
-function RpgStatBox({ label, val, tip, color, accent }) {
+function RpgStatBox({ label, val, tip = undefined, color = undefined, accent = undefined }) {
   return (
     <div className="detail-row"
       aria-label={tip ? `${label}: ${tip}` : undefined}
@@ -853,7 +849,7 @@ function Drumstick({ fill, idx }) {
 }
 
 /** Action group with title bar */
-function ActionGroup({ title, hint, children }) {
+function ActionGroup({ title, hint = undefined, children }) {
   return (
     <div className="detail-row" style={{  }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
@@ -922,7 +918,7 @@ function WhitelistTab({ serverId }) {
           : !list.length ? <div className="list-item"><p className="text-muted">Whitelist is empty.</p></div>
           : list.map(item => (
             <div key={item.uuid || item.name} className="list-item compact-list-row player-list-card">
-              <div className="col col-wide text-mono" data-label="Player">{item.name || 'Unknown'}</div>
+              <div className="col col-wide text-mono player-identity" data-label="Player"><PlayerSkin name={item.name} uuid={item.uuid} /><span>{item.name || 'Unknown'}</span></div>
               <div className="col actions" data-label="Actions">
                 <button className="btn danger small" onClick={() => remove(item.name || item.uuid)}>Remove</button>
               </div>
@@ -1000,9 +996,10 @@ function OpsTab({ serverId }) {
           : !list.length ? <div className="list-item"><p className="text-muted">No operators defined.</p></div>
           : list.map(item => (
             <div key={item.uuid || item.name} className="list-item compact-list-row player-list-card">
-              <div className="compact-list-main">
-                <strong className="text-mono">{item.name || 'Unknown'}</strong>
-                <small>Level {item.level ?? 4} · Bypass {item.bypassesPlayerLimit ? 'yes' : 'no'}</small>
+              <div className="player-identity">
+                <PlayerSkin name={item.name} uuid={item.uuid} />
+                <div className="compact-list-main"><strong className="text-mono">{item.name || 'Unknown'}</strong>
+                <small>Level {item.level ?? 4} · Bypass {item.bypassesPlayerLimit ? 'yes' : 'no'}</small></div>
               </div>
               <div className="col actions" data-label="Actions">
                 <button className="btn danger small" onClick={() => deop(item.name || item.uuid)}>Deop</button>
@@ -1077,9 +1074,10 @@ function BannedPlayersTab({ serverId }) {
           : !list.length ? <div className="list-item"><p className="text-muted">No banned players.</p></div>
           : list.map(item => (
             <div key={item.uuid || item.name} className="list-item compact-list-row player-list-card">
-              <div className="compact-list-main">
-                <strong className="text-mono">{item.name || 'Unknown'}</strong>
-                <small>{item.reason || 'Banned by panel'} · {item.source || 'Admin'} · {item.expires || 'forever'}</small>
+              <div className="player-identity">
+                <PlayerSkin name={item.name} uuid={item.uuid} />
+                <div className="compact-list-main"><strong className="text-mono">{item.name || 'Unknown'}</strong>
+                <small>{item.reason || 'Banned by panel'} · {item.source || 'Admin'} · {item.expires || 'forever'}</small></div>
               </div>
               <div className="col actions" data-label="Actions">
                 <button className="btn success small" onClick={() => pardon(item.name || item.uuid)}>Pardon</button>

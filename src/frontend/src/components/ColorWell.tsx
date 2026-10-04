@@ -17,7 +17,7 @@ export default function ColorWell({ onClose, onApply }) {
   const hRef = useRef(0);
   const sRef = useRef(0);
 
-  function hslToRgb(h, s, l) {
+  function hslToRgb(h, s, l): [number, number, number] {
     s /= 100; l /= 100;
     const k = n => (n + h / 30) % 12;
     const a = s * Math.min(l, 1 - l);
@@ -42,7 +42,7 @@ export default function ColorWell({ onClose, onApply }) {
   function toHex(r, g, b) {
     return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
   }
-  function hexToRgb(h) {
+  function hexToRgb(h): [number, number, number] | null {
     const c = h.replace('#', '');
     if (c.length !== 6) return null;
     return [parseInt(c.slice(0, 2), 16), parseInt(c.slice(2, 4), 16), parseInt(c.slice(4, 6), 16)];

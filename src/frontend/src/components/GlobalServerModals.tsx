@@ -1,3 +1,6 @@
+import { withBasePath } from '../lib/basePath';
+import { getToken } from '../lib/api';
+import { createUploadRequest } from '../lib/api';
 import ModalOverlay from './ModalOverlay.tsx';
 import { useState, useEffect, useRef } from 'react';
 import { api, extractApiErrorMessage } from '../lib/api.ts';
@@ -21,16 +24,16 @@ export default function GlobalServerModals() {
   const [csName, setCsName] = useState('');
   const [csSoftware, setCsSoftware] = useState('paper');
   const [csVersion, setCsVersion] = useState('');
-  const [csRam, setCsRam] = useState(2048);
-  const [csPort, setCsPort] = useState(25565);
+  const [csRam, setCsRam] = useState<string | number>(2048);
+  const [csPort, setCsPort] = useState<string | number>(25565);
 
   // Import Server state
   const [impFile, setImpFile] = useState(null);
   const [impName, setImpName] = useState('');
-  const [impPort, setImpPort] = useState(25565);
+  const [impPort, setImpPort] = useState<string | number>(25565);
   const [impSoftware, setImpSoftware] = useState('paper');
   const [impVersion, setImpVersion] = useState('');
-  const [impRam, setImpRam] = useState(2048);
+  const [impRam, setImpRam] = useState<string | number>(2048);
   const [impRoot, setImpRoot] = useState('');
   const [importProgress, setImportProgress] = useState(null);
   const [impBusy, setImpBusy] = useState(false);
@@ -150,6 +153,8 @@ export default function GlobalServerModals() {
 
   const handleImportServer = async (e) => {
     e.preventDefault();
+    const xhr = createUploadRequest();
+    if (!xhr) return;
     if (!impFile) return toast('Please select a .zip archive first.', 'error');
     if (!(impFile.name.toLowerCase().endsWith('.zip') || impFile.type === 'application/zip')) {
       return toast('Only .zip archives are accepted.', 'error');
@@ -172,15 +177,15 @@ export default function GlobalServerModals() {
     const fd = new FormData();
     fd.append('archive', impFile, impFile.name);
     fd.append('name', impName);
-    fd.append('port', impPort);
+    fd.append('port', String(impPort));
     fd.append('software', impSoftware);
     fd.append('version', impVersion);
-    fd.append('ram_mb', impRam);
+    fd.append('ram_mb', String(impRam));
     fd.append('root_path', impRoot);
 
-    const token = localStorage.getItem('mp_token');
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/servers/import');
+    const token = getToken();
+
+    xhr.open('POST', withBasePath('/api/servers/import'));
     if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
     xhr.upload.onprogress = (event) => {

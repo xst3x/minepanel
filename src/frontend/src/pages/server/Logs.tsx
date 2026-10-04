@@ -1,3 +1,4 @@
+import type { ServerContext } from '../../lib/serverContext';
 import Section from '../../components/Section.tsx';
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
@@ -21,7 +22,7 @@ function useIsLight() {
 }
 
 export default function ServerLogs() {
-  const { serverId } = useOutletContext();
+  const { serverId } = useOutletContext<ServerContext>();
   const isLight = useIsLight();
   const [logFiles, setLogFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState('');

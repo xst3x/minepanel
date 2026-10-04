@@ -1,3 +1,4 @@
+import { allowBackendAction } from '../lib/api';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.tsx';
@@ -18,10 +19,12 @@ export default function Accounts() {
   const [busyToken, setBusyToken] = useState(null);
 
   const handleAdd = () => {
+    if (!allowBackendAction()) return;
     navigate('/login', { state: { addAccount: true } });
   };
 
   const handleSwitch = async (token) => {
+    if (!allowBackendAction()) return;
     if (token === activeToken || busyToken) return;
     setBusyToken(token);
     const ok = await switchAccount(token);
@@ -35,6 +38,7 @@ export default function Accounts() {
   };
 
   const handleRemove = async (account) => {
+    if (!allowBackendAction()) return;
     const confirmed = await showConfirm(
       `Remove "${account.username}" from this device? You can add it again anytime.`,
       'Remove Account',

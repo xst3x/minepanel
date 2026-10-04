@@ -27,11 +27,28 @@ MinePanel is a lightweight, self-hosted web panel for managing Minecraft servers
 
 ## Demo
 
-A live demo is available at:
+MinePanel has **one frontend**, under `src/frontend`. Production and demo use the same React pages, routes, components, and CSS. With `VITE_DEMO_MODE=true`, Vite selects a local demo provider instead of the real API and WebSocket provider. The static demo needs no backend and signs visitors into a sample administrator account automatically.
 
-**https://xst3x.github.io/minepanel/**
+The demo includes sample servers, players, files, plugins, backups, users, ranks, settings, Discord bots, and the installation's documentation. Start/stop/restart and a few console commands run only in memory and reset on refresh. Theme and accent preferences remain local. Operations requiring a backend (uploads/downloads, installation, backups, FTP, automations, account changes, and integrations) explain that the full installation is required and link to [Get MinePanel](https://github.com/xst3x/minepanel).
 
-> The demo is a standalone React SPA (no backend) showcasing the panel UI. It's built with Vite and auto-deploys to GitHub Pages on every push to `main` that changes files in `src/demo/`.
+From the repository root:
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Existing backend development watcher; serves the production frontend built by `npm run build` |
+| `npm run dev:frontend` | Production Vite development server with the real backend proxy |
+| `npm run dev:demo` | Backend-free demo at http://127.0.0.1:5173; rebuilds on edits, refresh the browser to view changes |
+| `npm run build` | Compile the backend and build the production frontend into `src/public` |
+| `npm run build:demo` | Build the static demo into `dist-demo` |
+| `npm run typecheck:frontend` | Check the shared frontend and both providers |
+| `npm run test:frontend` | Run frontend and provider contract tests |
+| `npm run check:network` | Check that native network access stays in the real provider |
+
+The previous GitHub Pages deployment has been retired. No replacement public URL is configured yet.
+
+**Vercel:** Import this repository, keep the project Root Directory at the repository root, and use the checked-in `vercel.json`. It specifies `npm run build:demo`, output `dist-demo`, and `VITE_DEMO_MODE=true`. Use Node.js 22 or newer and the default `npm ci` installation. The SPA rewrite supports directly opening and refreshing nested routes. Connect your preferred domain in Vercel after deployment. No backend URL or credentials are needed.
+
+Demo builds exclude the real provider and carry a `connect-src 'none'` content security policy. Demo development deliberately uses a watched static build without a hot-reload WebSocket. See [frontend architecture](src/frontend/README.md) for the provider boundary and extension rules.
 
 ---
 
@@ -220,6 +237,14 @@ Open `http://localhost:8082`. On first run the default admin credentials are pri
 ---
 
 ## Configuration
+
+### Panel base path
+
+In **Panel Settings → Network & Ports → Base Path**, set `/` (default), `/panel/`, or another path using letters, numbers, hyphens and underscores. Save Settings, then restart the MinePanel process. Open the new path afterward, for example `https://your-host/panel/`. This moves the UI, assets, authenticated API and console WebSocket together; no frontend rebuild is needed. The saved setting lives in `settings.json`.
+
+Alternatively, set `BASE_PATH=/panel/` in the backend environment or installation `.env` before starting MinePanel. This overrides the saved setting; the UI shows the override and disables editing. A reverse proxy must forward the full path, including `/panel/`, and support WebSocket upgrades. Existing API clients must use the prefixed endpoints when this setting changes.
+
+For Vite frontend development, set `VITE_BASE_PATH=/panel/` to match the backend's path. For a static demo deployment, set `VITE_BASE_PATH=/panel/` **before building** with `npm run build:demo`; the default is `/`. Static hosting must serve the output under that prefix and rewrite nested routes to its `index.html`. Vercel's checked-in configuration uses the default root path; a prefixed Vercel deployment also needs asset rewrites from `/panel/assets/:path*` to `/assets/:path*`. Demo backend settings remain unavailable.
 
 ```env
 PORT=8082

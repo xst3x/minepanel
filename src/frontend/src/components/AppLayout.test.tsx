@@ -8,7 +8,7 @@ vi.mock('../context/ServerModalsContext.tsx', () => ({
   ServerModalsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useServerModals: () => ({ openCreate: vi.fn(), openImport: vi.fn() }),
 }));
-vi.mock('../lib/api.ts', () => ({ api: vi.fn(() => new Promise(() => {})) }));
+vi.mock('../lib/api.ts', () => ({ api: vi.fn(() => new Promise(() => {})), demoMode: false }));
 vi.mock('./GlobalServerModals.tsx', () => ({ default: () => null }));
 vi.mock('./Toast.tsx', () => ({ showConfirm: vi.fn(), toast: vi.fn() }));
 
@@ -23,7 +23,7 @@ describe('AppLayout', () => {
     );
 
     expect(screen.getByRole('complementary', { name: 'Main navigation' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Skip to content' })).toHaveAttribute('href', '#content-area');
+    expect(screen.getByRole('link', { name: 'Skip to content' })).toHaveAttribute('href', `${window.location.pathname}#content-area`);
     expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
     expect(document.querySelector('#content-bg-canvas')).not.toBeInTheDocument();
   });

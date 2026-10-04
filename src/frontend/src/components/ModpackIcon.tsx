@@ -1,3 +1,4 @@
+import { assetUrl } from '../lib/api';
 import { useState } from 'react';
 
 /**
@@ -37,7 +38,7 @@ export default function ModpackIcon({ url, alt = '', className = 'plugin-icon', 
 
   return (
     <img loading="lazy"
-      src={proxied}
+      src={assetUrl(proxied)}
       className={className}
       alt={alt}
       style={{ width: size, height: size, flexShrink: 0 }}

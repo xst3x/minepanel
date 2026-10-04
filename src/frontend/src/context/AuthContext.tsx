@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { api, getToken, setToken } from '../lib/api.ts';
+import { api, getToken, setToken, accountStorageKey } from '../lib/api.ts';
 
 const AuthCtx = createContext(null);
 
@@ -7,7 +7,7 @@ const AuthCtx = createContext(null);
 // the username it belongs to so the switcher can render without extra requests.
 // The active account's token is mirrored into the regular `mp_token` slot used
 // by the API client, so switching is just a matter of swapping that value.
-const ACCOUNTS_KEY = 'mp_accounts';
+const ACCOUNTS_KEY = accountStorageKey;
 const MAX_ACCOUNTS = 8;
 
 function loadAccounts() {
@@ -81,7 +81,7 @@ export function AuthProvider({ children }) {
     if (!res?.token) {
       // 2FA challenge: the backend asks for a code before issuing a token.
       // Surface it as an error so the login screen reveals the code field.
-      const err = new Error('Two-factor authentication required.');
+      const err = new Error('Two-factor authentication required.') as Error & { data: { requires2FA: boolean } };
       err.data = { requires2FA: true };
       throw err;
     }

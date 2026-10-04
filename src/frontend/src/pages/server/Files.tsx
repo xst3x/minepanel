@@ -1,3 +1,6 @@
+import type { ServerContext } from '../../lib/serverContext';
+import { getToken } from '../../lib/api';
+import { assetUrl, request } from '../../lib/api';
 import Section from '../../components/Section.tsx';
 import ModalOverlay from '../../components/ModalOverlay.tsx';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -21,7 +24,7 @@ const FILE_SVG = (
 );
 
 export default function ServerFiles() {
-  const { serverId, hasPerm } = useOutletContext();
+  const { serverId, hasPerm } = useOutletContext<ServerContext>();
   const [currentPath, setCurrentPath] = useState('/');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -230,7 +233,7 @@ export default function ServerFiles() {
     try {
       const r = await api(`/api/servers/${serverId}/files/batch-download`, { method: 'POST', body: { paths: makeRelPaths() } });
       dismiss(null, 'Download ready.');
-      if (r.downloadUrl) window.open(r.downloadUrl, '_blank');
+      if (r.downloadUrl) window.open(assetUrl(r.downloadUrl), '_blank');
       deselectAll();
     } catch (e) { dismiss(e.message); }
   };
@@ -364,12 +367,12 @@ export default function ServerFiles() {
     try {
       if (item.isDirectory) {
         const r = await api(`/api/servers/${serverId}/files/download?path=${encodeURIComponent(filePath)}`);
-        if (r.downloadUrl) window.open(r.downloadUrl, '_blank');
+        if (r.downloadUrl) window.open(assetUrl(r.downloadUrl), '_blank');
         else toast('Failed to prepare download.', 'error');
       } else {
-        const token = localStorage.getItem('mp_token');
+        const token = getToken();
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-        const res = await fetch(`/api/servers/${serverId}/files/download?path=${encodeURIComponent(filePath)}`, { headers });
+        const res = await request(`/api/servers/${serverId}/files/download?path=${encodeURIComponent(filePath)}`, { headers });
         if (!res.ok) throw new Error('Download failed');
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
@@ -402,9 +405,9 @@ export default function ServerFiles() {
     }
 
     if (imageExts.includes(ext) && !item.isDirectory) {
-      const token = localStorage.getItem('mp_token');
+      const token = getToken();
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const res = await fetch(`/api/servers/${serverId}/files/download?path=${encodeURIComponent(filePath)}`, { headers });
+      const res = await request(`/api/servers/${serverId}/files/download?path=${encodeURIComponent(filePath)}`, { headers });
       if (res.ok) {
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);

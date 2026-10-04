@@ -157,7 +157,7 @@ else {
             socket.on('close', () => activeSockets.delete(socket));
         });
     }
-    const wss = new WebSocket.Server({ server: CONFIG.HTTPS_ENABLED ? secureServer : server, path: '/ws' });
+    const wss = new WebSocket.Server({ server: CONFIG.HTTPS_ENABLED ? secureServer : server, path: CONFIG.BASE_PATH + 'ws' });
     const allowedOrigins = CONFIG.ALLOWED_ORIGINS;
     if (allowedOrigins.length === 0)
         console.warn('[CORS] No allowed origins configured.');
@@ -215,17 +215,36 @@ else {
         max: CONFIG.RATE_LIMIT,
         message: { error: 'Too many requests from this IP, please try again later.' }
     });
-    app.use('/api/', (req, res, next) => {
+    // Mount the entire panel, including protected APIs, under one installation path.
+    const panelRouter = express.Router();
+    if (CONFIG.BASE_PATH !== '/') {
+        app.get(CONFIG.BASE_PATH.slice(0, -1), (req, res, next) => {
+            // Express permits a trailing slash by default. Only redirect the exact
+            // slashless path; the canonical path must reach the panel router below.
+            if (req.path !== CONFIG.BASE_PATH.slice(0, -1))
+                return next();
+            res.setHeader('Cache-Control', 'no-store');
+            res.redirect(302, CONFIG.BASE_PATH + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''));
+        });
+    }
+    app.use(CONFIG.BASE_PATH, panelRouter);
+    panelRouter.use('/api/', (req, res, next) => {
         if (req.path === '/servers/import')
             return next();
         return globalRateLimiter(req, res, next);
     });
-    app.use(express.static(path.join(PROJECT_ROOT, 'src', 'public')));
-    app.get('/health', (req, res) => {
+    const servePanelIndex = (req, res) => {
+        const html = fs.readFileSync(path.join(PROJECT_ROOT, 'src', 'public', 'index.html'), 'utf8');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.type('html').send(html.replace(/<base href="[^"]*"\s*\/?>/, '<base href="' + CONFIG.BASE_PATH + '" />'));
+    };
+    panelRouter.get('/index.html', servePanelIndex);
+    panelRouter.use(express.static(path.join(PROJECT_ROOT, 'src', 'public'), { index: false }));
+    panelRouter.get('/health', (req, res) => {
         res.json({ status: 'ok', version: require(path.join(PROJECT_ROOT, 'package.json')).version, uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
     });
-    app.use('/avatars', express.static(AVATARS_DIR));
-    app.get('/metrics', (req, res) => {
+    panelRouter.use('/avatars', express.static(AVATARS_DIR));
+    panelRouter.get('/metrics', (req, res) => {
         const metricsAuthDisabled = process.env.METRICS_AUTH === 'false';
         if (!metricsAuthDisabled) {
             const token = (req.headers['authorization'] || '').split(' ')[1];
@@ -253,29 +272,29 @@ else {
             `minepanel_memory_rss_bytes ${mem.rss}`,
         ].join('\n') + '\n');
     });
-    app.use('/api/auth', authRoutes);
-    app.use('/api/system', systemRoutes);
-    app.use('/api/servers', serverRoutes);
-    app.use('/api/servers/:serverId/files', fileRoutes);
-    app.use('/api/files', fileRoutes);
-    app.use('/api/servers/:serverId/players', playerRoutes);
-    app.use('/api/servers/:serverId/plugins', pluginRoutes);
-    app.use('/api/modpacks', modpackRoutes);
-    app.use('/api/servers/:serverId/pocketmine', pocketmineRoutes);
-    app.use('/api/servers/:serverId/backups', backupRoutes);
-    app.use('/api/servers/:serverId/properties', propertiesRoutes);
-    app.use('/api/servers/:serverId/logs', logRoutes);
-    app.use('/api/users', userRoutes);
-    app.use('/api/ranks', rankRoutes);
-    app.use('/api/servers/:serverId/discord', discordRoutes);
-    app.use('/api/discord/bots', discordBotsRoutes);
-    app.use('/api/servers/:serverId/stats', statsRouter);
-    app.use('/api/stats/config', statsConfigRouter);
-    app.use('/api/docs', docsRoutes);
-    app.use('/api/servers/:serverId/automation', automationRoutes);
+    panelRouter.use('/api/auth', authRoutes);
+    panelRouter.use('/api/system', systemRoutes);
+    panelRouter.use('/api/servers', serverRoutes);
+    panelRouter.use('/api/servers/:serverId/files', fileRoutes);
+    panelRouter.use('/api/files', fileRoutes);
+    panelRouter.use('/api/servers/:serverId/players', playerRoutes);
+    panelRouter.use('/api/servers/:serverId/plugins', pluginRoutes);
+    panelRouter.use('/api/modpacks', modpackRoutes);
+    panelRouter.use('/api/servers/:serverId/pocketmine', pocketmineRoutes);
+    panelRouter.use('/api/servers/:serverId/backups', backupRoutes);
+    panelRouter.use('/api/servers/:serverId/properties', propertiesRoutes);
+    panelRouter.use('/api/servers/:serverId/logs', logRoutes);
+    panelRouter.use('/api/users', userRoutes);
+    panelRouter.use('/api/ranks', rankRoutes);
+    panelRouter.use('/api/servers/:serverId/discord', discordRoutes);
+    panelRouter.use('/api/discord/bots', discordBotsRoutes);
+    panelRouter.use('/api/servers/:serverId/stats', statsRouter);
+    panelRouter.use('/api/stats/config', statsConfigRouter);
+    panelRouter.use('/api/docs', docsRoutes);
+    panelRouter.use('/api/servers/:serverId/automation', automationRoutes);
     // SPA catch-all — trimite index.html pentru orice rută non-API (React Router)
-    app.get(/^(?!\/api\/).*$/, (req, res) => {
-        res.sendFile(path.join(PROJECT_ROOT, 'src', 'public', 'index.html'));
+    panelRouter.get(/^(?!\/api\/).*$/, (req, res) => {
+        servePanelIndex(req, res);
     });
     app.use((err, req, res, next) => {
         if (err.message === 'Not allowed by CORS')

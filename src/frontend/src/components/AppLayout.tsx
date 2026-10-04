@@ -1,4 +1,6 @@
+import { assetUrl, allowBackendAction } from '../lib/api';
 import BrandLogo from './BrandLogo.tsx';
+import DemoNotice from './DemoNotice';
 import { createPortal } from 'react-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
@@ -191,6 +193,7 @@ function AppLayoutInner() {
   };
 
   const handleLogout = async () => {
+    if (!allowBackendAction()) return;
     const confirmed = await showConfirm('Are you sure you want to logout?', 'Logout Confirmation');
     if (!confirmed) return;
     await logout();
@@ -199,7 +202,7 @@ function AppLayoutInner() {
 
   return (
     <div id="app">
-      <a className="skip-link" href="#content-area">Skip to content</a>
+      <a className="skip-link" href={`${window.location.pathname}#content-area`}>Skip to content</a>
 
       {/* Keep mobile navigation outside the app scroll/stacking container. */}
       {createPortal(<header className="mobile-top-bar">
@@ -299,7 +302,7 @@ function AppLayoutInner() {
                 >
                   <span className="sidebar-server-icon-wrap">
                     {sv.icon
-                      ? <img loading="lazy" className="sidebar-server-icon" src={sv.icon} alt="" />
+                      ? <img loading="lazy" className="sidebar-server-icon" src={assetUrl(sv.icon)} alt="" />
                       : <svg className="sidebar-server-icon sidebar-server-icon-default" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <rect x="2" y="2" width="20" height="8" rx="2"/>
                           <rect x="2" y="14" width="20" height="8" rx="2"/>
@@ -416,6 +419,7 @@ function AppLayoutInner() {
         </aside>
 
         <main className="content-area" id="content-area" tabIndex={-1}>
+          <DemoNotice />
           <div key={location.pathname.split('/')[1] || 'panel'} className="route-fade">
             <Outlet />
           </div>

@@ -2,6 +2,7 @@ import './styles/layers.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { getBasePath } from './lib/basePath';
 import App from './App.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
 import { ToastProvider } from './components/Toast.tsx';
@@ -50,7 +51,7 @@ log.debug('Accent color restored from localStorage');
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={getBasePath()}>
       <ToastProvider>
         <AuthProvider>
           <App />

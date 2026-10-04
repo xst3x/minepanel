@@ -19,6 +19,7 @@ const { getServer, getServerDir } = serverHelperModule;
 const errorsModule = require("../core/errors");
 const { E, sendError } = errorsModule;
 const logger = require("../core/utils/logger");
+const playerEnderChest_1 = require("../core/playerEnderChest");
 const router = express.Router({ mergeParams: true });
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const loadUsercache = (serverDir) => {
@@ -289,7 +290,8 @@ router.post('/:uuid/command', authenticateToken, checkPermission('server.players
         logger.error(`[playerRoutes] command pre-check error (Server: ${serverId}, Player: ${uuid}):`, e);
         return sendError(res, E.INTERNAL_ERROR, 500);
     }
-    if (!username)
+    // Saved-data operations need a UUID, even if usercache no longer has a name.
+    if (!username && action !== 'clear-enderchest')
         return sendError(res, E.PLAYER_USERNAME_UNRESOLVABLE, 400);
     const allowedActions = [
         'kick', 'ban', 'pardon', 'mute', 'unmute',
@@ -297,10 +299,31 @@ router.post('/:uuid/command', authenticateToken, checkPermission('server.players
         'gamemode',
         'xp', 'give', 'effect', 'clear',
         'teleport', 'heal', 'feed', 'starve', 'kill',
-        'wipe'
+        'wipe', 'clear-enderchest'
     ];
     if (!allowedActions.includes(action))
         return sendError(res, E.PLAYER_ACTION_INVALID, 400);
+    if (action === 'clear-enderchest') {
+        if (!/^[0-9a-f]{32}$/i.test(String(uuid).replace(/-/g, '')))
+            return sendError(res, E.BAD_REQUEST, 400, 'A valid player UUID is required.');
+        if (!processManager.acquireLock(serverId))
+            return sendError(res, E.SERVER_LOCKED, 409);
+        try {
+            // Online/stopping processes retain player NBT in memory and could
+            // overwrite a disk edit. Only a fully stopped server is safe.
+            if (await executionManager.getStatus(String(serverId)) !== 'offline')
+                return sendError(res, E.SERVER_MUST_BE_STOPPED, 400);
+            await (0, playerEnderChest_1.clearPlayerEnderChest)(serverDir, uuid);
+            return res.json({ message: `Cleared the saved ender chest for ${username || uuid}.` });
+        }
+        catch (error) {
+            logger.error(`[playerRoutes] Clear ender chest error (Server: ${serverId}, Player: ${uuid}):`, error);
+            return sendError(res, error.code === 'ENOENT' ? E.PLAYER_NOT_FOUND : E.BAD_REQUEST, error.code === 'ENOENT' ? 404 : 400, error.message);
+        }
+        finally {
+            processManager.releaseLock(serverId);
+        }
+    }
     // Sanitize inputs to prevent newline-based command injection.
     const sanitizeArg = (s) => String(s || '').replace(/[\r\n\0]/g, '').trim();
     const safeUsername = sanitizeArg(username);

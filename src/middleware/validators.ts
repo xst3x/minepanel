@@ -178,6 +178,7 @@ const updateRun = Joi.object({
 // ─── System ──────────────────────────────────────────────────────────────────
 
 const panelSettings = Joi.object({
+    basePath: Joi.string().trim().max(256).pattern(/^\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+\/?$|^\/$/).optional(),
     loginCooldown:                    Joi.number().integer().min(0).max(3600).optional(),
     maxAttempts:                      Joi.number().integer().min(1).max(100).optional(),
     rateLimit:                        Joi.number().integer().min(1).max(10000).optional(),

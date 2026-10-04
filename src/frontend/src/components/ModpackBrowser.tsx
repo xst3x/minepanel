@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { api } from '../lib/api.js';
+import { assetUrl, api } from '../lib/api.js';
 import { toast, toastProgress } from './Toast.tsx';
 import { parseMarkdown } from '../lib/markdown.ts';
 import ModpackIcon from './ModpackIcon.tsx';
@@ -143,7 +143,7 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
     const dismiss = toastProgress(`Creating modpack server "${serverName.trim()}"…`);
 
     try {
-      const body = {
+      const body: { name: string; ram_mb: number; port: number; projectId: string; versionId?: string } = {
         name: serverName.trim(),
         ram_mb: Number(ramMb) || 2048,
         port: Number(port) || 25565,
@@ -331,7 +331,7 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
                             {items.map(item => (
                               <div className="detail-row" key={item.project_id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.875rem' }}>
                                 {item.icon_url && (
-                                  <img src={`/api/modpacks/icon?url=${encodeURIComponent(item.icon_url)}`} alt="" width={20} height={20} style={{ borderRadius: '3px', flexShrink: 0 }} loading="lazy" />
+                                  <img src={assetUrl(`/api/modpacks/icon?url=${encodeURIComponent(item.icon_url)}`)} alt="" width={20} height={20} style={{ borderRadius: '3px', flexShrink: 0 }} loading="lazy" />
                                 )}
                                 <span style={{ fontWeight: 500, color: 'var(--text-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
                                 {item.dependency_type === 'optional' && (
@@ -434,14 +434,14 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
       <div className="modpack-browser-filters">
         <div>
           <label>Minecraft Version</label>
-          <Select aria-label="Minecraft Version" value={mcVersion} onChange={e => setMcVersion(e.target.value)}>
+          <Select aria-label="Minecraft Version" value={mcVersion} onChange={e => setMcVersion(e.currentTarget.value)}>
             <option value="">All versions</option>
             {gameVersions.map(v => <option key={v} value={v}>{v}</option>)}
           </Select>
         </div>
         <div>
           <label>Mod Loader</label>
-          <Select aria-label="Mod Loader" value={loader} onChange={e => setLoader(e.target.value)}>
+          <Select aria-label="Mod Loader" value={loader} onChange={e => setLoader(e.currentTarget.value)}>
             <option value="">All loaders</option>
             <option value="fabric">Fabric</option>
             <option value="forge">Forge</option>
@@ -451,7 +451,7 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
         </div>
         <div>
           <label>Sort By</label>
-          <Select aria-label="Sort By" value={sort} onChange={e => setSort(e.target.value)}>
+          <Select aria-label="Sort By" value={sort} onChange={e => setSort(e.currentTarget.value)}>
             {SORT_OPTIONS.map(([id, label]) => (
               <option key={id} value={id}>{label}</option>
             ))}
@@ -541,12 +541,12 @@ export default function ModpackBrowser({ serverName, ramMb, port, onInstalled })
               defaultValue={currentPage}
               key={currentPage}
               onBlur={e => {
-                const v = Math.min(Math.max(parseInt(e.target.value, 10) || 1, 1), totalPages);
+                const v = Math.min(Math.max(parseInt(e.currentTarget.value, 10) || 1, 1), totalPages);
                 goToPage(v - 1);
               }}
               onKeyDown={e => {
                 if (e.key === 'Enter') {
-                  const v = Math.min(Math.max(parseInt(e.target.value, 10) || 1, 1), totalPages);
+                  const v = Math.min(Math.max(parseInt(e.currentTarget.value, 10) || 1, 1), totalPages);
                   goToPage(v - 1);
                 }
               }}

@@ -120,7 +120,7 @@ export default function Discord() {
     try {
       if (editingBot) {
         // Edit existing bot
-        const payload = { guildId, serverIds: selectedServerIds };
+        const payload: { guildId: string; serverIds: number[]; botToken?: string } = { guildId, serverIds: selectedServerIds };
         if (botToken) {
           payload.botToken = botToken;
         }
@@ -206,7 +206,7 @@ export default function Discord() {
                       alt=""
                       style={{ width: '52px', height: '52px', borderRadius: '50%', border: '2px solid var(--border-color)', background: 'var(--bg-input)' }}
                       onError={(e) => {
-                        e.target.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 52'><rect width='52' height='52' fill='%23333'><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='20' fill='%23aaa'>${(bot.username || '?')[0].toUpperCase()}</text></rect></svg>`;
+                        e.currentTarget.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 52'><rect width='52' height='52' fill='%23333'><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='20' fill='%23aaa'>${(bot.username || '?')[0].toUpperCase()}</text></rect></svg>`;
                       }}
                     />
                     <span
@@ -303,7 +303,7 @@ export default function Discord() {
                     alt=""
                     style={{ width: '40px', height: '40px', borderRadius: '50%' }}
                     onError={(e) => {
-                      e.target.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' fill='%23333'><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='16' fill='%23aaa'>Bot</text></rect></svg>`;
+                      e.currentTarget.src = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' fill='%23333'><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='16' fill='%23aaa'>Bot</text></rect></svg>`;
                     }}
                   />
                   <div>

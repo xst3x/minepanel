@@ -1,3 +1,5 @@
+import { demoMode } from '../lib/api';
+import { DEMO_MESSAGE } from '../lib/backend/restrictions';
 import ModalOverlay from './ModalOverlay.tsx';
 import { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
 import '../styles/components/Toast.css';
@@ -15,6 +17,7 @@ let _confirmFn = null;
 let _promptFn = null;
 
 export function toast(message, type = 'info') {
+  if (demoMode && typeof message === 'string' && message.includes(DEMO_MESSAGE)) return;
   if (_toastFn) _toastFn(message, type);
   else console.warn('[toast]', type, message);
 }
@@ -45,7 +48,7 @@ export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const [progressToasts, setProgressToasts] = useState([]); // { id, message }
   const [confirm, setConfirm] = useState(null);
-  const [confirmOptions, setConfirmOptions] = useState({});
+  const [confirmOptions, setConfirmOptions] = useState<{ danger?: boolean; confirmLabel?: string }>({});
   const [prompt, setPrompt] = useState(null);
   const [promptValue, setPromptValue] = useState('');
   const idRef = useRef(0);
@@ -67,6 +70,7 @@ export function ToastProvider({ children }) {
     // Returns a dismiss function
     return (errorMsg, successMsg) => {
       setProgressToasts(prev => prev.filter(t => t.id !== id));
+      if (demoMode && typeof errorMsg === 'string' && errorMsg.includes(DEMO_MESSAGE)) return;
       if (errorMsg) addToast(errorMsg, 'error');
       else if (successMsg) addToast(successMsg, 'success');
     };

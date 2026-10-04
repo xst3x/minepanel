@@ -1,3 +1,4 @@
+import { demoMode } from './lib/api';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import RequireAuth from './components/RequireAuth.tsx';
 import AppLayout from './components/AppLayout.tsx';
@@ -29,7 +30,7 @@ import ServerAutomation from './pages/server/Automation.tsx';
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={demoMode ? <Navigate to="/panel" replace /> : <Login />} />
 
       <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
         <Route path="/" element={<Navigate to="/panel" replace />} />

@@ -1,5 +1,7 @@
 "use strict";
 const paths_1 = require("../paths");
+const basePath_1 = require("../core/basePath");
+const CONFIG = require("../config");
 const express = require("express");
 const os = require("os");
 const fs = require("fs");
@@ -20,6 +22,7 @@ const logger = require("../core/utils/logger");
 const router = express.Router();
 const getSettings = async () => {
     const defaults = {
+        basePath: '/',
         loginCooldown: 30,
         maxAttempts: 5,
         rateLimit: 100,
@@ -143,7 +146,7 @@ router.get('/settings', authenticateToken, async (req, res) => {
         if (!isAllowed)
             return sendError(res, E.FORBIDDEN, 403);
         const settings = await getSettings();
-        res.json(settings);
+        res.json({ ...settings, activeBasePath: CONFIG.BASE_PATH, basePathFromEnvironment: process.env.BASE_PATH !== undefined });
     }
     catch (e) {
         logger.error(`[systemRoutes] GET settings error (User: ${req.user.id}):`, e);
@@ -159,6 +162,7 @@ router.post('/settings', authenticateToken, validate(V.panelSettings), async (re
         const payload = req.body;
         const current = await getSettings();
         const updated = {
+            basePath: payload.basePath !== undefined ? (0, basePath_1.normalizeBasePath)(payload.basePath) : current.basePath,
             loginCooldown: Number(payload.loginCooldown) || current.loginCooldown,
             maxAttempts: Number(payload.maxAttempts) || current.maxAttempts,
             rateLimit: Number(payload.rateLimit) || current.rateLimit,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
-import { api, getToken } from '../lib/api.ts';
+import { api, getToken, createServerSocket, allowBackendAction } from '../lib/api.ts';
 import { toast, showConfirm } from './Toast.tsx';
 import log from '../lib/logger.ts';
 import { splitConsoleChunk } from '../lib/minecraftLog.ts';
@@ -95,6 +95,7 @@ export default function ServerLayout() {
 
   // Lifecycle control functions
   const sendControl = async (action) => {
+    if (action === 'kill' && !allowBackendAction()) return;
     const requiredPerm = `server.${action}`;
     if (!hasPerm(requiredPerm)) {
       toast("You don't have permission to do this.", 'error');
@@ -137,7 +138,7 @@ export default function ServerLayout() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws?serverId=${id}`;
     
-    const socket = new WebSocket(wsUrl);
+    const socket = createServerSocket(wsUrl);
     wsRef.current = socket;
     log.wsConnect(wsUrl);
 

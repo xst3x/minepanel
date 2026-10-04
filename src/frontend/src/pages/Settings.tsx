@@ -1,3 +1,5 @@
+import { getBasePath } from '../lib/basePath';
+import { request } from '../lib/api';
 import CustomColorButton from '../components/CustomColorButton.tsx';
 import Section from '../components/Section.tsx';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -51,17 +53,20 @@ export default function Settings() {
     localStorage.getItem('mp_accent') || 'hsl(149,100%,47%)'
   );
   const [showColorWell, setShowColorWell] = useState(false);
-  const [loginCooldown, setLoginCooldown] = useState(60);
-  const [maxAttempts, setMaxAttempts] = useState(5);
-  const [rateLimit, setRateLimit] = useState(100);
-  const [defaultRam, setDefaultRam] = useState(2048);
-  const [defaultPort, setDefaultPort] = useState(25565);
-  const [maxRam, setMaxRam] = useState(16384);
-  const [ftpPort, setFtpPort] = useState(2121);
+  const [loginCooldown, setLoginCooldown] = useState<string | number>(60);
+  const [maxAttempts, setMaxAttempts] = useState<string | number>(5);
+  const [rateLimit, setRateLimit] = useState<string | number>(100);
+  const [defaultRam, setDefaultRam] = useState<string | number>(2048);
+  const [defaultPort, setDefaultPort] = useState<string | number>(25565);
+  const [maxRam, setMaxRam] = useState<string | number>(16384);
+  const [ftpPort, setFtpPort] = useState<string | number>(2121);
   const [ftpEnabled, setFtpEnabled] = useState(false);
   const [requireInviteToken, setRequireInviteToken] = useState(true);
   const [defaultRankId, setDefaultRankId] = useState('');
   const [defaultJavaPath, setDefaultJavaPath] = useState('java');
+  const [basePath, setBasePath] = useState('/');
+  const [activeBasePath, setActiveBasePath] = useState(getBasePath());
+  const [basePathFromEnvironment, setBasePathFromEnvironment] = useState(false);
   const [systemPort, setSystemPort] = useState('');
   const [switchingPort, setSwitchingPort] = useState(false);
 
@@ -71,6 +76,9 @@ export default function Settings() {
     setLoading(true);
     try {
       const s = await api('/api/system/settings');
+      setBasePath(s.basePathFromEnvironment ? s.activeBasePath : (s.basePath ?? '/'));
+      setActiveBasePath(s.activeBasePath ?? getBasePath());
+      setBasePathFromEnvironment(!!s.basePathFromEnvironment);
       setLoginCooldown(s.loginCooldown ?? 60);
       setMaxAttempts(s.maxAttempts ?? 5);
       setRateLimit(s.rateLimit ?? 100);
@@ -98,6 +106,7 @@ export default function Settings() {
       const res = await api('/api/system/settings', {
         method: 'POST',
         body: {
+          basePath,
           loginCooldown: Number(loginCooldown),
           maxAttempts: Number(maxAttempts),
           rateLimit: Number(rateLimit),
@@ -145,12 +154,12 @@ export default function Settings() {
   const pollNewPort = (newPort, oldPort) => {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
-    const testUrl = `${protocol}//${hostname}:${newPort}/api/system/health`;
+    const testUrl = `${protocol}//${hostname}:${newPort}${getBasePath()}api/system/health`;
     let attempt = 0;
     let delay = 500;
     function check() {
       attempt++;
-      fetch(testUrl, { cache: 'no-cache' })
+      request(testUrl, { cache: 'no-cache' })
         .then(r => r.json())
         .then(data => {
           if (data?.booted === true) {
@@ -226,6 +235,13 @@ export default function Settings() {
           {/* Network & Ports  exact same card as old frontend, combined */}
           <Section className="">
             <h3>Network &amp; Ports</h3>
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label htmlFor="panel-base-path">Base Path</label>
+              <input id="panel-base-path" value={basePath} onChange={e => setBasePath(e.target.value)} placeholder="/" disabled={basePathFromEnvironment} />
+              <p className="text-muted">Default: /. Use a path such as /panel/. Save settings and restart MinePanel to apply.</p>
+              <p className="text-muted">Active path: {activeBasePath}{basePathFromEnvironment ? ' (set by BASE_PATH in the environment)' : ''}</p>
+              {!basePathFromEnvironment && basePath.replace(/\/?$/, '/') !== activeBasePath && <p className="text-muted">After saving and restarting, open {window.location.origin}{basePath.replace(/\/?$/, '/')}.</p>}
+            </div>
             <div className="form-group" style={{ marginTop: '1rem' }}>
               <label>Server Port</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>

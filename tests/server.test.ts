@@ -20,6 +20,12 @@ jest.mock('../src/core/resolvers', () => {
     };
 });
 
+// This suite tests lifecycle locking, independent of services on the host.
+jest.mock('../src/core/serverHelper', () => ({
+    ...jest.requireActual('../src/core/serverHelper'),
+    isPortInUse: jest.fn().mockResolvedValue(false),
+}));
+
 const request = require('supertest');
 const { app } = require('../src/index');
 const { initDb, dbRun } = require('../src/db/database');
@@ -122,6 +128,7 @@ describe('Servers API', () => {
             // Release lock
             pm.releaseLock(serverId);
         } finally {
+            pm.releaseLock(serverId);
             fs.existsSync = originalExistsSync;
         }
     });

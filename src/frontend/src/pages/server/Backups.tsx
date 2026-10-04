@@ -1,3 +1,6 @@
+import type { ServerContext } from '../../lib/serverContext';
+import { getToken } from '../../lib/api';
+import { request } from '../../lib/api';
 import Section from '../../components/Section.tsx';
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
@@ -6,9 +9,9 @@ import { api } from '../../lib/api.ts';
 import { toast, showConfirm, toastProgress } from '../../components/Toast.tsx';
 
 export default function ServerBackups() {
-  const { serverId, hasPerm } = useOutletContext();
+  const { serverId, hasPerm } = useOutletContext<ServerContext>();
   const [backups, setBackups] = useState([]);
-  const [config, setConfig] = useState({
+  const [config, setConfig] = useState<{ auto_backup: boolean; backup_interval: string | number; backup_includes: string }>({
     auto_backup: false,
     backup_interval: 24,
     backup_includes: 'all'
@@ -52,7 +55,7 @@ export default function ServerBackups() {
         method: 'POST',
         body: {
           enabled: config.auto_backup,
-          interval: parseInt(config.backup_interval) || 24,
+          interval: parseInt(String(config.backup_interval)) || 24,
           includes: config.backup_includes || 'all'
         }
       });
@@ -83,9 +86,9 @@ export default function ServerBackups() {
 
   const handleDownload = async (filename) => {
     try {
-      const token = localStorage.getItem('mp_token');
+      const token = getToken();
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const res = await fetch(`/api/servers/${serverId}/backups/${filename}/download`, { headers });
+      const res = await request(`/api/servers/${serverId}/backups/${filename}/download`, { headers });
       if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);

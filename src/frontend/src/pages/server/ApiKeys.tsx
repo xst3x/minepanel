@@ -1,3 +1,5 @@
+import type { ServerContext } from '../../lib/serverContext';
+import { withBasePath } from '../../lib/basePath';
 import Section from '../../components/Section.tsx';
 import ModalOverlay from '../../components/ModalOverlay.tsx';
 import { useState, useEffect, useRef } from 'react';
@@ -173,7 +175,7 @@ function IpListEditor({ ips, onChange }: { ips: string[]; onChange: (ips: string
 }
 
 export default function ServerApiKeys() {
- const { serverId } = useOutletContext();
+ const { serverId } = useOutletContext<ServerContext>();
  const [keys, setKeys] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
  const [showCreate, setShowCreate] = useState(false);
@@ -299,7 +301,7 @@ export default function ServerApiKeys() {
  <Section className="">
  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
  <h4 style={{ margin: 0 }}>API Documentation & Examples</h4>
- <a href="/serverapi/docs/ui" target="_blank" rel="noopener noreferrer" className="btn outline small">
+ <a href={withBasePath('/serverapi/docs/ui')} target="_blank" rel="noopener noreferrer" className="btn outline small">
  Open Swagger UI 
  </a>
  </div>

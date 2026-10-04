@@ -232,6 +232,9 @@
     .mobile-top-bar, .mobile-overlay, .sidebar-close-btn, .sidebar.drawer-open .sidebar-close-btn { display: none; }
     .sidebar, .sidebar.drawer-open { position: sticky; top: 0; width: var(--sidebar-width); min-width: var(--sidebar-width); transform: none; visibility: visible; z-index: var(--z-nav); }
     .sidebar-brand { padding: 0 24px; height: 64px; }
+    /* The section already supplies desktop gutters; avoid a second button inset. */
+    .sidebar-section-servers > button.sidebar-create,
+    .sidebar-section-servers > button.sidebar-add { width: 100%; margin-inline: 0; }
     .content-area { padding-top: 0; width: calc(100% - var(--sidebar-width)); }
     .docs-layout { flex-direction: row; flex-wrap: nowrap; }
     .docs-layout .docs-sidebar { width: 240px; position: sticky; top: 24px; max-height: calc(100dvh - 48px); }

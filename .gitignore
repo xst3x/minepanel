@@ -43,3 +43,6 @@ nul
 _fix_regex.js
 split_css.py
 .map
+
+# Shared frontend demo build
+dist-demo/

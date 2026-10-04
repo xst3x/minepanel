@@ -133,7 +133,7 @@ export default function PocketMinePlugins({ serverId }) {
   };
 
   // ── Install ────────────────────────────────────────────────────────────────
-  const installPlugin = async (pluginName, version) => {
+  const installPlugin = async (pluginName, version = undefined) => {
     try {
       toast('Installing...', 'info');
       const body = version ? { pluginName, version } : { pluginName };
@@ -265,7 +265,7 @@ export default function PocketMinePlugins({ serverId }) {
                             src={plugin.icon}
                             className="plugin-icon"
                             alt=""
-                            onError={e => { e.target.style.display = 'none'; }}
+                            onError={e => { e.currentTarget.style.display = 'none'; }}
                           />
                         ) : (
                           <div className="plugin-icon" style={{
@@ -337,12 +337,12 @@ export default function PocketMinePlugins({ serverId }) {
                       color: 'var(--text-primary)', textAlign: 'center',
                     }}
                     onBlur={e => {
-                      const v = Math.min(Math.max(parseInt(e.target.value, 10) || 1, 1), totalPages);
+                      const v = Math.min(Math.max(parseInt(e.currentTarget.value, 10) || 1, 1), totalPages);
                       goToPage(v - 1);
                     }}
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
-                        const v = Math.min(Math.max(parseInt(e.target.value, 10) || 1, 1), totalPages);
+                        const v = Math.min(Math.max(parseInt(e.currentTarget.value, 10) || 1, 1), totalPages);
                         goToPage(v - 1);
                       }
                     }}
@@ -395,7 +395,7 @@ export default function PocketMinePlugins({ serverId }) {
                       src={detail.icon}
                       className="plugin-detail-icon"
                       alt=""
-                      onError={e => { e.target.style.display = 'none'; }}
+                      onError={e => { e.currentTarget.style.display = 'none'; }}
                     />
                   ) : (
                     <div className="plugin-detail-icon" style={{

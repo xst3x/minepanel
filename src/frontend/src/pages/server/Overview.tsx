@@ -1,3 +1,4 @@
+import type { ServerContext } from '../../lib/serverContext';
 import Section from '../../components/Section.tsx';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
@@ -65,7 +66,7 @@ const fmtAxisTime = (v, range) => {
 };
 
 export default function ServerOverview() {
-  const { serverId, status, metrics, hasPerm } = useOutletContext();
+  const { serverId, status, metrics, hasPerm } = useOutletContext<ServerContext>();
 
   const [backups, setBackups] = useState([]);
 
@@ -289,7 +290,7 @@ export default function ServerOverview() {
                 return it ? fmtDateTime(it.parsed.x) : '';
               },
               label: (ctx) => {
-                const p = ctx.raw;
+                const p = ctx.raw as { y?: number; mb?: number };
                 if (!p) return '';
                 if (ctx.datasetIndex === 0) return `CPU: ${(p.y ?? 0).toFixed(1)}%`;
                 if (ctx.datasetIndex === 1) return `RAM: ${(p.y ?? 0).toFixed(1)}%  (${p.mb} MB)`;

@@ -1,9 +1,10 @@
+import type { ServerContext } from '../../lib/serverContext';
 import CustomColorButton from '../../components/CustomColorButton.tsx';
 import Section from '../../components/Section.tsx';
 import ModalOverlay from '../../components/ModalOverlay.tsx';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { api } from '../../lib/api.ts';
+import { api, allowBackendAction } from '../../lib/api.ts';
 import { toast, showConfirm } from '../../components/Toast.tsx';
 import Select from '../../components/Select.tsx';
 import ColorWell from '../../components/ColorWell.tsx';
@@ -68,9 +69,9 @@ const normalizeVal = (raw) => {
 
 
 export default function ServerProperties() {
-  const { serverId } = useOutletContext();
+  const { serverId } = useOutletContext<ServerContext>();
 
-  const [properties, setProperties] = useState({});
+  const [properties, setProperties] = useState<Record<string, string>>({});
   const [mode, setMode] = useState('visual');
   const [activeCat, setActiveCat] = useState('gameplay');
   const [rawText, setRawText] = useState('');
@@ -128,7 +129,7 @@ export default function ServerProperties() {
       setMode('raw');
     } else {
       const lines = rawText.split('\n');
-      const newProps = {};
+      const newProps: Record<string, string> = {};
       lines.forEach(line => {
         const trimmed = line.trim();
         if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
@@ -297,6 +298,7 @@ export default function ServerProperties() {
   }, [motdVal, renderMotdPreview]);
 
   const handleOpenItemPicker = async () => {
+    if (!allowBackendAction()) return;
     if (!window.serverIconHelper) return;
     setShowItemPicker(true);
     const presets = window.serverIconHelper.PRESET_ITEMS || [];
@@ -307,6 +309,7 @@ export default function ServerProperties() {
   };
 
   const handleSelectPresetItem = async (itemId) => {
+    if (!allowBackendAction()) return;
     if (!window.serverIconHelper) return;
     try {
       setShowItemPicker(false);
@@ -376,7 +379,7 @@ export default function ServerProperties() {
             ))}
           </Select>
         );
-      } else if (!isNaN(v) && v !== '') {
+      } else if (!isNaN(Number(v)) && v !== '') {
         inputEl = (
           <input inputMode="numeric"
             type="number"

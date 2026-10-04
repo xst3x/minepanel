@@ -1,4 +1,21 @@
 @layer components {
+.player-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.compact-list-row > .player-identity { flex: 1 1 auto; }
+.player-identity > .compact-list-main { flex: 1 1 auto; min-width: 0; }
+.player-identity > span { overflow-wrap: anywhere; min-width: 0; }
+.player-skin-frame { position: relative; display: inline-flex; flex-shrink: 0; isolation: isolate; }
+.player-skin-frame::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--accent) 40%, transparent), transparent 72%);
+  filter: blur(6px);
+}
+.player-skin-frame-detail::before { inset: -10px; filter: blur(10px); }
+.player-skin { display: block; width: 36px; height: 64px; object-fit: contain; flex-shrink: 0; }
+.player-skin-detail { width: 72px; height: 128px; filter: drop-shadow(0 0 8px var(--accent-glow)); }
 .player-detail-stats {
 display: grid;
     grid-template-columns: repeat(5, 1fr);

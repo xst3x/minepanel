@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 
 /** Keep the selected tab visible without moving the page vertically. */
 export default function useActiveTabScroll(activeKey: string) {
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const strip = ref.current;
     if (!strip) return;

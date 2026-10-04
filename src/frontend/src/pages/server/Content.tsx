@@ -1,3 +1,4 @@
+import type { ServerContext } from '../../lib/serverContext';
 import Section from '../../components/Section.tsx';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
@@ -38,7 +39,7 @@ const bytes = (n) => {
 };
 
 export default function Content() {
-  const { serverId, serverInfo } = useOutletContext();
+  const { serverId, serverInfo } = useOutletContext<ServerContext>();
 
   // ── PocketMine gate ───────────────────────────────────────────────────────
   // If this server runs PocketMine-MP, hand off to the dedicated Poggit UI.
@@ -173,7 +174,7 @@ export default function Content() {
 
 
   // ── Search / browse ────────────────────────────────────────────────────────
-  const doSearch = useCallback(async (q, cat, page, activeVendor, ps, tab = activeTab) => {
+  const doSearch = useCallback(async (q, cat, page, activeVendor, ps = undefined, tab = activeTab) => {
     const limit = ps || pageSize || PAGE_SIZE;
     currentQueryRef.current = q;
     currentCatRef.current   = cat;
@@ -535,7 +536,7 @@ export default function Content() {
                           <div className="plugin-header">
                             {hit.icon_url
                               ? <img loading="lazy" src={hit.icon_url} className="plugin-icon" alt=""
-                                  onError={e => { e.target.style.display='none'; }} />
+                                  onError={e => { e.currentTarget.style.display='none'; }} />
                               : <div className="plugin-icon" style={{ background:'var(--bg-input)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                                   <svg viewBox="0 0 24 24" width="17" height="17" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"/></svg>
                                 </div>
@@ -582,8 +583,8 @@ export default function Content() {
                   Page{' '}
                   <input inputMode="numeric" type="number" min={1} max={totalPages} defaultValue={currentPage} key={currentPage}
                     style={{ width:52, padding:'3px 6px', background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:'var(--radius)', color:'var(--text-primary)', textAlign:'center' }}
-                    onBlur={e => { const v = Math.min(Math.max(parseInt(e.target.value,10)||1,1),totalPages); goToPage(v-1); }}
-                    onKeyDown={e => { if(e.key==='Enter'){const v=Math.min(Math.max(parseInt(e.target.value,10)||1,1),totalPages);goToPage(v-1);}}}
+                    onBlur={e => { const v = Math.min(Math.max(parseInt(e.currentTarget.value,10)||1,1),totalPages); goToPage(v-1); }}
+                    onKeyDown={e => { if(e.key==='Enter'){const v=Math.min(Math.max(parseInt(e.currentTarget.value,10)||1,1),totalPages);goToPage(v-1);}}}
                   />{' '}of {totalPages.toLocaleString()}
                 </div>
                 <button className="btn outline small" disabled={currentPage >= totalPages} onClick={() => goToPage(currentPage)}>Next</button>
@@ -622,7 +623,7 @@ export default function Content() {
                   <div className="plugin-detail-hero">
                     {detailProject.icon_url
                       ? <img loading="lazy" src={detailProject.icon_url} className="plugin-detail-icon" alt=""
-                          onError={e => { e.target.style.display='none'; }} />
+                          onError={e => { e.currentTarget.style.display='none'; }} />
                       : <div className="plugin-detail-icon" style={{ background:'var(--bg-input)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                           <svg viewBox="0 0 24 24" width="30" height="30" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"/></svg>
                         </div>

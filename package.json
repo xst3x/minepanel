@@ -17,7 +17,14 @@
     "db:status": "node dist/src/db/db-cli.js status",
     "db:migrate": "node dist/src/db/db-cli.js migrate",
     "db:integrity": "node dist/src/db/db-cli.js integrity",
-    "db:backup": "node dist/src/db/db-cli.js backup"
+    "db:backup": "node dist/src/db/db-cli.js backup",
+    "dev:demo": "node scripts/dev-demo.mjs",
+    "build": "npm run compile && npm run build --workspace minepanel-frontend",
+    "build:demo": "npm run build:demo --workspace minepanel-frontend",
+    "dev:frontend": "npm run dev --workspace minepanel-frontend",
+    "typecheck:frontend": "npm run typecheck --workspace minepanel-frontend",
+    "test:frontend": "npm run test --workspace minepanel-frontend",
+    "check:network": "node scripts/check-frontend-network.mjs"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
@@ -73,6 +80,8 @@
     "@types/ws": "^8.18.1",
     "jest": "^29.7.0",
     "nodemon": "^3.1.9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "supertest": "^7.1.0",
     "typescript": "^6.0.3"
   }

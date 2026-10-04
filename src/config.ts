@@ -1,4 +1,5 @@
 import './paths';
+import { configuredBasePath } from './core/basePath';
 // src/config.js
 // Central configuration module for MinePanel
 // Environment and installation paths are initialized by paths.ts.
@@ -7,6 +8,7 @@ const DEFAULT_ALLOWED_ORIGINS = ['*'];
 const DEFAULT_RATE_LIMIT = 300; // requests per minute per IP
 
 export = {
+  BASE_PATH: configuredBasePath(),
   // Array of allowed origin strings for CORS. Empty array disables all origins.
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : DEFAULT_ALLOWED_ORIGINS,
 
