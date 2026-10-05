@@ -1,4 +1,5 @@
 "use strict";
+const cpuTemperature_1 = require("./cpuTemperature");
 const paths_1 = require("../paths");
 // src/core/throttleManager.js
 // Monitors RAM and CPU temperature for each server.
@@ -53,41 +54,18 @@ async function getProcessRamBytes(pid) {
     }
 }
 function getCpuTemperature() {
-    // Linux: thermal zones
-    try {
-        const base = '/sys/class/thermal';
-        if (fs.existsSync(base)) {
-            const zones = fs.readdirSync(base).filter(z => z.startsWith('thermal_zone'));
-            for (const zone of zones) {
-                const typePath = path.join(base, zone, 'type');
-                const tempPath = path.join(base, zone, 'temp');
-                if (!fs.existsSync(typePath) || !fs.existsSync(tempPath))
-                    continue;
-                const type = fs.readFileSync(typePath, 'utf8').trim().toLowerCase();
-                if (type.includes('x86_pkg_temp') || type.includes('cpu')) {
-                    const raw = parseInt(fs.readFileSync(tempPath, 'utf8').trim(), 10);
-                    if (!isNaN(raw))
-                        return raw / 1000;
-                }
-            }
-            for (const zone of zones) {
-                const tempPath = path.join(base, zone, 'temp');
-                if (fs.existsSync(tempPath)) {
-                    const raw = parseInt(fs.readFileSync(tempPath, 'utf8').trim(), 10);
-                    if (!isNaN(raw) && raw > 1000)
-                        return raw / 1000;
-                }
-            }
-        }
+    if (os.platform() === 'linux') {
+        const value = (0, cpuTemperature_1.readLinuxCpuTemperature)();
+        if (value !== null)
+            return value;
     }
-    catch (_) { }
-    // Windows: optional cpu_temp.txt written by external helper
+    // Preserve the optional external helper fallback on all platforms.
     try {
-        const f = path.join(paths_1.PROJECT_ROOT, 'data', 'cpu_temp.txt');
-        if (fs.existsSync(f)) {
-            const val = parseFloat(fs.readFileSync(f, 'utf8').trim());
-            if (!isNaN(val))
-                return val;
+        const helperFile = path.join(paths_1.PROJECT_ROOT, 'data', 'cpu_temp.txt');
+        if (fs.existsSync(helperFile)) {
+            const value = parseFloat(fs.readFileSync(helperFile, 'utf8').trim());
+            if (!isNaN(value))
+                return value;
         }
     }
     catch (_) { }

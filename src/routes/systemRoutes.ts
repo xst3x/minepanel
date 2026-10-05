@@ -1,4 +1,5 @@
 import { SETTINGS_FILE } from '../paths';
+import { readLinuxCpuTemperature } from '../core/cpuTemperature';
 import { normalizeBasePath } from '../core/basePath';
 import CONFIG = require('../config');
 import express = require('express')
@@ -93,12 +94,7 @@ function getCpuTemperature(): Promise<any> {
                 resolve(null);
             });
         } else if (platform === 'linux') {
-            fs.readFile('/sys/class/thermal/thermal_zone0/temp', 'utf8', (err, data) => {
-                if (err) return resolve(null);
-                const tempRaw = parseInt(data.trim(), 10);
-                if (!isNaN(tempRaw)) return resolve(tempRaw / 1000);
-                resolve(null);
-            });
+            resolve(readLinuxCpuTemperature());
         } else if (platform === 'darwin') {
             exec('sudo powermetrics -n 1 -i 10 --samplers smc', { timeout: 2000 }, (error, stdout) => {
                 if (error) return resolve(null);

@@ -1,4 +1,5 @@
 "use strict";
+const cpuTemperature_1 = require("./cpuTemperature");
 const paths_1 = require("../paths");
 // src/core/thresholdManager.js
 // Multi-threshold escalation system for MinePanel.
@@ -175,32 +176,18 @@ function setCooldown(sid, metric, thrId) {
 const stopping = new Map();
 // ── System metric collectors ──────────────────────────────────────────────────
 function getCpuTemperature() {
-    const platform = os.platform();
+    if (os.platform() === 'linux') {
+        const value = (0, cpuTemperature_1.readLinuxCpuTemperature)();
+        if (value !== null)
+            return value;
+    }
+    // Preserve the optional external helper fallback on all platforms.
     try {
-        if (platform === 'linux') {
-            const base = '/sys/class/thermal';
-            if (fs.existsSync(base)) {
-                const zones = fs.readdirSync(base).filter(z => z.startsWith('thermal_zone'));
-                for (const zone of zones) {
-                    const typePath = path.join(base, zone, 'type');
-                    const tempPath = path.join(base, zone, 'temp');
-                    if (!fs.existsSync(typePath) || !fs.existsSync(tempPath))
-                        continue;
-                    const type = fs.readFileSync(typePath, 'utf8').trim().toLowerCase();
-                    if (type.includes('x86_pkg_temp') || type.includes('cpu')) {
-                        const raw = parseInt(fs.readFileSync(tempPath, 'utf8').trim(), 10);
-                        if (!isNaN(raw))
-                            return raw / 1000;
-                    }
-                }
-            }
-        }
-        // Windows optional helper file
         const helperFile = path.join(paths_1.PROJECT_ROOT, 'data', 'cpu_temp.txt');
         if (fs.existsSync(helperFile)) {
-            const val = parseFloat(fs.readFileSync(helperFile, 'utf8').trim());
-            if (!isNaN(val))
-                return val;
+            const value = parseFloat(fs.readFileSync(helperFile, 'utf8').trim());
+            if (!isNaN(value))
+                return value;
         }
     }
     catch (_) { }
