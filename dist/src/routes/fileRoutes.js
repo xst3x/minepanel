@@ -8,6 +8,7 @@ const os = require("os");
 const crypto = require("crypto");
 const multer = require("multer");
 const AdmZip = require("adm-zip");
+const StreamZip = require('node-stream-zip');
 const authModule = require("../core/auth");
 const { authenticateToken } = authModule;
 const permissionsModule = require("../core/permissions");
@@ -20,6 +21,8 @@ const V = require("../middleware/validators");
 const errorsModule = require("../core/errors");
 const { E, sendError } = errorsModule;
 const logger = require("../core/utils/logger");
+const safeServerPath_1 = require("../core/safeServerPath");
+const writeServerFile_1 = require("../core/writeServerFile");
 const router = express.Router({ mergeParams: true });
 // In-memory store for one-time download tokens: token -> { file, deleteAfter, expires }
 const _dlTokens = new Map();
@@ -36,15 +39,7 @@ if (process.env.NODE_ENV !== 'test') {
         }
     }, 2 * 60 * 1000);
 }
-const getSafePath = (serverDir, targetPath) => {
-    const cleaned = (targetPath || '').replace(/^[/\\]+/, '');
-    const requestedPath = path.resolve(serverDir, cleaned);
-    const rel = path.relative(serverDir, requestedPath);
-    const isSafe = rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
-    if (!isSafe)
-        throw new Error('Access denied: Path is outside server directory');
-    return requestedPath;
-};
+const getSafePath = safeServerPath_1.safeServerPath;
 // Extensions blocked for security reasons (executables, scripts, etc.)
 const BLOCKED_EXTENSIONS = new Set([
     '.exe', '.bat', '.cmd', '.com', '.msi', '.ps1', '.ps2', '.psm1',
@@ -62,7 +57,11 @@ const BLOCKED_EXTENSIONS = new Set([
  */
 function buildZipBuffer(absPaths, serverDir) {
     const zip = new AdmZip();
+    // MCP applies aggregate size/count limits before invoking this shared handler.
+    // Preserve existing GUI archive sizes while still refusing link traversal.
+    const budget = { entries: Number.MAX_SAFE_INTEGER, bytes: Number.MAX_SAFE_INTEGER };
     for (const absPath of absPaths) {
+        (0, safeServerPath_1.assertSafeTree)(serverDir, path.relative(serverDir, absPath), budget);
         try {
             const stat = fs.statSync(absPath);
             if (stat.isDirectory()) {
@@ -113,8 +112,7 @@ const upload = multer({
             }
             cb(null, safeName);
         }
-    }),
-    limits: { fileSize: 100 * 1024 * 1024 }
+    })
 });
 // List directory
 router.get('/list', authenticateToken, checkPermission('server.files.read'), async (req, res) => {
@@ -242,11 +240,12 @@ router.post('/write', authenticateToken, checkPermission('server.files.write'), 
         const server = await getServer(req.params.serverId);
         if (!server)
             return sendError(res, E.SERVER_NOT_FOUND, 404);
-        const safePath = getSafePath(getServerDir(server), filePath);
-        await fsp.writeFile(safePath, content, 'utf8');
+        (0, writeServerFile_1.writeServerFile)(getServerDir(server), filePath, content, req.body.expectedVersion);
         res.json({ message: 'File saved successfully' });
     }
     catch (e) {
+        if (e.code === 'VERSION_CONFLICT')
+            return res.status(409).json({ error: 'File changed; read it again before writing' });
         if (e.message && e.message.includes('Access denied')) {
             return sendError(res, E.FILE_ACCESS_DENIED, 403);
         }
@@ -610,9 +609,41 @@ router.post('/extract', authenticateToken, checkPermission('server.files.write')
         if (ext !== '.zip')
             return sendError(res, E.BAD_REQUEST, 400, 'Only .zip archives can be extracted');
         const parentDir = path.dirname(safePath);
-        const zip = new AdmZip(safePath);
-        zip.extractAllTo(parentDir, true);
-        const count = zip.getEntries().length;
+        let zip = null;
+        let count = 0;
+        try {
+            zip = new StreamZip.async({ file: safePath });
+            const entriesObj = await zip.entries();
+            const entries = Object.values(entriesObj);
+            for (const entry of entries) {
+                const destination = path.resolve(parentDir, entry.name);
+                const relative = path.relative(parentDir, destination);
+                if (relative.startsWith('..') || path.isAbsolute(relative) || path.isAbsolute(entry.name))
+                    throw new Error('Access denied: Invalid archive path');
+                getSafePath(serverDir, path.relative(serverDir, destination));
+                if (entry.attr && (((entry.attr >>> 16) & 0xf000) === 0xa000))
+                    throw new Error('Access denied: Archive contains symbolic links');
+            }
+            for (const entry of entries) {
+                const destination = path.resolve(parentDir, entry.name);
+                if (entry.isDirectory) {
+                    await fsp.mkdir(destination, { recursive: true });
+                }
+                else {
+                    await fsp.mkdir(path.dirname(destination), { recursive: true });
+                    await zip.extract(entry, destination);
+                }
+            }
+            count = entries.length;
+        }
+        finally {
+            if (zip) {
+                try {
+                    await zip.close();
+                }
+                catch (_) { }
+            }
+        }
         res.json({ message: `Extracted ${count} entr${count === 1 ? 'y' : 'ies'} from ${path.basename(safePath)}.` });
     }
     catch (e) {
@@ -637,19 +668,32 @@ router.get('/archive-tree', authenticateToken, checkPermission('server.files.rea
         const ext = path.extname(safePath).toLowerCase();
         if (ext !== '.zip')
             return sendError(res, E.BAD_REQUEST, 400, 'Not a .zip archive');
-        const zip = new AdmZip(safePath);
-        const entries = zip.getEntries().map((e) => ({
-            name: e.entryName,
-            isDirectory: e.isDirectory,
-            size: e.header.size,
-            compressedSize: e.header.compressedSize,
-        })).sort((a, b) => {
-            if (a.isDirectory && !b.isDirectory)
-                return -1;
-            if (!a.isDirectory && b.isDirectory)
-                return 1;
-            return a.name.localeCompare(b.name);
-        });
+        let zip = null;
+        let entries = [];
+        try {
+            zip = new StreamZip.async({ file: safePath });
+            const entriesObj = await zip.entries();
+            entries = Object.values(entriesObj).map((e) => ({
+                name: e.name,
+                isDirectory: e.isDirectory,
+                size: e.size,
+                compressedSize: e.compressedSize,
+            })).sort((a, b) => {
+                if (a.isDirectory && !b.isDirectory)
+                    return -1;
+                if (!a.isDirectory && b.isDirectory)
+                    return 1;
+                return a.name.localeCompare(b.name);
+            });
+        }
+        finally {
+            if (zip) {
+                try {
+                    await zip.close();
+                }
+                catch (_) { }
+            }
+        }
         res.json({ entries, totalEntries: entries.length, archiveName: path.basename(safePath) });
     }
     catch (e) {

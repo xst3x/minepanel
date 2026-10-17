@@ -5,7 +5,7 @@ const fsp = require('fs').promises;
 const zlib = require("zlib");
 const Joi = require("joi");
 const validationModule = require("../middleware/validation");
-const { validate } = validationModule;
+const { validateParams } = validationModule;
 const path = require("path");
 const crypto = require("crypto");
 const authModule = require("../core/auth");
@@ -564,7 +564,7 @@ router.post('/lists/:listName', authenticateToken, checkPermission('server.playe
         return sendError(res, E.INTERNAL_ERROR, 500, e.message || null);
     }
 });
-router.delete('/lists/:listName/:target', authenticateToken, checkPermission('server.players.manage'), validate(Joi.object({
+router.delete('/lists/:listName/:target', authenticateToken, checkPermission('server.players.manage'), validateParams(Joi.object({
     listName: Joi.string().valid('whitelist', 'ops', 'banned-players', 'banned-ips').required(),
     target: Joi.string().required()
 })), async (req, res) => {

@@ -219,7 +219,7 @@ for (const override of [undefined, '/custom/admin/']) {
       assert.equal(followed.status, 200, 'Following the slash redirect must terminate successfully');
       assert.equal(new URL(followed.url).pathname, prefix);
       assert.equal(new URL(followed.url).search, '?source=bookmark');
-      for (const route of ['login', 'server/1/files', 'index.html']) {
+      for (const route of ['login', 'server/1/files', 'index.html', 'mcp-servers']) {
         const page = await get(port, prefix + route);
         assert.equal(page.status, 200);
         assert.ok(page.body.includes(`<base href="${prefix}" />`));
@@ -234,6 +234,32 @@ for (const override of [undefined, '/custom/admin/']) {
       assert.ok(token, 'Normal login issues a token');
       const settingsUrl = `http://127.0.0.1:${port}${prefix}api/system/settings`;
       const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const mcpApi = `http://127.0.0.1:${port}${prefix}api/mcp`;
+      const mcpSettings = await (await fetch(mcpApi + '/settings', { headers })).json();
+      assert.equal((await get(port, prefix + 'mcp')).status, mcpSettings.enabled ? 401 : 503);
+      const configureMcp = await fetch(mcpApi + '/settings', { method: 'PUT', headers, body: JSON.stringify({ ...mcpSettings, enabled: true }) });
+      assert.equal(configureMcp.status, 200);
+      const ranks = await (await fetch(`http://127.0.0.1:${port}${prefix}api/ranks`, { headers })).json();
+      const createMcp = await fetch(mcpApi + '/identities', { method: 'POST', headers, body: JSON.stringify({ name: 'Compiled fixture agent', rankId: ranks.find(r => r.name === 'Owner').id, allowedServers: [], approvalMode: 'everything' }) });
+      assert.equal(createMcp.status, 201);
+      const createdMcp = await createMcp.json();
+      const { Client, StreamableHTTPClientTransport } = require('@modelcontextprotocol/client');
+      const mcpClient = new Client({ name: 'Compiled MinePanel fixture', version: '1' });
+      try {
+        await mcpClient.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}${prefix}mcp`), { requestInit: { headers: { Authorization: `Bearer ${createdMcp.key}` } } }));
+        const discovered = (await mcpClient.listTools()).tools;
+        assert.ok(discovered.some(t => t.name === 'panel_settings_read'));
+        assert.ok(!discovered.some(t => t.name === 'console_command'), 'No server scope means no server tools');
+        assert.ok(!discovered.some(t => t.name === 'approval_result'), 'Everything mode has no exempt tool');
+        const pending = (await mcpClient.callTool({ name: 'panel_settings_read', arguments: {} })).structuredContent;
+        assert.equal(pending.status, 'pending');
+        const decision = await fetch(mcpApi + `/approvals/${pending.approvalId}/decision`, { method: 'POST', headers, body: JSON.stringify({ approved: true }) });
+        assert.equal(decision.status, 200);
+        const result = JSON.parse((await mcpClient.readResource({ uri: pending.resultUri })).contents[0].text);
+        assert.equal(result.status, 'completed');
+        assert.equal(result.result.activeBasePath, prefix);
+        assert.ok(!(await (await fetch(mcpApi + '/identities', { headers })).text()).includes(createdMcp.key), 'Identity API does not reveal the key again');
+      } finally { await mcpClient.close(); }
       const settings = await (await fetch(settingsUrl, { headers })).json();
       assert.equal(settings.activeBasePath, prefix);
       assert.equal(settings.basePathFromEnvironment, !!override);

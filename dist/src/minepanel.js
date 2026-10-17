@@ -97,6 +97,10 @@ else {
     // Host timezone — used for the Overview "Server Timezone" card and stats payloads.
     const HOST_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     const app = express();
+    const mcpTransport = require('./core/mcp/transport').createMcpMiddleware();
+    let stopMcpMaintenance = () => { };
+    // MCP authenticates and bounds raw input before the general GUI JSON parser and request logger.
+    app.use(mcpTransport.middleware);
     // --- HTTPS / HTTP server setup ---
     let server;
     let secureServer;
@@ -117,6 +121,8 @@ else {
             cert: fs.readFileSync(certPath),
         };
         secureServer = https.createServer(sslOptions, app);
+        secureServer.timeout = 0;
+        secureServer.requestTimeout = 0;
         console.log('[HTTPS] Running in HTTPS mode');
         redirectServer = http.createServer((req, res) => {
             res.writeHead(301, { "Location": `https://${req.headers.host}${req.url}` });
@@ -149,6 +155,8 @@ else {
     }
     else {
         server = http.createServer(app);
+        server.timeout = 0;
+        server.requestTimeout = 0;
         logger.info('[HTTP] Running in HTTP mode (use Nginx + Let\'s Encrypt for production HTTPS)');
         const activeSockets = new Set();
         global.activeSockets = activeSockets;
@@ -189,7 +197,7 @@ else {
         res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
         next();
     });
-    app.use(express.json({ limit: '10mb' }));
+    app.use(express.json({ limit: '100mb' }));
     app.use(requestLogger);
     let cachedSettings = null;
     let lastCacheTime = 0;
@@ -273,6 +281,7 @@ else {
         ].join('\n') + '\n');
     });
     panelRouter.use('/api/auth', authRoutes);
+    panelRouter.use('/api/mcp', require('./routes/mcpRoutes'));
     panelRouter.use('/api/system', systemRoutes);
     panelRouter.use('/api/servers', serverRoutes);
     panelRouter.use('/api/servers/:serverId/files', fileRoutes);
@@ -307,6 +316,10 @@ else {
     });
     wss.on('connection', (ws, req) => {
         const url = new URL(req.url, `http://${req.headers.host}`);
+        if (url.searchParams.get('channel') === 'mcp') {
+            require('./core/mcp/notifications').attachMcpNotifications(ws);
+            return;
+        }
         const serverId = url.searchParams.get('serverId');
         if (!serverId) {
             ws.close(4000, 'Missing serverId');
@@ -417,7 +430,9 @@ else {
         });
     });
     const PORT = CONFIG.PORT;
-    initDb().then(async () => {
+    const ready = initDb().then(async () => {
+        await require('./core/mcp/engine').recoverInterruptedOperations();
+        stopMcpMaintenance = require('./core/mcp/engine').startApprovalMaintenance();
         logger.info('Database initialized successfully.');
         statsCollector.start();
         const versionManager = require('./core/versionManager');
@@ -590,9 +605,11 @@ else {
             });
         }
     }).catch(err => { console.error('Failed to initialize database:', err); process.exit(1); });
-    module.exports = { app, server };
+    module.exports = { app, server, ready };
     const gracefulShutdown = async (signal) => {
         logger.info(`[${signal}] Shutting down...`);
+        await mcpTransport.close();
+        stopMcpMaintenance();
         statsCollector.stop();
         automationEngine.stop();
         try {

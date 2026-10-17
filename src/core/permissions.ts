@@ -32,10 +32,28 @@ const AVAILABLE_PERMISSIONS = [
     { key: 'server.automation.read', label: 'View Automation Rules', group: 'Automation' },
     { key: 'server.automation.write', label: 'Create / Edit Automation Rules', group: 'Automation' },
     { key: 'account.manage', label: 'Manage Accounts', group: 'Administration', globalOnly: true },
-    { key: 'panel.settings', label: 'Manage Panel Settings', group: 'Administration', globalOnly: true }
+    { key: 'panel.settings', label: 'Manage Panel Settings', group: 'Administration', globalOnly: true },
+    { key: 'mcp.manage', label: 'Manage MCP Servers', group: 'Administration', globalOnly: true }
 ];
 
 async function getEffectivePermissions(userId, serverId) {
+    if (typeof userId === 'string' && userId.startsWith('mcp:')) {
+        const identity = await dbGet('SELECT rank_id, overrides, allowed_servers, enabled FROM mcp_identities WHERE id = ?', [userId.slice(4)]);
+        if (!identity || !identity.enabled) return [];
+        if (serverId && !JSON.parse(identity.allowed_servers).includes(String(serverId))) return [];
+        const rank = identity.rank_id ? await dbGet('SELECT permissions, global_permissions FROM ranks WHERE id = ?', [identity.rank_id]) : null;
+        const base = permissionsFromRank(rank, serverId);
+        const overrides: Record<string, boolean> = JSON.parse(identity.overrides);
+        // Expand wildcards before applying explicit denials. No admin role bypass for MCP.
+        const expanded = new Set<string>(base.includes('*') || base.includes('root')
+            ? [...AVAILABLE_PERMISSIONS.map(p => p.key), 'server.create', 'server.plugins.install'] : base);
+        for (const [permission, granted] of Object.entries(overrides)) {
+            if (granted) expanded.add(permission); else expanded.delete(permission);
+        }
+        // Control-plane administration belongs to interactive panel users only.
+        expanded.delete('mcp.manage');
+        return [...expanded];
+    }
     const user = await dbGet('SELECT role, rank_id, global_permissions FROM users WHERE id = ?', [userId]);
     if (!user) return [];
     if (user.role === 'admin') return ['*'];
@@ -48,18 +66,7 @@ async function getEffectivePermissions(userId, serverId) {
 
     if (user.rank_id) {
         const rank = await dbGet('SELECT permissions, global_permissions FROM ranks WHERE id = ?', [user.rank_id]);
-        if (rank) {
-            if (rank.global_permissions) {
-                try { JSON.parse(rank.global_permissions).forEach(p => permSet.add(p)); } catch (e) {}
-            }
-            if (rank.permissions && serverId) {
-                try {
-                    const serverMap = JSON.parse(rank.permissions);
-                    const serverPerms = serverMap[serverId] || [];
-                    serverPerms.forEach(p => permSet.add(p));
-                } catch (e) {}
-            }
-        }
+        permissionsFromRank(rank, serverId).forEach(p => permSet.add(p));
     }
 
     if (serverId) {
@@ -71,6 +78,16 @@ async function getEffectivePermissions(userId, serverId) {
     }
 
     return [...permSet];
+}
+
+function permissionsFromRank(rank, serverId): string[] {
+    const permissions = new Set<string>();
+    if (!rank) return [];
+    try { JSON.parse(rank.global_permissions || '[]').forEach(p => permissions.add(p)); } catch (_) {}
+    if (serverId) {
+        try { (JSON.parse(rank.permissions || '{}')[serverId] || []).forEach(p => permissions.add(p)); } catch (_) {}
+    }
+    return [...permissions];
 }
 
 const checkPermission = (requiredPermission) => {

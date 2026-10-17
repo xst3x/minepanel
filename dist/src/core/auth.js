@@ -1,6 +1,7 @@
 "use strict";
 const argon2 = require("argon2");
 const jwt = require("jsonwebtoken");
+const principal_1 = require("./mcp/principal");
 const { E, sendError } = require('./errors');
 const SECRET_KEY = process.env.JWT_SECRET;
 const defaultJwt = 'minepanel_super_secret_jwt_key_schimba_asta_in_productie_2024';
@@ -46,6 +47,11 @@ const invalidateToken = async (userId) => {
     await User.update({ valid_tokens_from: now }, { where: { id: userId } });
 };
 const authenticateToken = (req, res, next) => {
+    const mcpId = (0, principal_1.trustedMcpPrincipal)(req);
+    if (mcpId) {
+        req.user = { id: `mcp:${mcpId}`, username: 'MCP', role: 'mcp' };
+        return next();
+    }
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     if (!token)

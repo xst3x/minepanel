@@ -102,6 +102,10 @@ const executionManager = require('./core/executionManager')
 const HOST_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
 const app = express();
+const mcpTransport = require('./core/mcp/transport').createMcpMiddleware();
+let stopMcpMaintenance = () => {};
+// MCP authenticates and bounds raw input before the general GUI JSON parser and request logger.
+app.use(mcpTransport.middleware);
 
 // --- HTTPS / HTTP server setup ---
 let server;
@@ -126,6 +130,8 @@ if (CONFIG.HTTPS_ENABLED) {
     };
     
     secureServer = https.createServer(sslOptions, app);
+    secureServer.timeout = 0;
+    secureServer.requestTimeout = 0;
     console.log('[HTTPS] Running in HTTPS mode');
     
     redirectServer = http.createServer((req, res) => {
@@ -159,6 +165,8 @@ if (CONFIG.HTTPS_ENABLED) {
     });
 } else {
     server = http.createServer(app);
+    server.timeout = 0;
+    server.requestTimeout = 0;
     logger.info('[HTTP] Running in HTTP mode (use Nginx + Let\'s Encrypt for production HTTPS)');
     const activeSockets = new Set();
     global.activeSockets = activeSockets;
@@ -198,7 +206,7 @@ app.use((req, res, next) => {
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
     next();
 });
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '100mb' }));
 app.use(requestLogger);
 
 let cachedSettings = null;
@@ -281,6 +289,7 @@ panelRouter.get('/metrics', (req, res) => {
 });
 
 panelRouter.use('/api/auth', authRoutes);
+panelRouter.use('/api/mcp', require('./routes/mcpRoutes'));
 panelRouter.use('/api/system', systemRoutes);
 panelRouter.use('/api/servers', serverRoutes);
 panelRouter.use('/api/servers/:serverId/files', fileRoutes);
@@ -316,6 +325,10 @@ app.use((err, req, res, next) => {
 
 wss.on('connection', (ws, req) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
+    if (url.searchParams.get('channel') === 'mcp') {
+        require('./core/mcp/notifications').attachMcpNotifications(ws);
+        return;
+    }
     const serverId = url.searchParams.get('serverId');
     if (!serverId) { ws.close(4000, 'Missing serverId'); return; }
 
@@ -400,7 +413,9 @@ wss.on('connection', (ws, req) => {
 
 const PORT = CONFIG.PORT;
 
-initDb().then(async () => {
+const ready = initDb().then(async () => {
+    await require('./core/mcp/engine').recoverInterruptedOperations();
+    stopMcpMaintenance = require('./core/mcp/engine').startApprovalMaintenance();
     logger.info('Database initialized successfully.');
     statsCollector.start();
     const versionManager = require('./core/versionManager')
@@ -519,9 +534,11 @@ initDb().then(async () => {
             automationEngine.start(PORT, CONFIG.HTTPS_ENABLED);
         });
     }
-}).catch(err => { console.error('Failed to initialize database:', err); process.exit(1); });    module.exports = { app, server };
+}).catch(err => { console.error('Failed to initialize database:', err); process.exit(1); });    module.exports = { app, server, ready };
     const gracefulShutdown = async (signal) => {
     logger.info(`[${signal}] Shutting down...`);
+    await mcpTransport.close();
+    stopMcpMaintenance();
     statsCollector.stop();
     automationEngine.stop();
     try { require('./core/update/UpdateScheduler').stop(); } catch (_) {}

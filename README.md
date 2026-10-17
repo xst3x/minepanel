@@ -23,6 +23,8 @@ MinePanel is a lightweight, self-hosted web panel for managing Minecraft servers
 
 > Designed for homelabs, small communities, and server networks that want a clean interface without the bloat.
 
+Native MCP integration includes scoped agent identities, 46 management tools, approvals, and the **MCP Servers** interface. It is disabled by default and currently covers part of the GUI. See [MCP setup, capability coverage, and limitations](docs/mcp.md) and the optional [MinePanel agent skill](agent-skills/minepanel/SKILL.md).
+
 ---
 
 ## Demo

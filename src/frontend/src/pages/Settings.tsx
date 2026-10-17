@@ -2,6 +2,7 @@ import { getBasePath } from '../lib/basePath';
 import { request } from '../lib/api';
 import CustomColorButton from '../components/CustomColorButton.tsx';
 import Section from '../components/Section.tsx';
+import McpSettings from '../components/McpSettings';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.ts';
@@ -214,6 +215,7 @@ export default function Settings() {
         <p className="text-muted">Loading settings...</p>
       ) : (
         <div className="settings-grid layout-grid" style={{  }}>
+          <McpSettings />
 
           {/* Security & Rate Limits */}
           <Section className="">

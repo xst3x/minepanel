@@ -2,6 +2,7 @@
 // Validation middleware using Joi.
 // validate(schema)      — validates req.body
 // validateQuery(schema) — validates req.query
+// validateParams(schema) — validates req.params, including merged parent params
 
 const Joi = require('joi')
 const { E, sendError } = require('../core/errors')
@@ -27,4 +28,15 @@ function validateQuery(schema) {
   };
 }
 
-export = { validate, validateQuery };
+function validateParams(schema) {
+  return (req, res, next) => {
+    const { error, value } = schema.validate(req.params, { abortEarly: false, allowUnknown: true });
+    if (error) {
+      return sendError(res, E.VALIDATION_ERROR, 400, error.details.map(d => d.message).join('; '));
+    }
+    req.params = value;
+    next();
+  };
+}
+
+export = { validate, validateQuery, validateParams };

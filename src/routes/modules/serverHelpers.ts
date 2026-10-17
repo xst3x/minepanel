@@ -10,7 +10,7 @@ import pocketmineAdapter = require('../../adapters/pocketmine')
 import processManager = require('../../core/processManager')
 import logger = require('../../core/utils/logger')
 
-// ── Multer upload config for server import ──────────────────────────────────
+// ── Multer upload config for server import (unlimited file size) ──────────────
 const importUpload = multer({
     storage: multer.diskStorage({
         destination: (_req, _file, cb) => cb(null, os.tmpdir()),
@@ -19,7 +19,6 @@ const importUpload = multer({
             cb(null, `minepanel-import-${rand}.zip`);
         }
     }),
-    limits: { fileSize: 50 * 1024 * 1024 * 1024 }, // 50 GB max
     fileFilter: (_req, file, cb) => {
         if (file.mimetype === 'application/zip' ||
             file.mimetype === 'application/x-zip-compressed' ||

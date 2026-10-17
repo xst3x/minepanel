@@ -147,13 +147,13 @@ const ALL_SERVER_PERMS = [
 const PREMADE_RANKS = [
     {
         name: 'Owner',
-        permissions: ['*'],
+        permissions: ['*', 'mcp.manage'],
         color: '#ef4444'
     },
     {
         name: 'Admin',
         permissions: [
-            'account.manage', 'server.create',
+            'account.manage', 'server.create', 'mcp.manage',
             ...ALL_SERVER_PERMS
         ],
         color: '#f59e0b'
@@ -161,7 +161,7 @@ const PREMADE_RANKS = [
     {
         name: 'Manager',
         permissions: [
-            'server.create',
+            'server.create', 'mcp.manage',
             ...ALL_SERVER_PERMS
         ],
         color: '#3b82f6'

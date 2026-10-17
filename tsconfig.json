@@ -21,6 +21,8 @@
     "typeRoots": ["./node_modules/@types"],
     "baseUrl": ".",
     "paths": {
+      "@modelcontextprotocol/server": ["node_modules/@modelcontextprotocol/server/dist/index.d.cts"],
+      "@modelcontextprotocol/node": ["node_modules/@modelcontextprotocol/node/dist/index.d.cts"],
       "*": ["node_modules/*"]
     }
   },

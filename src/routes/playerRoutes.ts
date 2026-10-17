@@ -4,7 +4,7 @@ const fsp = require('fs').promises;
 import zlib = require('zlib')
 import Joi = require('joi')
 import validationModule = require('../middleware/validation')
-const { validate } = validationModule;
+const { validateParams } = validationModule;
 import path = require('path')
 import crypto = require('crypto')
 import authModule = require('../core/auth')
@@ -476,7 +476,7 @@ router.post('/lists/:listName', authenticateToken, checkPermission('server.playe
     }
 });
 
-router.delete('/lists/:listName/:target', authenticateToken, checkPermission('server.players.manage'), validate(Joi.object({
+router.delete('/lists/:listName/:target', authenticateToken, checkPermission('server.players.manage'), validateParams(Joi.object({
     listName: Joi.string().valid('whitelist','ops','banned-players','banned-ips').required(),
     target: Joi.string().required()
 })), async (req: any, res) => {

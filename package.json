@@ -27,6 +27,8 @@
     "check:network": "node scripts/check-frontend-network.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/node": "^2.1.1",
+    "@modelcontextprotocol/server": "^2.3.1",
     "adm-zip": "^0.5.16",
     "all": "^0.0.0",
     "archiver": "^8.0.0",
@@ -46,6 +48,7 @@
     "minecraft-bedrock-server": "^1.5.3",
     "multer": "^2.1.1",
     "node-fetch": "^3.3.2",
+    "node-stream-zip": "^1.16.0",
     "otplib": "^13.4.1",
     "pidusage": "^4.0.1",
     "prismjs": "^1.30.0",
@@ -58,10 +61,12 @@
     "uuid": "^11.1.0",
     "winston": "^3.13.0",
     "ws": "^8.18.2",
-    "yazl": "^2.5.1"
+    "yazl": "^2.5.1",
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@modelcontextprotocol/client": "^2.3.1",
     "@types/adm-zip": "^0.5.8",
     "@types/archiver": "^8.0.0",
     "@types/argon2": "^0.14.1",

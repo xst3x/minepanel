@@ -1,6 +1,7 @@
 import { assetUrl, allowBackendAction } from '../lib/api';
 import BrandLogo from './BrandLogo.tsx';
 import DemoNotice from './DemoNotice';
+import McpNotifications from './McpNotifications';
 import { createPortal } from 'react-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
@@ -202,6 +203,7 @@ function AppLayoutInner() {
 
   return (
     <div id="app">
+      <McpNotifications />
       <a className="skip-link" href={`${window.location.pathname}#content-area`}>Skip to content</a>
 
       {/* Keep mobile navigation outside the app scroll/stacking container. */}
@@ -342,6 +344,12 @@ function AppLayoutInner() {
               </svg>
               Users
             </NavLink>
+            {hasGlobalPerm('mcp.manage') && (
+              <NavLink to="/mcp-servers" className={({isActive}) => `sidebar-item${isActive?' active':''}`} onClick={() => setIsMobileMenuOpen(false)}>
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" aria-hidden="true"><rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6h.01M7 17h.01"/></svg>
+                MCP Servers
+              </NavLink>
+            )}
             {isAdmin && (<>
               <NavLink to="/ranks" className={({isActive}) => `sidebar-item${isActive?' active':''}`} onClick={() => setIsMobileMenuOpen(false)}>
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">

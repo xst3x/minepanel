@@ -128,6 +128,7 @@ const filePath = Joi.object({
 const fileWrite = Joi.object({
     path:    Joi.string().min(1).max(2048).required(),
     content: Joi.string().allow('').max(10 * 1024 * 1024).required(), // 10 MB text cap
+    expectedVersion: Joi.string().pattern(/^[a-f0-9]{64}$/).optional(),
 });
 
 const fileRename = Joi.object({

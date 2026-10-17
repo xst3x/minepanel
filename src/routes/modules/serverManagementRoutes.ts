@@ -22,7 +22,7 @@ const { retryRename, retryDelete, retryUnlink, retryCopy } = fsRetryModule;
 import path = require('path')
 import fs = require('fs')
 const fsp = fs.promises;
-import StreamZip = require('adm-zip')
+const StreamZip = require('node-stream-zip');
 import logger = require('../../core/utils/logger')
 import serverHelpersModule = require('./serverHelpers')
 const { importUpload, runForgeInstaller, runNeoForgeInstaller, buildDefaultStartCommand } = serverHelpersModule;
@@ -525,7 +525,7 @@ const IMPORT_ALLOWED_TOP_LEVEL = new Set([
     'bukkit.yml', 'spigot.yml', 'paper.yml', 'paper-global.yml', 'paper-world-defaults.yml',
 ]);
 
-router.post('/import', authenticateToken, importUpload.single('archive'), async (req, res) => {
+router.post('/import', (req: any, res: any, next: any) => { req.setTimeout(0); res.setTimeout(0); next(); }, authenticateToken, importUpload.single('archive'), async (req, res) => {
     // server.create also gates import — same privilege level as creating a new server
     const userId = req.user.id;
     try {
@@ -575,12 +575,14 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
         await fsp.mkdir(serverDir, { recursive: true });
         processManager.acquireLock(serverId);
 
+        let zip: any = null;
         try {
-            const zip = new StreamZip(zipPath);
-            const entries = zip.getEntries();
+            zip = new StreamZip.async({ file: zipPath });
+            const entriesObj = await zip.entries();
+            const entries: any[] = Object.values(entriesObj);
             const prefix = normRoot ? normRoot + '/' : '';
-            const scoped = entries.filter(e => {
-                if (prefix) return e.entryName.startsWith(prefix) && e.entryName !== prefix;
+            const scoped = entries.filter((e: any) => {
+                if (prefix) return e.name.startsWith(prefix) && e.name !== prefix;
                 return true;
             });
 
@@ -591,40 +593,44 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
             // Auto-detect world folders: any top-level dir that directly contains
             // a level.dat (works for both Java and Bedrock worlds), regardless of name —
             // catches custom-named worlds / multiverse setups without a hardcoded list.
-            const worldDirs = new Set();
+            const worldDirs = new Set<string>();
             for (const entry of scoped) {
-                const rel = prefix ? entry.entryName.slice(prefix.length) : entry.entryName;
+                const rel = prefix ? entry.name.slice(prefix.length) : entry.name;
                 const parts = rel.split('/');
                 if (parts.length === 2 && parts[1].toLowerCase() === 'level.dat') {
                     worldDirs.add(parts[0].toLowerCase());
                 }
             }
 
-            const isImportable = (rel) => {
+            const isImportable = (rel: string) => {
                 if (!rel) return false;
                 const top = rel.split('/')[0].toLowerCase();
                 return IMPORT_ALLOWED_TOP_LEVEL.has(top) || worldDirs.has(top);
             };
 
             let copiedFiles = 0;
-            const skippedTopLevel = new Set();
+            const skippedTopLevel = new Set<string>();
             for (const entry of scoped) {
-                const rel = prefix ? entry.entryName.slice(prefix.length) : entry.entryName;
+                const rel = prefix ? entry.name.slice(prefix.length) : entry.name;
                 if (!rel) continue;
                 if (!isImportable(rel)) {
                     skippedTopLevel.add(rel.split('/')[0]);
                     continue;
                 }
                 const destPath = path.join(serverDir, rel.replace(/\//g, path.sep));
+                const relToRoot = path.relative(serverDir, destPath);
+                if (relToRoot.startsWith('..') || path.isAbsolute(relToRoot)) {
+                    continue;
+                }
                 if (entry.isDirectory) {
                     await fsp.mkdir(destPath, { recursive: true });
                 } else {
                     await fsp.mkdir(path.dirname(destPath), { recursive: true });
-                    const data = zip.readFile(entry);
-                    if (data) { await fsp.writeFile(destPath, data); copiedFiles++; }
+                    await zip.extract(entry, destPath);
+                    copiedFiles++;
                 }
             }
-            (zip as any).close ? (zip as any).close() : undefined;
+            try { await zip.close(); zip = null; } catch (_) {}
 
             logger.info(`Server import ${serverId}: migrated ${copiedFiles} data/config file(s); skipped top-level entries: [${[...skippedTopLevel].join(', ')}] (server binaries are always freshly downloaded).`);
 
@@ -673,6 +679,9 @@ router.post('/import', authenticateToken, importUpload.single('archive'), async 
                 skipped: [...skippedTopLevel],
             });
         } finally {
+            if (zip) {
+                try { await zip.close(); } catch (_) {}
+            }
             processManager.releaseLock(serverId);
             fsp.unlink(zipPath).catch(() => {});
         }
