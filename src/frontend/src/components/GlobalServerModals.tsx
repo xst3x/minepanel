@@ -1,3 +1,4 @@
+import { importProgress as calculateImportProgress, formatImportBytes, validImportSize } from '../lib/importProgress';
 import { withBasePath } from '../lib/basePath';
 import { getToken } from '../lib/api';
 import { createUploadRequest } from '../lib/api';
@@ -156,6 +157,7 @@ export default function GlobalServerModals() {
     const xhr = createUploadRequest();
     if (!xhr) return;
     if (!impFile) return toast('Please select a .zip archive first.', 'error');
+    if (!validImportSize(impFile.size)) return toast('The archive must be nonempty and its size must be a safe integer.', 'error');
     if (!(impFile.name.toLowerCase().endsWith('.zip') || impFile.type === 'application/zip')) {
       return toast('Only .zip archives are accepted.', 'error');
     }
@@ -188,11 +190,13 @@ export default function GlobalServerModals() {
     xhr.open('POST', withBasePath('/api/servers/import'));
     if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
+    const uploadStarted = performance.now();
+    xhr.timeout = 0;
     xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        const pct = Math.round((event.loaded / event.total) * 90);
-        setImportProgress({ label: pct >= 90 ? 'Extracting & configuring...' : 'Uploading...', pct });
-      }
+      setImportProgress(calculateImportProgress(event, uploadStarted, performance.now()));
+    };
+    xhr.upload.onload = () => {
+      setImportProgress(previous => ({ ...previous, label: 'Extracting & configuring...', pct: 100 }));
     };
 
     xhr.onload = () => {
@@ -531,11 +535,17 @@ export default function GlobalServerModals() {
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                       <span>{importProgress.label}</span>
-                      <span>{importProgress.pct}%</span>
+                      <span>{importProgress.pct}% uploaded</span>
                     </div>
                     <div style={{ background: 'var(--bg-input)', borderRadius: '4px', height: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
                       <div style={{ background: 'var(--accent)', height: '100%', width: `${importProgress.pct}%`, transition: 'width 0.2s ease' }}></div>
                     </div>
+                    {importProgress.loaded !== undefined && (
+                      <small className="text-muted">
+                        {formatImportBytes(importProgress.loaded)}{importProgress.total !== null ? ` / ${formatImportBytes(importProgress.total)}` : ''}
+                        {' · '}{formatImportBytes(importProgress.speed)}/s
+                      </small>
+                    )}
                   </div>
                 )}
               </div>

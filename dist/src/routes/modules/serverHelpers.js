@@ -2,32 +2,10 @@
 const path = require("path");
 const fs = require("fs");
 const fsp = fs.promises;
-const os = require("os");
-const multer = require("multer");
 const { SERVERS_DIR, getServerDir, createBackup, retryUnlink, retryCopy, retryRename, retryDelete } = require('../../core/serverHelper');
 const bedrockAdapter = require("../../adapters/bedrock");
 const pocketmineAdapter = require("../../adapters/pocketmine");
 const logger = require("../../core/utils/logger");
-// ── Multer upload config for server import (unlimited file size) ──────────────
-const importUpload = multer({
-    storage: multer.diskStorage({
-        destination: (_req, _file, cb) => cb(null, os.tmpdir()),
-        filename: (_req, file, cb) => {
-            const rand = require('crypto').randomBytes(8).toString('hex');
-            cb(null, `minepanel-import-${rand}.zip`);
-        }
-    }),
-    fileFilter: (_req, file, cb) => {
-        if (file.mimetype === 'application/zip' ||
-            file.mimetype === 'application/x-zip-compressed' ||
-            file.originalname.toLowerCase().endsWith('.zip')) {
-            cb(null, true);
-        }
-        else {
-            cb(new Error('Only .zip files are accepted for server import'));
-        }
-    }
-});
 // ── getStartInfo ────────────────────────────────────────────────────────────
 function getStartInfo(server) {
     const serverDir = getServerDir(server);
@@ -354,7 +332,6 @@ async function runNeoForgeInstaller(installerPath, serverDir, serverId) {
     }
 }
 module.exports = {
-    importUpload,
     getStartInfo,
     buildDefaultStartCommand,
     runForgeInstaller,

@@ -22,10 +22,12 @@ const { retryRename, retryDelete, retryUnlink, retryCopy } = fsRetryModule;
 import path = require('path')
 import fs = require('fs')
 const fsp = fs.promises;
-const StreamZip = require('node-stream-zip');
+import { setImportedServerPort } from '../../core/importServerProperties';
+import { extractServerImport } from '../../core/serverImportArchive';
+import { receiveServerImport, ImportRequest } from '../../middleware/serverImportUpload';
 import logger = require('../../core/utils/logger')
 import serverHelpersModule = require('./serverHelpers')
-const { importUpload, runForgeInstaller, runNeoForgeInstaller, buildDefaultStartCommand } = serverHelpersModule;
+const { runForgeInstaller, runNeoForgeInstaller, buildDefaultStartCommand } = serverHelpersModule;
 
 const router = express.Router();
 
@@ -515,53 +517,32 @@ router.delete('/:serverId', authenticateToken, checkPermission('account.manage')
 
 // ─── Import server: migrate only data/config, always download a fresh jar ──
 
-// Top-level entries (relative to the chosen root path inside the zip) that are
-// safe to carry over — server content & configuration, never binaries.
-const IMPORT_ALLOWED_TOP_LEVEL = new Set([
-    'plugins', 'mods', 'config',
-    'server.properties', 'eula.txt', 'ops.json', 'whitelist.json',
-    'banned-players.json', 'banned-ips.json', 'permissions.yml',
-    'usercache.json', 'help.yml', 'commands.yml',
-    'bukkit.yml', 'spigot.yml', 'paper.yml', 'paper-global.yml', 'paper-world-defaults.yml',
-]);
-
-router.post('/import', (req: any, res: any, next: any) => { req.setTimeout(0); res.setTimeout(0); next(); }, authenticateToken, importUpload.single('archive'), async (req, res) => {
-    // server.create also gates import — same privilege level as creating a new server
+router.post('/import', authenticateToken, checkGlobalPermission('server.create'), receiveServerImport, async (req: ImportRequest, res) => {
     const userId = req.user.id;
-    try {
-        const perms = await getEffectivePermissions(userId, null);
-        const allowed = perms.includes('*') || perms.includes('root') || perms.includes('server.create');
-        if (!allowed) {
-            if (req.file) fsp.unlink(req.file.path).catch(() => {});
-            return sendError(res, E.FORBIDDEN, 403, 'Missing global permission: server.create');
-        }
-    } catch (e) {
-        if (req.file) fsp.unlink(req.file.path).catch(() => {});
-        logger.error(`[serverRoutes] Import permission check error (User: ${userId}):`, e);
-        return sendError(res, E.INTERNAL_ERROR, 500);
-    }
-
-    if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No archive uploaded');
-
-    const { name, software: rawSoftware, version, ram_mb, port, root_path } = req.body;
-    const software = (rawSoftware || '').trim().toLowerCase();
-    if (!name || !software || !version || !ram_mb || !port) {
-        fsp.unlink(req.file.path).catch(() => {});
-        return sendError(res, E.BAD_REQUEST, 400, 'Missing required fields: name, software, version, ram_mb, port');
-    }
-
-    const ramNum = parseInt(ram_mb, 10);
-    const portNum = parseInt(port, 10);
-    if (ramNum < 512 || ramNum > 16384) { fsp.unlink(req.file.path).catch(() => {}); return sendError(res, E.SERVER_RAM_INVALID, 400); }
-    if (portNum < 1024 || portNum > 65535) { fsp.unlink(req.file.path).catch(() => {}); return sendError(res, E.SERVER_PORT_INVALID, 400); }
-
-    const normRoot = (root_path || '').replace(/^[/\\]+/, '').replace(/\\/g, '/').replace(/\/+$/, '');
-
-    const zipPath = req.file.path;
     let serverId = null;
     let serverDir = null;
-
+    let ownsServerDir = false;
+    let locked = false;
     try {
+        if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No archive uploaded');
+
+        const { name, software: rawSoftware, version, ram_mb, port, root_path } = req.body;
+        if ([name, rawSoftware, version, ram_mb, port].some(value => typeof value !== 'string') || (root_path !== undefined && typeof root_path !== 'string')) {
+            return sendError(res, E.BAD_REQUEST, 400, 'Invalid import fields');
+        }
+        const software = (rawSoftware || '').trim().toLowerCase();
+        if (!name || !software || !version || !ram_mb || !port) {
+            return sendError(res, E.BAD_REQUEST, 400, 'Missing required fields: name, software, version, ram_mb, port');
+        }
+
+        const ramNum = Number(ram_mb);
+        const portNum = Number(port);
+        if (!Number.isInteger(ramNum) || ramNum < 512 || ramNum > 16384) { return sendError(res, E.SERVER_RAM_INVALID, 400); }
+        if (!Number.isInteger(portNum) || portNum < 1024 || portNum > 65535) { return sendError(res, E.SERVER_PORT_INVALID, 400); }
+
+        const normRoot = (root_path || '').replace(/^[/\\]+/, '').replace(/\\/g, '/').replace(/\/+$/, '');
+
+        const zipPath = req.file.path;
         const uuid = require('crypto').randomUUID();
         const dirName = await ensureUniqueDirName(sanitizeDirName(name));
         serverDir = path.join(SERVERS_DIR, dirName);
@@ -572,134 +553,69 @@ router.post('/import', (req: any, res: any, next: any) => { req.setTimeout(0); r
         );
         serverId = result.lastID;
 
-        await fsp.mkdir(serverDir, { recursive: true });
-        processManager.acquireLock(serverId);
+        await fsp.mkdir(SERVERS_DIR, { recursive: true });
+        await fsp.mkdir(serverDir);
+        ownsServerDir = true;
+        locked = processManager.acquireLock(serverId);
+        if (!locked) throw new Error('Imported server is locked');
 
-        let zip: any = null;
-        try {
-            zip = new StreamZip.async({ file: zipPath });
-            const entriesObj = await zip.entries();
-            const entries: any[] = Object.values(entriesObj);
-            const prefix = normRoot ? normRoot + '/' : '';
-            const scoped = entries.filter((e: any) => {
-                if (prefix) return e.name.startsWith(prefix) && e.name !== prefix;
-                return true;
-            });
+        const { copiedFiles, skippedTopLevel } = await extractServerImport(zipPath, serverDir, normRoot, req.importSignal);
+        req.importSignal.throwIfAborted();
 
-            if (scoped.length === 0) {
-                throw new Error(`No files found under path "${normRoot}" inside the zip. Check the Server Root Path.`);
-            }
+        logger.info(`Server import ${serverId}: migrated ${copiedFiles} data/config file(s); skipped top-level entries: [${[...skippedTopLevel].join(', ')}] (server binaries are always freshly downloaded).`);
 
-            // Auto-detect world folders: any top-level dir that directly contains
-            // a level.dat (works for both Java and Bedrock worlds), regardless of name —
-            // catches custom-named worlds / multiverse setups without a hardcoded list.
-            const worldDirs = new Set<string>();
-            for (const entry of scoped) {
-                const rel = prefix ? entry.name.slice(prefix.length) : entry.name;
-                const parts = rel.split('/');
-                if (parts.length === 2 && parts[1].toLowerCase() === 'level.dat') {
-                    worldDirs.add(parts[0].toLowerCase());
-                }
-            }
+        // ─── Always download a fresh, official server binary — same path as /create ───
+        const jarInfo = await resolveJar(software, version);
+        const finalJarInfo = await downloadJar(jarInfo);
+        req.importSignal.throwIfAborted();
 
-            const isImportable = (rel: string) => {
-                if (!rel) return false;
-                const top = rel.split('/')[0].toLowerCase();
-                return IMPORT_ALLOWED_TOP_LEVEL.has(top) || worldDirs.has(top);
-            };
-
-            let copiedFiles = 0;
-            const skippedTopLevel = new Set<string>();
-            for (const entry of scoped) {
-                const rel = prefix ? entry.name.slice(prefix.length) : entry.name;
-                if (!rel) continue;
-                if (!isImportable(rel)) {
-                    skippedTopLevel.add(rel.split('/')[0]);
-                    continue;
-                }
-                const destPath = path.join(serverDir, rel.replace(/\//g, path.sep));
-                const relToRoot = path.relative(serverDir, destPath);
-                if (relToRoot.startsWith('..') || path.isAbsolute(relToRoot)) {
-                    continue;
-                }
-                if (entry.isDirectory) {
-                    await fsp.mkdir(destPath, { recursive: true });
-                } else {
-                    await fsp.mkdir(path.dirname(destPath), { recursive: true });
-                    await zip.extract(entry, destPath);
-                    copiedFiles++;
-                }
-            }
-            try { await zip.close(); zip = null; } catch (_) {}
-
-            logger.info(`Server import ${serverId}: migrated ${copiedFiles} data/config file(s); skipped top-level entries: [${[...skippedTopLevel].join(', ')}] (server binaries are always freshly downloaded).`);
-
-            // ─── Always download a fresh, official server binary — same path as /create ───
-            const jarInfo = await resolveJar(software, version);
-            const finalJarInfo = await downloadJar(jarInfo);
-
-            if (software === 'bedrock' || software === 'bedrock-preview') {
-                await bedrockAdapter.installBedrock(finalJarInfo.localPath, serverDir, portNum);
-            } else if (software === 'pocketmine') {
-                await pocketmineAdapter.installPocketMine(finalJarInfo.localPath, serverDir, portNum);
-            } else if (software === 'forge') {
-                await runForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
-            } else if (software === 'neoforge') {
-                await runNeoForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
-            } else {
-                const targetJar = path.join(serverDir, 'server.jar');
-                fs.copyFileSync(finalJarInfo.localPath, targetJar);
-            }
-
-            const eulaPath = path.join(serverDir, 'eula.txt');
-            try { await fsp.access(eulaPath); } catch {
-                await fsp.writeFile(eulaPath, 'eula=true\n');
-            }
-
-            const propsPath = path.join(serverDir, 'server.properties');
-            try {
-                await fsp.access(propsPath);
-                let content = await fsp.readFile(propsPath, 'utf8');
-                if (/^server-port=/m.test(content)) {
-                    content = content.replace(/^server-port=.*/m, `server-port=${portNum}`);
-                } else {
-                    content += `\nserver-port=${portNum}\n`;
-                }
-                await fsp.writeFile(propsPath, content);
-            } catch {
-                await fsp.writeFile(propsPath, `server-port=${portNum}\n`);
-            }
-
-            logger.info(`Server import complete: ${serverId} (${dirName})`);
-            res.json({
-                message: `Server imported successfully. World, plugins/mods and configuration were migrated; a fresh ${software} ${version} server binary was downloaded.`,
-                id: serverId,
-                uuid,
-                directory_name: dirName,
-                skipped: [...skippedTopLevel],
-            });
-        } finally {
-            if (zip) {
-                try { await zip.close(); } catch (_) {}
-            }
-            processManager.releaseLock(serverId);
-            fsp.unlink(zipPath).catch(() => {});
+        if (software === 'bedrock' || software === 'bedrock-preview') {
+            await bedrockAdapter.installBedrock(finalJarInfo.localPath, serverDir, portNum);
+        } else if (software === 'pocketmine') {
+            await pocketmineAdapter.installPocketMine(finalJarInfo.localPath, serverDir, portNum);
+        } else if (software === 'forge') {
+            await runForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+        } else if (software === 'neoforge') {
+            await runNeoForgeInstaller(finalJarInfo.localPath, serverDir, serverId);
+        } else {
+            const targetJar = path.join(serverDir, 'server.jar');
+            await fsp.copyFile(finalJarInfo.localPath, targetJar);
         }
+
+        req.importSignal.throwIfAborted();
+        const eulaPath = path.join(serverDir, 'eula.txt');
+        try { await fsp.access(eulaPath); } catch {
+            await fsp.writeFile(eulaPath, 'eula=true\n');
+        }
+
+        await setImportedServerPort(serverDir, portNum, req.importSignal);
+        req.importSignal.throwIfAborted();
+
+        logger.info(`Server import complete: ${serverId} (${dirName})`);
+        res.json({
+            message: `Server imported successfully. World, plugins/mods and configuration were migrated; a fresh ${software} ${version} server binary was downloaded.`,
+            id: serverId,
+            uuid,
+            directory_name: dirName,
+            skipped: [...skippedTopLevel],
+        });
     } catch (e) {
         if (serverId) {
-            try { await dbRun('DELETE FROM servers WHERE id = ?', [serverId]); } catch (_) {}
+            try { await dbRun('DELETE FROM servers WHERE id = ?', [serverId]); } catch (cleanupError) { logger.error('Failed to remove imported server record:', cleanupError); }
         }
-        if (serverDir) {
-            try { if (fs.existsSync(serverDir)) fs.rmSync(serverDir, { recursive: true, force: true }); } catch (_) {}
+        if (ownsServerDir) {
+            try { await fsp.rm(serverDir, { recursive: true, force: true }); } catch (cleanupError) { logger.error('Failed to clean up failed server import:', cleanupError); }
         }
-        fsp.unlink(zipPath).catch(() => {});
 
         logger.error('[serverRoutes] Import error:', e);
         if (e.code === 'SQLITE_CONSTRAINT') {
             if (e.message.includes('servers.name')) return sendError(res, E.SERVER_NAME_TAKEN, 409);
             if (e.message.includes('servers.port')) return sendError(res, E.SERVER_PORT_TAKEN, 409);
         }
-        return sendError(res, E.BAD_REQUEST, 400, e.message || 'Import failed. Check your archive and root path.');
+        if (!res.destroyed) return sendError(res, E.BAD_REQUEST, e.code === 'ENOSPC' ? 507 : 400, e.message || 'Import failed. Check your archive and root path.');
+    } finally {
+        if (locked) processManager.releaseLock(serverId);
+        await req.importCleanup();
     }
 });
 
