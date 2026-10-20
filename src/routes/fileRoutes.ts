@@ -20,7 +20,7 @@ import errorsModule = require('../core/errors');
 const { E, sendError } = errorsModule;
 import logger = require('../core/utils/logger');
 import { safeServerPath, assertSafeTree } from '../core/safeServerPath';
-import { uploadDirectory, validateUploadName } from '../core/uploadPath';
+import { uploadDirectory, validateUploadName, uploadRelativePath } from '../core/uploadPath';
 import { writeServerFile } from '../core/writeServerFile';
 
 const router = express.Router({ mergeParams: true });
@@ -652,7 +652,12 @@ router.post('/upload', authenticateToken, checkPermission('server.files.write'),
             validateUploadName(name);
             const ext = path.extname(name).toLowerCase();
             if (BLOCKED_EXTENSIONS.has(ext)) return sendError(res, E.FILE_INVALID_NAME, 400, `File extension '${ext}' is blocked for security reasons`);
-            const target = getSafePath(root, path.relative(root, path.join(directory, name)));
+            const relativePath = uploadRelativePath(req.body.relativePath, name);
+            // The selected directory must exist; create only the uploaded folder tree.
+            if (!(await fsp.stat(directory)).isDirectory()) return sendError(res, E.DIRECTORY_NOT_FOUND, 404);
+            const target = getSafePath(root, path.relative(root, path.join(directory, relativePath)));
+            if (req.body.relativePath !== undefined) await fsp.mkdir(path.dirname(target), { recursive: true });
+            getSafePath(root, path.relative(root, target));
             await fsp.copyFile(req.file.path, target);
             res.json({ message: 'File uploaded', filename: name });
         } catch (error: any) {

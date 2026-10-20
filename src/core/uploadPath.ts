@@ -13,3 +13,13 @@ export function validateUploadName(name: unknown): asserts name is string {
         throw new Error('Invalid filename');
     }
 }
+
+/** Folder upload names are relative to the chosen directory, never absolute. */
+export function uploadRelativePath(value: unknown, name: string): string {
+    if (value === undefined) return name;
+    if (typeof value !== 'string' || !value || value.startsWith('/')) throw new Error('Invalid upload path');
+    const parts = value.split('/');
+    for (const part of parts) validateUploadName(part);
+    if (parts[parts.length - 1] !== name) throw new Error('Invalid upload path');
+    return parts.join('/');
+}

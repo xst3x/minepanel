@@ -4,7 +4,9 @@ import { assetUrl, request } from '../../lib/api';
 import Section from '../../components/Section.tsx';
 import ModalOverlay from '../../components/ModalOverlay.tsx';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { droppedUploads, pickerUploads, type UploadEntry } from '../../lib/folderUpload';
+import { useFileDirectory, normalizeDirectory } from '../../lib/useFileDirectory';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api.ts';
 import { toast, showConfirm, showPrompt, toastProgress } from '../../components/Toast.tsx';
 import CodeEditor from '../../components/CodeEditor.tsx';
@@ -25,9 +27,17 @@ const FILE_SVG = (
 
 export default function ServerFiles() {
   const { serverId, hasPerm } = useOutletContext<ServerContext>();
-  const [currentPath, setCurrentPath] = useState('/');
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedPath = normalizeDirectory(searchParams.get('path') || '/');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { items, currentPath, initialLoading, navigating, refreshing, error: listingError, refresh, active: locationRef } = useFileDirectory(serverId, requestedPath, containerRef);
+  const navigateDirectory = (path: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('path', normalizeDirectory(path));
+    setSearchParams(next);
+  };
+  // Capture the action's displayed directory; late completions cannot navigate.
+  const refreshFiles = () => refresh(serverId, currentPath);
 
   // ── Multi-select state ────────────────────────────────────────────────────
   const [selectMode, setSelectMode] = useState(false);
@@ -56,6 +66,7 @@ export default function ServerFiles() {
   const editorDirty = editingPath != null && editorContent !== savedContentRef;
 
   const fileInputRef = useRef(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const actionsMenuRef = useRef(null);
   const [openRowMenu, setOpenRowMenu] = useState(null);
@@ -65,48 +76,30 @@ export default function ServerFiles() {
   const [infoError, setInfoError] = useState('');
   const rowMenuRef = useRef(null);
 
-  const locationRef = useRef({ serverId, path: '/', active: true });
-  const listRequest = useRef(0);
-
-  // Load files list
-  const loadFiles = async (path = currentPath) => {
-    const requestId = ++listRequest.current;
-    locationRef.current = { serverId, path, active: true };
-    setLoading(true);
-    try {
-      let cleanPath = path;
-      if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
-      if (cleanPath.length > 1 && cleanPath.endsWith('/')) cleanPath = cleanPath.slice(0, -1);
-      
-      const res = await api(`/api/servers/${serverId}/files/list?path=${encodeURIComponent(cleanPath)}`);
-      if (requestId !== listRequest.current) return;
-      setItems(res || []);
-      setCurrentPath(cleanPath);
-    } catch (e) {
-      if (requestId === listRequest.current) {
-        locationRef.current.path = currentPath;
-        toast(e.message || 'Failed to load files.', 'error');
-      }
-    } finally {
-      if (requestId === listRequest.current) setLoading(false);
-    }
-  };
-
+  const selectionLocation = useRef(`${serverId}:${currentPath}`);
   useEffect(() => {
-    loadFiles('/');
-    return () => { listRequest.current++; locationRef.current.active = false; };
-  }, [serverId]);
+    const location = `${serverId}:${currentPath}`;
+    const changedDirectory = selectionLocation.current !== location;
+    setSelectedItems(previous => {
+      if (changedDirectory) return new Set();
+      const names = new Set(items.map(item => item.name));
+      const remaining = new Set([...previous].filter(name => names.has(name as string)));
+      return remaining.size === previous.size ? previous : remaining;
+    });
+    selectionLocation.current = location;
+    setOpenRowMenu(previous => items.some(item => item.name === previous) ? previous : null);
+  }, [items, currentPath, serverId]);
 
   const handleFolderClick = (name) => {
     const nextPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
-    loadFiles(nextPath);
+    navigateDirectory(nextPath);
   };
 
   const handleGoUp = () => {
     const parts = currentPath.split('/').filter(Boolean);
     parts.pop();
     const nextPath = '/' + parts.join('/');
-    loadFiles(nextPath);
+    navigateDirectory(nextPath);
   };
 
   const handleMkdir = async () => {
@@ -115,7 +108,7 @@ export default function ServerFiles() {
     const filePath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
     try {
       await api(`/api/servers/${serverId}/files/mkdir`, { method: 'POST', body: { path: filePath } });
-      loadFiles();
+      void refreshFiles();
     } catch (err) {
       toast(err.message || 'Failed to create directory.', 'error');
     }
@@ -127,7 +120,7 @@ export default function ServerFiles() {
     const filePath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
     try {
       await api(`/api/servers/${serverId}/files/create`, { method: 'POST', body: { path: filePath } });
-      loadFiles();
+      void refreshFiles();
     } catch (err) {
       toast(err.message || 'Failed to create file.', 'error');
     }
@@ -164,7 +157,7 @@ export default function ServerFiles() {
     try {
       await api(`/api/servers/${serverId}/files/write`, { method: 'POST', body: { path: editingPath, content: editorContent } });
       setEditingPath(null);
-      loadFiles();
+      void refreshFiles();
     } catch (err) {
       toast(err.message || 'Failed to save file.', 'error');
     } finally {
@@ -172,15 +165,20 @@ export default function ServerFiles() {
     }
   };
 
-  const uploadFiles = async (files: File[]) => {
-    const destination = { ...locationRef.current };
-    if (!files || !files.length) return;
+  const uploadFiles = async (files: UploadEntry[], destination = { serverId, path: currentPath }, emptyDirectories: string[] = []) => {
+    if (!files.length && !emptyDirectories.length) return;
     const dismiss = toastProgress(`Uploading ${files.length} file${files.length !== 1 ? 's' : ''}…`);
     let failed = 0;
+    for (const directory of emptyDirectories) {
+      try {
+        await api(`/api/servers/${destination.serverId}/files/mkdir`, { method: 'POST', body: { path: `${destination.path}/${directory}` } });
+      } catch (err) { failed++; toast(`Failed to create ${directory}: ${err.message}`, 'error'); }
+    }
     for (let i = 0; i < files.length; i++) {
-      const f = files[i];
+      const { file: f, relativePath } = files[i];
       const fd = new FormData();
       fd.append('path', destination.path);
+      if (relativePath) fd.append('relativePath', relativePath);
       fd.append('file', f);
       try {
         await api(`/api/servers/${destination.serverId}/files/upload`, { method: 'POST', body: fd });
@@ -191,15 +189,15 @@ export default function ServerFiles() {
     }
     if (failed === 0) dismiss(null, `Uploaded ${files.length} file${files.length !== 1 ? 's' : ''}.`);
     else dismiss();
-    if (locationRef.current.active && locationRef.current.serverId === destination.serverId && locationRef.current.path === destination.path) {
-      await loadFiles(destination.path);
+    if (locationRef.current.alive && locationRef.current.serverId === destination.serverId && locationRef.current.path === destination.path) {
+      await refresh(destination.serverId, destination.path);
     }
   };
 
   const handleUpload = (e) => {
     const files = Array.from(e.target.files || []) as File[];
     e.target.value = '';
-    void uploadFiles(files);
+    void uploadFiles(pickerUploads(files));
   };
 
   const formatBytes = (b) => {
@@ -238,8 +236,7 @@ export default function ServerFiles() {
     try {
       await api(`/api/servers/${serverId}/files/batch-delete`, { method: 'POST', body: { paths: makeRelPaths() } });
       dismiss(null, `Deleted ${names.length} item(s).`);
-      deselectAll();
-      loadFiles();
+      void refreshFiles();
     } catch (e) { dismiss(e.message); }
   };
 
@@ -263,8 +260,7 @@ export default function ServerFiles() {
       await api(`/api/servers/${serverId}/files/archive`, { method: 'POST', body: { paths: makeRelPaths(), archiveName: archiveModalName } });
       toast(`Archive ${archiveModalName}.zip created.`, 'success');
       setShowArchiveModal(false);
-      deselectAll();
-      loadFiles();
+      void refreshFiles();
     } catch (e) { toast(e.message, 'error'); }
     finally { setArchiveModalLoading(false); }
   };
@@ -304,7 +300,7 @@ export default function ServerFiles() {
       clipboardRef.current = { items: [], isCut: false };
       setClipboardHasItems(false);
       dismiss(null, isCut ? 'Moved item(s).' : 'Copied item(s).');
-      loadFiles();
+      void refreshFiles();
     } catch (e) { dismiss(e.message); }
   };
 
@@ -317,7 +313,7 @@ export default function ServerFiles() {
     try {
       await api(`/api/servers/${serverId}/files/archive`, { method: 'POST', body: { paths: [itemPath], archiveName: stem } });
       dismiss(null, `Archive ${stem}.zip created.`);
-      loadFiles();
+      void refreshFiles();
     } catch (e) { dismiss(e.message); }
   };
 
@@ -342,7 +338,7 @@ export default function ServerFiles() {
     try {
       await api(`/api/servers/${serverId}/files/delete`, { method: 'POST', body: { path: filePath } });
       dismiss(null, `Deleted ${name}.`);
-      loadFiles();
+      void refreshFiles();
     } catch (e) { dismiss(e.message); }
   };
 
@@ -354,7 +350,7 @@ export default function ServerFiles() {
     try {
       await api(`/api/servers/${serverId}/files/rename`, { method: 'POST', body: { oldPath: itemPath(item.name), newPath: itemPath(name) } });
       toast(`Renamed to ${name}.`, 'success');
-      loadFiles();
+      void refreshFiles();
     } catch (error) { toast(error.message || 'Rename failed.', 'error'); }
   };
   const handleSingleMove = async (item) => {
@@ -364,7 +360,7 @@ export default function ServerFiles() {
       const result = await api(`/api/servers/${serverId}/files/move`, { method: 'POST', body: { paths: [itemPath(item.name)], destination } });
       if (result.results?.[0]?.status === 'error') throw new Error(result.results[0].error);
       toast(`Moved ${item.name}.`, 'success');
-      loadFiles();
+      void refreshFiles();
     } catch (error) { toast(error.message || 'Move failed.', 'error'); }
   };
   const openInfo = async (item) => {
@@ -452,7 +448,7 @@ export default function ServerFiles() {
       await api(`/api/servers/${serverId}/files/extract`, { method: 'POST', body: { path: previewPath } });
       dismiss(null, 'Archive extracted.');
       closePreview();
-      loadFiles();
+      void refreshFiles();
     } catch (e) { dismiss(e.message); }
   };
 
@@ -502,25 +498,30 @@ export default function ServerFiles() {
   const selCount = selectedItems.size;
 
   return (
-    <div className="file-manager" onDragOver={e => e.preventDefault()} onDrop={e => {
+    <div ref={containerRef} className="file-manager" onDragOver={e => e.preventDefault()} onDrop={async e => {
       e.preventDefault();
-      if (!hasPerm('server.files.edit')) return;
-      if (Array.from(e.dataTransfer.items || []).some(item => item.webkitGetAsEntry?.()?.isDirectory)) {
-        toast('Folder uploads are not supported. Select files instead.', 'error');
-        return;
-      }
-      void uploadFiles(Array.from(e.dataTransfer.files));
+      if (!hasPerm('server.files.edit') || navigating) return;
+      const destination = { serverId, path: currentPath };
+      try {
+        const { files, emptyDirectories } = await droppedUploads(e.dataTransfer);
+        await uploadFiles(files, destination, emptyDirectories);
+      } catch (error) { toast(error.message || 'Could not read dropped folder.', 'error'); }
     }}>
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
       <div className="fm-toolbar">
         <div className="fm-breadcrumb" id="fm-path">{currentPath}</div>
-        <div className="fm-actions">
+        <div className="fm-actions" {...(navigating ? { inert: '' } as any : {})}>
           {hasPerm('server.files.edit') && (
             <>
               <button className="btn outline small" onClick={handleMkdir}>New Folder</button>
               <button className="btn outline small" onClick={handleNewFile}>New File</button>
               <button className="btn outline small" onClick={() => fileInputRef.current?.click()}>Upload</button>
               <input type="file" ref={fileInputRef} multiple onChange={handleUpload} style={{ display:'none' }} />
+              <button className="btn outline small" onClick={() => {
+                if (folderInputRef.current && 'webkitdirectory' in folderInputRef.current) folderInputRef.current.click();
+                else toast('This browser does not support folder selection. Upload files or drag a folder here.', 'error');
+              }}>Upload Folder</button>
+              <input type="file" aria-label="Upload folder" ref={folderInputRef} multiple {...{ webkitdirectory: '', directory: '' }} onChange={handleUpload} style={{ display: 'none' }} />
             </>
           )}
           <button
@@ -549,19 +550,20 @@ export default function ServerFiles() {
         </div>
       )}
 
-      <Section className="" style={{  }}>
+      {listingError && <div role="alert" className="fm-refresh-error">{listingError} <button className="btn outline small" onClick={() => void refresh()}>Retry</button></div>}
+      <Section className="" style={{  }} {...(navigating ? { inert: '' } as any : {})}>
         <div className="fm-list-header">
           <div style={{ width: '20px', flexShrink: 0 }} />
           <div className="fm-col name">Name</div>
           <div style={{ flex: '0 0 auto', textAlign: 'right' }}>Actions</div>
         </div>
 
-        <div className="list-body" id="fm-list">
-          {loading ? (
+        <div className="list-body" id="fm-list" aria-busy={navigating || refreshing}>
+          {initialLoading ? (
             <p className="text-muted" style={{ padding: '1rem' }}>Loading files...</p>
           ) : (
             <>
-              {!sortedItems.length && (
+              {!sortedItems.length && !refreshing && !navigating && !listingError && (
                 <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>This folder is empty.</p>
                   {hasPerm('server.files.edit') && (
@@ -595,7 +597,7 @@ export default function ServerFiles() {
 
                 return (
                   <div
-                    key={item.name}
+                    key={`${serverId}:${currentPath}/${item.name}`}
                     className={`fm-item${isSelected ? ' fm-selected' : ''}`}
                     role={selectMode ? 'checkbox' : 'button'}
                     aria-checked={selectMode ? isSelected : undefined}

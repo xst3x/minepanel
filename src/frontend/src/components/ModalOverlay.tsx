@@ -38,7 +38,7 @@ export default function ModalOverlay({ children, onClick, closeOnBackdrop = fals
       dialog.setAttribute('aria-labelledby', heading.id);
     }
     const controls = () => Array.from(dialog.querySelectorAll<HTMLElement>(focusable)).filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
-    (controls().find(el => el.tagName === 'INPUT') || controls()[0] || dialog).focus();
+    (controls().find(el => el.tagName === 'INPUT') || controls()[0] || dialog).focus({ preventScroll: true });
     const onKey = (event: KeyboardEvent) => {
       if (openOverlays.at(-1) !== overlay) return;
       // Escape closes an open dropdown first, not the whole modal
@@ -62,7 +62,7 @@ export default function ModalOverlay({ children, onClick, closeOnBackdrop = fals
       openOverlays.splice(openOverlays.indexOf(overlay), 1);
       document.body.style.overflow = previousOverflow;
       if (root) root.inert = previousInert;
-      if (previousFocus?.isConnected) previousFocus.focus();
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };
   }, [headingId]);
   const handleClick = (event: ReactMouseEvent<HTMLDivElement>) => {

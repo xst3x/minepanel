@@ -157,4 +157,17 @@ describe('Multipart upload destinations', () => {
             .field('path', '/').attach('file', Buffer.from('bad'), 'bad.exe');
         expect(blocked.status).toBe(400);
     });
+    test('creates uploaded folder hierarchy beneath the selected directory', async () => {
+        const res = await request(app).post('/api/servers/1/files/upload').set('Authorization', `Bearer ${token}`)
+            .attach('file', Buffer.from('nested'), 'config.yml')
+            .field('path', '/plugins/Essentials').field('relativePath', 'Folder with spaces/deeper/config.yml');
+        expect(res.status).toBe(200);
+        expect(fs.readFileSync(path.join(root, 'plugins/Essentials/Folder with spaces/deeper/config.yml'), 'utf8')).toBe('nested');
+    });
+    test.each(['../config.yml', '/absolute/config.yml', 'folder/../../config.yml', 'folder\\config.yml', 'C:/config.yml', 'folder//config.yml'])('rejects unsafe relative folder path %s', async relativePath => {
+        const res = await request(app).post('/api/servers/1/files/upload').set('Authorization', `Bearer ${token}`)
+            .field('path', '/').field('relativePath', relativePath).attach('file', Buffer.from('bad'), 'config.yml');
+        expect([400, 403]).toContain(res.status);
+    });
+
 });
