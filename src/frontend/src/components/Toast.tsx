@@ -7,6 +7,11 @@ import '../styles/components/Toast.css';
 const ToastContext = createContext(null);
 const MAX_VISIBLE_TOASTS = 3;
 
+export type ProgressToastUpdate = { message?: string; detail?: string; progress?: number | null };
+export type ProgressToastHandle = ((errorMsg?: string | null, successMsg?: string) => void) & {
+  update: (update: ProgressToastUpdate) => void;
+};
+
 export function useToast() {
   return useContext(ToastContext);
 }
@@ -28,9 +33,9 @@ export function toast(message, type = 'info') {
  * Call dismiss('error message') to turn it into an error toast.
  * Call dismiss(null, 'success message') to turn it into a success toast.
  */
-export function toastProgress(message) {
+export function toastProgress(message: string): ProgressToastHandle {
   if (_toastProgressFn) return _toastProgressFn(message);
-  return () => {};
+  return Object.assign(() => {}, { update: (_update: ProgressToastUpdate) => {} });
 }
 
 export function showConfirm(message, title = 'Confirm', options = {}) {
@@ -46,7 +51,7 @@ export function showPrompt(message, defaultValue = '', title = 'Input') {
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
-  const [progressToasts, setProgressToasts] = useState([]); // { id, message }
+  const [progressToasts, setProgressToasts] = useState<(ProgressToastUpdate & { id: number })[]>([]);
   const [confirm, setConfirm] = useState(null);
   const [confirmOptions, setConfirmOptions] = useState<{ danger?: boolean; confirmLabel?: string }>({});
   const [prompt, setPrompt] = useState(null);
@@ -67,13 +72,24 @@ export function ToastProvider({ children }) {
   const addProgressToast = useCallback((message) => {
     const id = ++idRef.current;
     setProgressToasts(prev => [...prev, { id, message }]);
-    // Returns a dismiss function
-    return (errorMsg, successMsg) => {
+    let finished = false;
+    const dismiss: ProgressToastHandle = Object.assign((errorMsg?: string | null, successMsg?: string) => {
+      if (finished) return;
+      finished = true;
       setProgressToasts(prev => prev.filter(t => t.id !== id));
       if (demoMode && typeof errorMsg === 'string' && errorMsg.includes(DEMO_MESSAGE)) return;
       if (errorMsg) addToast(errorMsg, 'error');
       else if (successMsg) addToast(successMsg, 'success');
-    };
+    }, {
+      update: (update: ProgressToastUpdate) => {
+        if (finished) return;
+        const next = { ...update };
+        if ('progress' in next) next.progress = typeof next.progress === 'number' && Number.isFinite(next.progress)
+          ? Math.max(0, Math.min(100, next.progress)) : null;
+        setProgressToasts(prev => prev.map(t => t.id === id ? { ...t, ...next } : t));
+      },
+    });
+    return dismiss;
   }, [addToast]);
 
   const openConfirm = useCallback((message, title, options = {}) => {
@@ -140,7 +156,7 @@ export function ToastProvider({ children }) {
       <div
         role="status" aria-live="polite" className="toast-region"
       >
-        {/* Progress toasts (persistent, with indeterminate bar) */}
+        {/* Progress toasts remain mounted while navigating between pages. */}
         {progressToasts.map(t => (
           <div key={t.id} className="toast toast-enter" style={{
             pointerEvents: 'auto',
@@ -157,13 +173,18 @@ export function ToastProvider({ children }) {
             boxShadow: 'var(--shadow-md)',
             minWidth: 0, maxWidth: '100%', width: 'min(100%, 420px)',
           }}>
-            <span>{t.message}</span>
-            <div style={{ height: '3px', borderRadius: '2px', background: 'var(--bg-input)', overflow: 'hidden' }}>
+            <span className="toast-progress-title">{t.message}</span>
+            {t.detail && <span className="toast-progress-detail">{t.detail}</span>}
+            <div role="progressbar" aria-label={t.message} aria-valuemin={0} aria-valuemax={100}
+              aria-valuenow={t.progress ?? undefined}
+              style={{ height: '4px', borderRadius: '2px', background: 'var(--bg-input)', overflow: 'hidden' }}>
               <div style={{
                 height: '100%',
                 background: 'var(--accent)',
                 borderRadius: '2px',
-                animation: 'progressSlide 1.6s ease-in-out infinite',
+                width: t.progress == null ? '100%' : `${t.progress}%`,
+                transition: 'width 0.2s ease',
+                animation: t.progress == null ? 'progressSlide 1.6s ease-in-out infinite' : 'none',
               }} />
             </div>
           </div>

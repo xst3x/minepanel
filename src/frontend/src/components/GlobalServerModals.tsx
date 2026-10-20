@@ -1,10 +1,7 @@
-import { importProgress as calculateImportProgress, formatImportBytes, validImportSize } from '../lib/importProgress';
-import { withBasePath } from '../lib/basePath';
-import { getToken } from '../lib/api';
-import { createUploadRequest } from '../lib/api';
+import { startServerImport } from '../lib/serverImport';
 import ModalOverlay from './ModalOverlay.tsx';
 import { useState, useEffect, useRef } from 'react';
-import { api, extractApiErrorMessage } from '../lib/api.ts';
+import { api } from '../lib/api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { toast, toastProgress } from '../components/Toast.tsx';
 import Select from '../components/Select.tsx';
@@ -36,8 +33,6 @@ export default function GlobalServerModals() {
   const [impVersion, setImpVersion] = useState('');
   const [impRam, setImpRam] = useState<string | number>(2048);
   const [impRoot, setImpRoot] = useState('');
-  const [importProgress, setImportProgress] = useState(null);
-  const [impBusy, setImpBusy] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -61,12 +56,11 @@ export default function GlobalServerModals() {
     if (!modal) return;
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
-      if (modal === 'import' && impBusy) return; // don't abandon an in-flight import
       close();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [modal, impBusy, close]);
+  }, [modal, close]);
 
   // Reset create form when modal opens
   useEffect(() => {
@@ -84,7 +78,6 @@ export default function GlobalServerModals() {
       setImpSoftware('paper');
       setImpRam(2048);
       setImpRoot('');
-      setImportProgress(null);
     }
   }, [modal]);
 
@@ -152,91 +145,13 @@ export default function GlobalServerModals() {
     }
   };
 
-  const handleImportServer = async (e) => {
+  const handleImportServer = (e) => {
     e.preventDefault();
-    const xhr = createUploadRequest();
-    if (!xhr) return;
-    if (!impFile) return toast('Please select a .zip archive first.', 'error');
-    if (!validImportSize(impFile.size)) return toast('The archive must be nonempty and its size must be a safe integer.', 'error');
-    if (!(impFile.name.toLowerCase().endsWith('.zip') || impFile.type === 'application/zip')) {
-      return toast('Only .zip archives are accepted.', 'error');
-    }
-    if (!impName.trim()) return toast('Server name is required.', 'error');
-    if (!impVersion) return toast('Minecraft version is required.', 'error');
-    if (impRoot.includes('..')) return toast('Server root path cannot contain "..".', 'error');
-    const ramNum = Number(impRam);
-    if (!Number.isFinite(ramNum) || ramNum < 512 || ramNum > 16384) {
-      return toast('RAM must be between 512 and 16384 MB.', 'error');
-    }
-    const portNum = Number(impPort);
-    if (!Number.isFinite(portNum) || portNum < 1024 || portNum > 65535) {
-      return toast('Port must be between 1024 and 65535.', 'error');
-    }
-
-    setImpBusy(true);
-    setImportProgress({ label: 'Uploading...', pct: 0 });
-
-    const fd = new FormData();
-    fd.append('archive', impFile, impFile.name);
-    fd.append('name', impName);
-    fd.append('port', String(impPort));
-    fd.append('software', impSoftware);
-    fd.append('version', impVersion);
-    fd.append('ram_mb', String(impRam));
-    fd.append('root_path', impRoot);
-
-    const token = getToken();
-
-    xhr.open('POST', withBasePath('/api/servers/import'));
-    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-
-    const uploadStarted = performance.now();
-    xhr.timeout = 0;
-    xhr.upload.onprogress = (event) => {
-      setImportProgress(calculateImportProgress(event, uploadStarted, performance.now()));
-    };
-    xhr.upload.onload = () => {
-      setImportProgress(previous => ({ ...previous, label: 'Extracting & configuring...', pct: 100 }));
-    };
-
-    xhr.onload = () => {
-      setImportProgress({ label: 'Finished', pct: 100 });
-      let data = null;
-      let parseFailed = false;
-      try { data = JSON.parse(xhr.responseText); } catch { parseFailed = true; }
-
-      if (xhr.status >= 200 && xhr.status < 300) {
-        close();
-        window.dispatchEvent(new Event('mp:server-status-changed'));
-        toast((data && data.message) || 'Server imported successfully.', 'success');
-      } else {
-        const message = parseFailed
-          ? `Import failed (server returned an unexpected response, status ${xhr.status}).`
-          : extractApiErrorMessage(data, xhr.status);
-        toast(message, 'error');
-        setImportProgress(null);
-      }
-      setImpBusy(false);
-    };
-
-    xhr.onerror = () => {
-      toast('Network error during import — check your connection and try again.', 'error');
-      setImportProgress(null);
-      setImpBusy(false);
-    };
-
-    xhr.ontimeout = () => {
-      toast('Import timed out. Large archives can take a while — try again or check server logs.', 'error');
-      setImportProgress(null);
-      setImpBusy(false);
-    };
-
-    xhr.onabort = () => {
-      setImportProgress(null);
-      setImpBusy(false);
-    };
-
-    xhr.send(fd);
+    if (!startServerImport({ file: impFile, name: impName, software: impSoftware,
+      version: impVersion, ram: impRam, port: impPort, root: impRoot })) return;
+    close();
+    setImpFile(null); setImpName(''); setImpRoot('');
+    setImpPort(25565); setImpSoftware('paper'); setImpRam(2048);
   };
 
   if (!modal) return null;
@@ -433,11 +348,11 @@ export default function GlobalServerModals() {
 
       {/* Import Modal */}
       {modal === 'import' && (
-        <ModalOverlay className="modal-overlay active" onClick={() => { if (!impBusy) close(); }}>
+        <ModalOverlay className="modal-overlay active" onClick={close}>
           <div className="modal large" role="dialog" aria-modal="true" aria-label="Import existing server" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Import Existing Server</h3>
-              <button aria-label="Close dialog" className="close-btn" onClick={close} disabled={impBusy}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={close}>&times;</button>
             </div>
             <form onSubmit={handleImportServer}>
               <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -531,28 +446,11 @@ export default function GlobalServerModals() {
                   <p style={{ margin: '0.3rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>If your server lives in a sub-folder inside the zip, enter that folder name.</p>
                 </div>
 
-                {importProgress && (
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                      <span>{importProgress.label}</span>
-                      <span>{importProgress.pct}% uploaded</span>
-                    </div>
-                    <div style={{ background: 'var(--bg-input)', borderRadius: '4px', height: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                      <div style={{ background: 'var(--accent)', height: '100%', width: `${importProgress.pct}%`, transition: 'width 0.2s ease' }}></div>
-                    </div>
-                    {importProgress.loaded !== undefined && (
-                      <small className="text-muted">
-                        {formatImportBytes(importProgress.loaded)}{importProgress.total !== null ? ` / ${formatImportBytes(importProgress.total)}` : ''}
-                        {' · '}{formatImportBytes(importProgress.speed)}/s
-                      </small>
-                    )}
-                  </div>
-                )}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn outline" onClick={close} disabled={impBusy}>Cancel</button>
-                <button type="submit" className="btn primary" disabled={impBusy}>
-                  {impBusy ? 'Importing...' : 'Import Server'}
+                <button type="button" className="btn outline" onClick={close}>Cancel</button>
+                <button type="submit" className="btn primary">
+                  Import Server
                 </button>
               </div>
             </form>

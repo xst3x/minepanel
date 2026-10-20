@@ -65,8 +65,13 @@ export default function ServerFiles() {
   const [infoError, setInfoError] = useState('');
   const rowMenuRef = useRef(null);
 
+  const locationRef = useRef({ serverId, path: '/', active: true });
+  const listRequest = useRef(0);
+
   // Load files list
   const loadFiles = async (path = currentPath) => {
+    const requestId = ++listRequest.current;
+    locationRef.current = { serverId, path, active: true };
     setLoading(true);
     try {
       let cleanPath = path;
@@ -74,17 +79,22 @@ export default function ServerFiles() {
       if (cleanPath.length > 1 && cleanPath.endsWith('/')) cleanPath = cleanPath.slice(0, -1);
       
       const res = await api(`/api/servers/${serverId}/files/list?path=${encodeURIComponent(cleanPath)}`);
+      if (requestId !== listRequest.current) return;
       setItems(res || []);
       setCurrentPath(cleanPath);
     } catch (e) {
-      toast(e.message || 'Failed to load files.', 'error');
+      if (requestId === listRequest.current) {
+        locationRef.current.path = currentPath;
+        toast(e.message || 'Failed to load files.', 'error');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === listRequest.current) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadFiles('/');
+    return () => { listRequest.current++; locationRef.current.active = false; };
   }, [serverId]);
 
   const handleFolderClick = (name) => {
@@ -162,18 +172,18 @@ export default function ServerFiles() {
     }
   };
 
-  const handleUpload = async (e) => {
-    const files = e.target.files;
+  const uploadFiles = async (files: File[]) => {
+    const destination = { ...locationRef.current };
     if (!files || !files.length) return;
     const dismiss = toastProgress(`Uploading ${files.length} file${files.length !== 1 ? 's' : ''}…`);
     let failed = 0;
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
       const fd = new FormData();
+      fd.append('path', destination.path);
       fd.append('file', f);
-      fd.append('path', currentPath);
       try {
-        await api(`/api/servers/${serverId}/files/upload`, { method: 'POST', body: fd });
+        await api(`/api/servers/${destination.serverId}/files/upload`, { method: 'POST', body: fd });
       } catch (err) {
         failed++;
         toast(`Failed to upload ${f.name}: ${err.message}`, 'error');
@@ -181,8 +191,15 @@ export default function ServerFiles() {
     }
     if (failed === 0) dismiss(null, `Uploaded ${files.length} file${files.length !== 1 ? 's' : ''}.`);
     else dismiss();
-    loadFiles();
+    if (locationRef.current.active && locationRef.current.serverId === destination.serverId && locationRef.current.path === destination.path) {
+      await loadFiles(destination.path);
+    }
+  };
+
+  const handleUpload = (e) => {
+    const files = Array.from(e.target.files || []) as File[];
     e.target.value = '';
+    void uploadFiles(files);
   };
 
   const formatBytes = (b) => {
@@ -485,7 +502,15 @@ export default function ServerFiles() {
   const selCount = selectedItems.size;
 
   return (
-    <div className="file-manager">
+    <div className="file-manager" onDragOver={e => e.preventDefault()} onDrop={e => {
+      e.preventDefault();
+      if (!hasPerm('server.files.edit')) return;
+      if (Array.from(e.dataTransfer.items || []).some(item => item.webkitGetAsEntry?.()?.isDirectory)) {
+        toast('Folder uploads are not supported. Select files instead.', 'error');
+        return;
+      }
+      void uploadFiles(Array.from(e.dataTransfer.files));
+    }}>
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
       <div className="fm-toolbar">
         <div className="fm-breadcrumb" id="fm-path">{currentPath}</div>

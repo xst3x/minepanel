@@ -1,7 +1,4 @@
-import { importProgress as calculateImportProgress, formatImportBytes, validImportSize } from '../lib/importProgress';
-import { withBasePath } from '../lib/basePath';
-import { getToken } from '../lib/api';
-import { createUploadRequest } from '../lib/api';
+import { startServerImport } from '../lib/serverImport';
 import Section from '../components/Section.tsx';
 import ModalOverlay from '../components/ModalOverlay.tsx';
 import { useState, useEffect, useRef } from 'react';
@@ -44,8 +41,6 @@ export default function Panel() {
   const [impVersion, setImpVersion] = useState('');
   const [impRam, setImpRam] = useState<string | number>(2048);
   const [impRoot, setImpRoot] = useState('');
-  const [importProgress, setImportProgress] = useState(null); // { label, pct }
-  const [impBusy, setImpBusy] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -78,7 +73,11 @@ export default function Panel() {
     loadServers();
     loadVersions();
     const interval = setInterval(loadServers, 15000);
-    return () => clearInterval(interval);
+    window.addEventListener('mp:server-status-changed', loadServers);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('mp:server-status-changed', loadServers);
+    };
   }, []);
 
   // Escape closes the create/import modals (HIG Modality — obvious dismissal)
@@ -86,13 +85,12 @@ export default function Panel() {
     if (!showCreateModal && !showImportModal) return;
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
-      if (impBusy) return; // don't abandon an in-flight import
       setSearchParams({});
       setCsTab('java');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [showCreateModal, showImportModal, impBusy]);
+  }, [showCreateModal, showImportModal]);
 
   // When the tab changes, reset software & port defaults
   useEffect(() => {
@@ -170,71 +168,13 @@ export default function Panel() {
     }
   };
 
-  const handleImportServer = async (e) => {
+  const handleImportServer = (e) => {
     e.preventDefault();
-    const xhr = createUploadRequest();
-    if (!xhr) return;
-    if (!impFile) return toast('Please select a .zip archive first.', 'error');
-    if (!validImportSize(impFile.size)) return toast('The archive must be nonempty and its size must be a safe integer.', 'error');
-    if (!impName) return toast('Server name is required.', 'error');
-    if (!impVersion) return toast('Minecraft version is required.', 'error');
-
-    setImpBusy(true);
-    setImportProgress({ label: 'Uploading…', pct: 0 });
-
-    const fd = new FormData();
-    fd.append('archive', impFile, impFile.name);
-    fd.append('name', impName);
-    fd.append('port', String(impPort));
-    fd.append('software', impSoftware);
-    fd.append('version', impVersion);
-    fd.append('ram_mb', String(impRam));
-    fd.append('root_path', impRoot);
-
-    const token = getToken();
-
-
-    xhr.open('POST', withBasePath('/api/servers/import'));
-    if (token) {
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    }
-
-    const uploadStarted = performance.now();
-    xhr.timeout = 0;
-    xhr.upload.onprogress = (event) => {
-      setImportProgress(calculateImportProgress(event, uploadStarted, performance.now()));
-    };
-    xhr.upload.onload = () => {
-      setImportProgress(previous => ({ ...previous, label: 'Extracting & configuring...', pct: 100 }));
-    };
-
-    xhr.onload = () => {
-      setImportProgress({ label: 'Finished', pct: 100 });
-      let data;
-      try { data = JSON.parse(xhr.responseText); } catch { data = { error: 'Invalid server response' }; }
-      if (xhr.status >= 200 && xhr.status < 300) {
-        setSearchParams({});
-        loadServers();
-        setImpFile(null); setImpName(''); setImpPort(25565);
-        setImpSoftware('paper'); setImpRam(2048); setImpRoot('');
-        setImportProgress(null);
-        toast('Server imported successfully.', 'success');
-      } else {
-        toast(data.error || 'Import failed.', 'error');
-        setImportProgress(null);
-      }
-      setImpBusy(false);
-    };
-
-    xhr.onerror = () => {
-      toast('Network error during import. Please try again.', 'error');
-      setImportProgress(null);
-      setImpBusy(false);
-    };
-
-    xhr.onabort = () => { setImportProgress(null); setImpBusy(false); };
-    xhr.ontimeout = xhr.onerror;
-    xhr.send(fd);
+    if (!startServerImport({ file: impFile, name: impName, software: impSoftware,
+      version: impVersion, ram: impRam, port: impPort, root: impRoot })) return;
+    setSearchParams({});
+    setImpFile(null); setImpName(''); setImpRoot('');
+    setImpPort(25565); setImpSoftware('paper'); setImpRam(2048);
   };
 
   const isAdmin = user?.role === 'admin' ||
@@ -549,11 +489,11 @@ export default function Panel() {
 
       {/* Import Modal */}
       {showImportModal && (
-        <ModalOverlay className="modal-overlay active" id="modal-import-server" onClick={() => { if (!impBusy) setSearchParams({}); }}>
+        <ModalOverlay className="modal-overlay active" id="modal-import-server" onClick={() => setSearchParams({})}>
           <div className="modal large" role="dialog" aria-modal="true" aria-label="Import existing server" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Import Existing Server</h3>
-              <button aria-label="Close dialog" className="close-btn" onClick={() => setSearchParams({})} disabled={impBusy}>&times;</button>
+              <button aria-label="Close dialog" className="close-btn" onClick={() => setSearchParams({})}>&times;</button>
             </div>
             <form onSubmit={handleImportServer}>
               <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -701,28 +641,11 @@ export default function Panel() {
                   <p style={{ margin: '0.3rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>If your server lives in a sub-folder inside the zip, enter that folder name (e.g. <code>myserver</code>).</p>
                 </div>
 
-                {importProgress && (
-                  <div id="import-progress-wrap" style={{ display: 'block' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                      <span>{importProgress.label}</span>
-                      <span>{importProgress.pct}% uploaded</span>
-                    </div>
-                    <div style={{ background: 'var(--bg-input)', borderRadius: '4px', height: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                      <div style={{ background: 'var(--accent)', height: '100%', width: `${importProgress.pct}%`, transition: 'width 0.2s ease' }}></div>
-                    </div>
-                    {importProgress.loaded !== undefined && (
-                      <small className="text-muted">
-                        {formatImportBytes(importProgress.loaded)}{importProgress.total !== null ? ` / ${formatImportBytes(importProgress.total)}` : ''}
-                        {' · '}{formatImportBytes(importProgress.speed)}/s
-                      </small>
-                    )}
-                  </div>
-                )}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn outline" onClick={() => setSearchParams({})} disabled={impBusy}>Cancel</button>
-                <button type="submit" className="btn primary" disabled={impBusy}>
-                  {impBusy ? 'Importing...' : 'Import Server'}
+                <button type="button" className="btn outline" onClick={() => setSearchParams({})}>Cancel</button>
+                <button type="submit" className="btn primary">
+                  Import Server
                 </button>
               </div>
             </form>

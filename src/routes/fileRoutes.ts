@@ -20,6 +20,7 @@ import errorsModule = require('../core/errors');
 const { E, sendError } = errorsModule;
 import logger = require('../core/utils/logger');
 import { safeServerPath, assertSafeTree } from '../core/safeServerPath';
+import { uploadDirectory, validateUploadName } from '../core/uploadPath';
 import { writeServerFile } from '../core/writeServerFile';
 
 const router = express.Router({ mergeParams: true });
@@ -90,31 +91,8 @@ async function writeTempZip(buffer: Buffer): Promise<string> {
 }
 
 
-const upload = multer({
-    storage: multer.diskStorage({
-        destination: async (req: any, file: any, cb: any) => {
-            try {
-                const server = await getServer(req.params.serverId);
-                if (!server) return cb(new Error('Server not found'), '');
-                const safePath = getSafePath(getServerDir(server), req.body.path || '');
-                cb(null, safePath);
-            } catch (e) { cb(e, ''); }
-        },
-        filename: (req: any, file: any, cb: any) => {
-            const safeName = path.basename(file.originalname).replace(/[^\w.\-]/g, '_');
-            if (!safeName || safeName === '.' || safeName === '..') {
-                return cb(new Error('Invalid filename'));
-            }
-            const ext = path.extname(safeName).toLowerCase();
-            if (BLOCKED_EXTENSIONS.has(ext)) {
-                const err: any = new Error(`File extension '${ext}' is blocked for security reasons`);
-                err.code = 'BLOCKED_EXTENSION';
-                return cb(err);
-            }
-            cb(null, safeName);
-        }
-    })
-});
+// Stage to disk so multipart field order cannot choose the destination prematurely.
+const upload = multer({ dest: os.tmpdir(), preservePath: true });
 
 // List directory
 router.get('/list', authenticateToken, checkPermission('server.files.read'), async (req: any, res: any) => {
@@ -655,22 +633,38 @@ router.get('/archive-tree', authenticateToken, checkPermission('server.files.rea
 });
 
 // ── Upload ────────────────────────────────────────────────────────────────────
-router.post('/upload', authenticateToken, checkPermission('server.files.write'), (req: any, res: any, next: any) => {
-    upload.single('file')(req, res, (err: any) => {
-        if (err) {
-            if (err.code === 'BLOCKED_EXTENSION' || (err.message && err.message.includes('blocked for security reasons'))) {
-                return sendError(res, E.FILE_INVALID_NAME, 400, err.message);
+router.post('/upload', authenticateToken, checkPermission('server.files.write'), (req: any, res: any) => {
+    upload.single('file')(req, res, async (err: any) => {
+        try {
+            if (err) {
+                if (err.code === 'LIMIT_FILE_SIZE') return sendError(res, E.FILE_TOO_LARGE, 400);
+                return sendError(res, E.BAD_REQUEST, 400, 'Invalid upload');
             }
-            if (err.message === 'Invalid filename') {
-                return sendError(res, E.FILE_INVALID_NAME, 400, 'Invalid filename');
-            }
-            if (err.code === 'LIMIT_FILE_SIZE') {
-                return sendError(res, E.FILE_TOO_LARGE, 400);
-            }
-            return sendError(res, E.INTERNAL_ERROR, 500, err.message);
+            if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No file uploaded');
+            const server = await getServer(req.params.serverId);
+            if (!server) return sendError(res, E.SERVER_NOT_FOUND, 404);
+            const root = getServerDir(server);
+            const directory = uploadDirectory(root, req.body.path);
+            // Multipart header parameters arrive as latin1; browsers send UTF-8 filenames.
+            const raw = req.file.originalname;
+            const decoded = Buffer.from(raw, 'latin1').toString('utf8');
+            const name = decoded.includes('\uFFFD') ? raw : decoded;
+            validateUploadName(name);
+            const ext = path.extname(name).toLowerCase();
+            if (BLOCKED_EXTENSIONS.has(ext)) return sendError(res, E.FILE_INVALID_NAME, 400, `File extension '${ext}' is blocked for security reasons`);
+            const target = getSafePath(root, path.relative(root, path.join(directory, name)));
+            await fsp.copyFile(req.file.path, target);
+            res.json({ message: 'File uploaded', filename: name });
+        } catch (error: any) {
+            if (error.message?.includes('Access denied')) return sendError(res, E.FILE_ACCESS_DENIED, 403);
+            if (error.message === 'Invalid upload path') return sendError(res, E.BAD_REQUEST, 400, error.message);
+            if (error.message === 'Invalid filename') return sendError(res, E.FILE_INVALID_NAME, 400, error.message);
+            if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return sendError(res, E.DIRECTORY_NOT_FOUND, 404);
+            logger.error('[fileRoutes] upload error:', error);
+            return sendError(res, E.INTERNAL_ERROR, 500);
+        } finally {
+            if (req.file?.path) await fsp.unlink(req.file.path).catch(() => {});
         }
-        if (!req.file) return sendError(res, E.BAD_REQUEST, 400, 'No file uploaded');
-        res.json({ message: 'File uploaded', filename: req.file.originalname });
     });
 });
 

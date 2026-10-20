@@ -119,3 +119,42 @@ describe('Files API Sandbox & Operations', () => {
         expect(res.body.code).toBe('FILE_ACCESS_DENIED');
     });
 });
+
+describe('Multipart upload destinations', () => {
+    const root = path.resolve(__dirname, '../servers/Test_Server');
+    test.each(['/', '/plugins/Essentials', '/plugins/Space Folder/\u914d\u7f6e'])('preserves destination %s with file-first multipart', async directory => {
+        fs.mkdirSync(path.join(root, directory), { recursive: true });
+        const name = '\u914d\u7f6e.yml';
+        const res = await request(app).post('/api/servers/1/files/upload')
+            .set('Authorization', `Bearer ${token}`)
+            .attach('file', Buffer.from('settings'), name).field('path', directory);
+        expect(res.status).toBe(200);
+        expect(fs.readFileSync(path.join(root, directory, name), 'utf8')).toBe('settings');
+    });
+    test.each([undefined, '../outside', '/plugins/../outside', 'C:/outside', '//host/share', 'plugins\\..\\outside'])('rejects missing or invalid path %s', async directory => {
+        const req = request(app).post('/api/servers/1/files/upload').set('Authorization', `Bearer ${token}`);
+        if (directory !== undefined) req.field('path', directory);
+        const res = await req.attach('file', Buffer.from('bad'), 'rejected.yml');
+        expect(res.status).toBe(400);
+        expect(fs.existsSync(path.join(root, 'rejected.yml'))).toBe(false);
+    });
+    test('isolates simultaneous uploads and streams a larger file', async () => {
+        const payload = Buffer.alloc(8 * 1024 * 1024, 65);
+        const results = await Promise.all(['one', 'two'].map(async folder => {
+            fs.mkdirSync(path.join(root, folder), { recursive: true });
+            return request(app).post('/api/servers/1/files/upload').set('Authorization', `Bearer ${token}`)
+                .field('path', '/' + folder).attach('file', payload, 'large.dat');
+        }));
+        expect(results.map(r => r.status)).toEqual([200, 200]);
+        for (const folder of ['one', 'two']) expect(fs.readFileSync(path.join(root, folder, 'large.dat')).equals(payload)).toBe(true);
+    });
+    test('rejects symlink destinations and blocked extensions', async () => {
+        fs.symlinkSync(root, path.join(root, 'linked'), 'junction');
+        const linked = await request(app).post('/api/servers/1/files/upload').set('Authorization', `Bearer ${token}`)
+            .field('path', '/linked').attach('file', Buffer.from('bad'), 'link.yml');
+        expect(linked.status).toBe(403);
+        const blocked = await request(app).post('/api/servers/1/files/upload').set('Authorization', `Bearer ${token}`)
+            .field('path', '/').attach('file', Buffer.from('bad'), 'bad.exe');
+        expect(blocked.status).toBe(400);
+    });
+});

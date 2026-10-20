@@ -30,6 +30,14 @@
 .toast.toast-error   { border-left-color: var(--red); }
 .toast.toast-warning { border-left-color: hsl(45, 95%, 55%); }
 .toast.toast-info    { border-left-color: var(--accent); }
+.toast-progress-title { overflow-wrap: anywhere; }
+.toast-progress-detail {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
 @keyframes toastIn {
     from { opacity: 0; transform: translateX(420px) translateY(8px) scale(0.92); }
     to   { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
