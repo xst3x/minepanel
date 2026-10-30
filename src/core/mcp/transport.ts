@@ -57,7 +57,14 @@ export async function buildServer(identity: Identity) {
 
 const loopback = (address = '') => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address);
 export function validTransport(req: Request, config: McpSettings) {
-    const host = req.get('host') || '';
+    const forwardedHost = process.env.MCP_TRUST_PROXY
+        ? (() => {
+            const proxyaddr: { compile(list: string[]): (address: string) => boolean } = require('proxy-addr');
+            const trusted = proxyaddr.compile(process.env.MCP_TRUST_PROXY.split(',').map(v => v.trim()));
+            return trusted(req.socket.remoteAddress || '') ? req.get('x-forwarded-host')?.split(',')[0]?.trim() : undefined;
+        })()
+        : undefined;
+    const host = forwardedHost || req.get('host') || '';
     const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(host);
     const publicOrigin = config.publicUrl ? new URL(config.publicUrl).origin : null;
     if (!localHost && (!publicOrigin || new URL(publicOrigin).host !== host)) return false;
@@ -66,7 +73,8 @@ export function validTransport(req: Request, config: McpSettings) {
     if (!secure && process.env.MCP_TRUST_PROXY) {
         const proxyaddr: { compile(list: string[]): (address: string) => boolean } = require('proxy-addr');
         const trusted = proxyaddr.compile(process.env.MCP_TRUST_PROXY.split(',').map(v => v.trim()));
-        secure = trusted(req.socket.remoteAddress || '') && req.get('x-forwarded-proto') === 'https';
+        const forwardedProto = req.get('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase();
+        secure = trusted(req.socket.remoteAddress || '') && forwardedProto === 'https';
     }
     if (!secure && !(loopback(req.socket.remoteAddress) && localHost)) return false;
     const origin = req.get('origin');

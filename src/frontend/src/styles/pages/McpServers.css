@@ -19,8 +19,10 @@
   .mcp-table th { color: var(--text-muted); font-weight: 500; }
   .mcp-request { padding-block: 1rem; border-bottom: 1px solid var(--border); }
   .mcp-page pre { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-input); padding: 1rem; border-radius: var(--radius-sm); max-height: 20rem; overflow: auto; }
-  .mcp-key { border-left: 3px solid var(--accent); padding: 1rem; }
-  .mcp-key code { display: block; overflow-wrap: anywhere; margin-block: 1rem; user-select: all; }
+  .mcp-key { display: grid; gap: .75rem; max-width: 54rem; border-left: 3px solid var(--accent); padding: 1.25rem; margin-block: 1.25rem; }
+  .mcp-key h3, .mcp-key p { margin: 0; }
+  .mcp-key code { display: block; max-width: 100%; overflow-wrap: anywhere; margin: .25rem 0; padding: .85rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-input); user-select: all; }
+  .mcp-key .btn { justify-self: start; }
   .mcp-page dd { margin: .25rem 0 1rem; overflow-wrap: anywhere; }
   .mcp-modal { max-width: 46rem; width: min(46rem, calc(100vw - 2rem)); max-height: 85dvh; overflow-y: auto; }
   @media (max-width: 40rem) { .mcp-permission { grid-template-columns: 1fr; } .mcp-table th, .mcp-table td { padding: .5rem; } }

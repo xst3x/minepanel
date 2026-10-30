@@ -256,6 +256,24 @@ test('local HTTPS Origin matches the secure endpoint without allowing an unrelat
     headers.origin = 'http://localhost:8080';
     expect(validTransport(req, config)).toBe(false);
 });
+test('trusted TLS proxy can provide the public host and HTTPS scheme', () => {
+    const config = { publicUrl: 'https://panel.example.com', allowedOrigins: [] };
+    const headers = { host: '127.0.0.1:8080', 'x-forwarded-host': 'panel.example.com', 'x-forwarded-proto': 'https' };
+    const req = { get: name => headers[name.toLowerCase()], socket: { encrypted: false, remoteAddress: '127.0.0.1' } };
+    const previousTrust = process.env.MCP_TRUST_PROXY;
+    process.env.MCP_TRUST_PROXY = 'loopback';
+    try {
+        expect(validTransport(req, config)).toBe(true);
+        req.socket.remoteAddress = '203.0.113.9';
+        expect(validTransport(req, config)).toBe(false);
+        req.socket.remoteAddress = '127.0.0.1';
+        headers['x-forwarded-proto'] = 'http';
+        expect(validTransport(req, config)).toBe(false);
+    } finally {
+        if (previousTrust === undefined) delete process.env.MCP_TRUST_PROXY;
+        else process.env.MCP_TRUST_PROXY = previousTrust;
+    }
+});
 test('file tools share GUI validation and expected-version conflict protection', async () => {
     const { identity } = await make();
     const read = await engine.executeTool(identity, 'files_read', { serverId: '1', path: 'example.txt' });
