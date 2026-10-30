@@ -1,7 +1,6 @@
 @layer components {
   .mcp-page { min-width: 0; }
   .mcp-page .page-header, .mcp-actions, .mcp-tabs { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
-  .mcp-page .page-header > div { display: block; }
   .mcp-tabs { margin-block: 1.25rem; }
   .mcp-form { display: grid; gap: 1rem; max-width: 52rem; }
   .mcp-form label { display: grid; gap: .4rem; }
@@ -26,4 +25,9 @@
   .mcp-page dd { margin: .25rem 0 1rem; overflow-wrap: anywhere; }
   .mcp-modal { max-width: 46rem; width: min(46rem, calc(100vw - 2rem)); max-height: 85dvh; overflow-y: auto; }
   @media (max-width: 40rem) { .mcp-permission { grid-template-columns: 1fr; } .mcp-table th, .mcp-table td { padding: .5rem; } }
+}
+
+/* mobile.css (layer: layout) sets .page-header > div to flex, which beats the components layer and put the title and subtitle side by side. */
+@layer surfaces {
+  .mcp-page .page-header > div { display: block; }
 }
